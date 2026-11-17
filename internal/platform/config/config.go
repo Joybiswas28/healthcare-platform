@@ -16,15 +16,33 @@ type Config struct {
 	JWTSecret   string
 	JWTTTL      time.Duration
 	UploadDir   string
+
+	// PublicBaseURL is where this API is reachable from outside (QR codes, payment callbacks).
+	PublicBaseURL string
+	// FrontendURL is where patients are sent back to after paying.
+	FrontendURL string
+
+	// SSLCommerz is enabled when a store id is set; otherwise payments are simulated.
+	SSLCommerzStoreID       string
+	SSLCommerzStorePassword string
+	SSLCommerzSandbox       bool
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		Env:         getEnv("APP_ENV", "development"),
-		HTTPAddr:    getEnv("HTTP_ADDR", ":8080"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		JWTSecret:   os.Getenv("JWT_SECRET"),
-		UploadDir:   getEnv("UPLOAD_DIR", "./data/uploads"),
+		Env:                     getEnv("APP_ENV", "development"),
+		HTTPAddr:                getEnv("HTTP_ADDR", ":8080"),
+		DatabaseURL:             os.Getenv("DATABASE_URL"),
+		JWTSecret:               os.Getenv("JWT_SECRET"),
+		UploadDir:               getEnv("UPLOAD_DIR", "./data/uploads"),
+		PublicBaseURL:           getEnv("PUBLIC_BASE_URL", "http://localhost:8080"),
+		FrontendURL:             getEnv("FRONTEND_URL", "http://localhost:3000"),
+		SSLCommerzStoreID:       os.Getenv("SSLCOMMERZ_STORE_ID"),
+		SSLCommerzStorePassword: os.Getenv("SSLCOMMERZ_STORE_PASSWORD"),
+		SSLCommerzSandbox:       getEnv("SSLCOMMERZ_SANDBOX", "true") == "true",
+	}
+	if cfg.SSLCommerzStoreID != "" && cfg.SSLCommerzStorePassword == "" {
+		return Config{}, errors.New("SSLCOMMERZ_STORE_PASSWORD is required when SSLCOMMERZ_STORE_ID is set")
 	}
 
 	ttlMinutes, err := strconv.Atoi(getEnv("JWT_TTL_MINUTES", "60"))

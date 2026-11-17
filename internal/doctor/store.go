@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
 )
@@ -438,6 +439,16 @@ func (s *Store) Verify(ctx context.Context, doctorID string, in VerifyInput) (Pr
 		    verified_at = CASE WHEN $2 = 'approved' THEN now() END, updated_at = now()
 		WHERE user_id = $1`, doctorID, in.Status, nullIfEmpty(in.Note))
 	if err != nil {
+		return Profile{}, err
+	}
+	msg := notify.Msg{UserID: doctorID, Kind: notify.KindDoctorVerification, SMS: true,
+		Title: "Profile verified",
+		Body:  "Your doctor profile has been verified. You can now accept bookings and online consultations."}
+	if in.Status == StatusRejected {
+		msg.Title = "Profile verification unsuccessful"
+		msg.Body = "Your doctor profile could not be verified: " + in.Note + ". Please update your profile and resubmit."
+	}
+	if err := notify.Enqueue(ctx, tx, msg); err != nil {
 		return Profile{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

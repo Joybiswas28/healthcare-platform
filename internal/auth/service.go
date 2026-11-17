@@ -22,15 +22,22 @@ type UserStore interface {
 	Create(ctx context.Context, u user.User) (user.User, error)
 	GetByPhone(ctx context.Context, phone string) (user.User, error)
 	GetByID(ctx context.Context, id string) (user.User, error)
+	UpdatePassword(ctx context.Context, id, passwordHash string) error
+}
+
+// PhoneVerifier checks a one-time code sent to a phone (OTPStore in production).
+type PhoneVerifier interface {
+	Consume(ctx context.Context, phone, purpose, code string) error
 }
 
 type Service struct {
 	users  UserStore
 	tokens *TokenManager
+	otp    PhoneVerifier
 }
 
-func NewService(users UserStore, tokens *TokenManager) *Service {
-	return &Service{users: users, tokens: tokens}
+func NewService(users UserStore, tokens *TokenManager, otp PhoneVerifier) *Service {
+	return &Service{users: users, tokens: tokens, otp: otp}
 }
 
 type RegisterInput struct {
@@ -38,6 +45,20 @@ type RegisterInput struct {
 	Phone    string    `json:"phone"`
 	Password string    `json:"password"`
 	Role     user.Role `json:"role"`
+	OTPCode  string    `json:"otp_code"` // from POST /auth/otp with purpose "register"
+}
+
+type ResetPasswordInput struct {
+	Phone       string `json:"phone"`
+	OTPCode     string `json:"otp_code"` // from POST /auth/otp with purpose "reset_password"
+	NewPassword string `json:"new_password"`
+}
+
+func validPassword(p string) error {
+	if len(p) < 8 || len(p) > 72 {
+		return ValidationError{"password must be 8-72 characters"}
+	}
+	return nil
 }
 
 type LoginInput struct {
@@ -69,14 +90,20 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 	if err != nil {
 		return AuthResult{}, ValidationError{err.Error()}
 	}
-	if len(in.Password) < 8 || len(in.Password) > 72 {
-		return AuthResult{}, ValidationError{"password must be 8-72 characters"}
+	if err := validPassword(in.Password); err != nil {
+		return AuthResult{}, err
 	}
 	if in.Role == "" {
 		in.Role = user.RolePatient
 	}
 	if !selfRegisterRoles[in.Role] {
 		return AuthResult{}, ValidationError{"role must be 'patient' or 'doctor'"}
+	}
+	if strings.TrimSpace(in.OTPCode) == "" {
+		return AuthResult{}, ValidationError{"otp_code is required; request one with POST /auth/otp"}
+	}
+	if err := s.otp.Consume(ctx, phone, PurposeRegister, strings.TrimSpace(in.OTPCode)); err != nil {
+		return AuthResult{}, err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
@@ -110,6 +137,30 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (AuthResult, error) 
 		return AuthResult{}, ErrInvalidCredentials
 	}
 	return s.issue(u)
+}
+
+// ResetPassword sets a new password after the user proves they hold the phone.
+// Tokens issued before the reset stay valid until they expire.
+func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) error {
+	phone, err := NormalizePhone(in.Phone)
+	if err != nil {
+		return ValidationError{err.Error()}
+	}
+	if err := validPassword(in.NewPassword); err != nil {
+		return err
+	}
+	if err := s.otp.Consume(ctx, phone, PurposeResetPassword, strings.TrimSpace(in.OTPCode)); err != nil {
+		return err
+	}
+	u, err := s.users.GetByPhone(ctx, phone)
+	if err != nil {
+		return err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(in.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	return s.users.UpdatePassword(ctx, u.ID, string(hash))
 }
 
 func (s *Service) Me(ctx context.Context, userID string) (user.User, error) {

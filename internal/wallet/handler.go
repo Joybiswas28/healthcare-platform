@@ -15,12 +15,13 @@ import (
 const ProviderDev = "dev"
 
 type Handler struct {
-	store *Store
-	log   *slog.Logger
+	store   *Store
+	gateway Gateway
+	log     *slog.Logger
 }
 
-func NewHandler(store *Store, log *slog.Logger) *Handler {
-	return &Handler{store: store, log: log}
+func NewHandler(store *Store, gateway Gateway, log *slog.Logger) *Handler {
+	return &Handler{store: store, gateway: gateway, log: log}
 }
 
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
@@ -57,12 +58,25 @@ func (h *Handler) StartPurchase(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, apperr.Validation("package_id is required"))
 		return
 	}
-	p, err := h.store.StartPurchase(r.Context(), callerID(r), in.PackageID, ProviderDev)
+	userID := callerID(r)
+	payer, err := h.store.Payer(r.Context(), userID)
 	if err != nil {
 		h.fail(w, r, err)
 		return
 	}
-	p.CheckoutURL = "/api/v1/dev/payments/" + p.ID + "/succeed"
+	p, err := h.store.StartPurchase(r.Context(), userID, in.PackageID, h.gateway.Name())
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	url, err := h.gateway.Checkout(r.Context(), p, payer)
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "payment checkout failed", "payment", p.ID, "provider", p.Provider, "err", err)
+		_ = h.store.FailPayment(r.Context(), p.ID)
+		httpx.Error(w, http.StatusBadGateway, "the payment provider is not available right now; please try again")
+		return
+	}
+	p.CheckoutURL = url
 	httpx.JSON(w, http.StatusCreated, p)
 }
 

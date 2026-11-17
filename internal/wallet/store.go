@@ -3,11 +3,13 @@ package wallet
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 )
 
@@ -109,9 +111,11 @@ func (s *Store) GetPayment(ctx context.Context, userID, paymentID string) (Payme
 		`SELECT `+paymentColumns+` FROM payments WHERE id = $1 AND user_id = $2`, paymentID, userID))
 }
 
-// CompletePayment marks a payment as paid and credits the tokens. It is idempotent:
-// payment providers often deliver the same success callback more than once, and only
-// the first one credits tokens.
+// CompletePayment marks a payment as paid and credits the tokens. Call it only after
+// the provider has confirmed the payment. It is idempotent: providers often deliver
+// the same confirmation more than once, and only the first one credits tokens.
+// A payment previously marked failed can still complete, because "failed" comes from
+// browser redirects that are not authoritative; the provider's confirmation is.
 func (s *Store) CompletePayment(ctx context.Context, paymentID, providerRef string) (Payment, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -121,7 +125,7 @@ func (s *Store) CompletePayment(ctx context.Context, paymentID, providerRef stri
 
 	p, err := scanPayment(tx.QueryRow(ctx, `
 		UPDATE payments SET status = 'paid', paid_at = $3, provider_ref = $2
-		WHERE id = $1 AND status = 'pending'
+		WHERE id = $1 AND status IN ('pending', 'failed')
 		RETURNING `+paymentColumns, paymentID, providerRef, s.now()))
 	if apperr.Is(err, apperr.KindNotFound) {
 		existing, gerr := scanPayment(s.db.QueryRow(ctx, `SELECT `+paymentColumns+` FROM payments WHERE id = $1`, paymentID))
@@ -164,6 +168,14 @@ func (s *Store) CompletePayment(ctx context.Context, paymentID, providerRef stri
 		entry{patient, faceValue},
 		entry{revenue, p.AmountPaisa - faceValue},
 	); err != nil {
+		return Payment{}, err
+	}
+	if err := notify.Enqueue(ctx, tx, notify.Msg{
+		UserID: p.UserID,
+		Kind:   notify.KindTokenPurchaseCompleted,
+		Title:  "Payment received",
+		Body:   fmt.Sprintf("%d consultation tokens have been added to your wallet.", p.Tokens),
+	}); err != nil {
 		return Payment{}, err
 	}
 	return p, tx.Commit(ctx)

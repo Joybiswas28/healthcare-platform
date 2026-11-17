@@ -16,7 +16,10 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/notify"
+	"healthcare-platform/internal/payment/sslcommerz"
 	"healthcare-platform/internal/platform/httpx"
+	"healthcare-platform/internal/prescription"
 	"healthcare-platform/internal/user"
 	"healthcare-platform/internal/wallet"
 )
@@ -30,6 +33,10 @@ type Deps struct {
 	Appointments  *appointment.Handler
 	Wallet        *wallet.Handler
 	Consultations *consultation.Handler
+	Prescriptions *prescription.Handler
+	Notifications *notify.Handler
+	// SSLCommerz is nil when the gateway is not configured.
+	SSLCommerz *sslcommerz.Callbacks
 	// DevRoutes enables endpoints that simulate external services (payment gateway).
 	DevRoutes bool
 }
@@ -57,8 +64,17 @@ func NewRouter(d Deps) http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public
+		r.Post("/auth/otp", d.Auth.RequestOTP)
 		r.Post("/auth/register", d.Auth.Register)
 		r.Post("/auth/login", d.Auth.Login)
+		r.Post("/auth/password/reset", d.Auth.ResetPassword)
+		r.Get("/prescriptions/verify/{code}", d.Prescriptions.Verify)
+		if d.SSLCommerz != nil {
+			r.Post("/payments/sslcommerz/ipn", d.SSLCommerz.IPN)
+			r.Post("/payments/sslcommerz/success", d.SSLCommerz.Success)
+			r.Post("/payments/sslcommerz/fail", d.SSLCommerz.Fail)
+			r.Post("/payments/sslcommerz/cancel", d.SSLCommerz.Cancel)
+		}
 		r.Get("/doctors", d.Doctors.Search)
 		r.Get("/doctors/{doctorID}", d.Doctors.Get)
 		r.Get("/schedules/{scheduleID}/availability", d.Appointments.Availability)
@@ -68,6 +84,21 @@ func NewRouter(d Deps) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Authenticate(d.Tokens))
 			r.Get("/me", d.Auth.Me)
+
+			r.Get("/notifications", d.Notifications.List)
+			r.Post("/notifications/read-all", d.Notifications.MarkAllRead)
+			r.Post("/notifications/{notificationID}/read", d.Notifications.MarkRead)
+
+			// Prescriptions (patients read theirs; doctors issue and revoke)
+			r.Group(func(r chi.Router) {
+				rx := d.Prescriptions
+				r.Use(auth.RequireRole(user.RolePatient, user.RoleDoctor))
+				r.Get("/prescriptions", rx.List)
+				r.Get("/prescriptions/{prescriptionID}", rx.Get)
+				r.Get("/prescriptions/{prescriptionID}/print", rx.Print)
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/prescriptions", rx.Issue)
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/prescriptions/{prescriptionID}/revoke", rx.Revoke)
+			})
 
 			// Patient
 			r.Group(func(r chi.Router) {

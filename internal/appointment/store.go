@@ -9,12 +9,14 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
 )
@@ -274,10 +276,21 @@ func (s *Store) Book(ctx context.Context, patientID, scheduleID, rawDate string)
 	if err != nil {
 		return Appointment{}, err
 	}
-	if err := tx.Commit(ctx); err != nil {
+	a, err := scanAppointment(tx.QueryRow(ctx, appointmentSelect+` WHERE a.id = $1`, id))
+	if err != nil {
 		return Appointment{}, err
 	}
-	return s.getOne(ctx, `a.id = $1`, id)
+	if err := notify.Enqueue(ctx, tx, notify.Msg{
+		UserID: patientID,
+		Kind:   notify.KindAppointmentBooked,
+		Title:  "Appointment confirmed",
+		Body: fmt.Sprintf("Serial %d with %s at %s on %s, %s-%s. Ticket: %s",
+			a.SerialNo, a.DoctorName, a.ChamberName, a.Date, a.StartTime, a.EndTime, a.TicketCode),
+		SMS: true,
+	}); err != nil {
+		return Appointment{}, err
+	}
+	return a, tx.Commit(ctx)
 }
 
 // ListForPatient returns a patient's appointments, newest date first.

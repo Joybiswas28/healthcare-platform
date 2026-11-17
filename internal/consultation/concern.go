@@ -3,12 +3,14 @@ package consultation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
+	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
 	"healthcare-platform/internal/wallet"
@@ -280,6 +282,15 @@ func (s *Store) AcceptOffer(ctx context.Context, patientID, offerID string) (Con
 		concernID, consultationID, now); err != nil {
 		return Consultation{}, err
 	}
+	if err := notify.Enqueue(ctx, tx, notify.Msg{
+		UserID: doctorID,
+		Kind:   notify.KindOfferAccepted,
+		Title:  "Your offer was accepted",
+		Body:   "A patient accepted your offer. The consultation is now active: " + title,
+		SMS:    true,
+	}); err != nil {
+		return Consultation{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Consultation{}, err
 	}
@@ -349,8 +360,9 @@ func (s *Store) MakeOffer(ctx context.Context, doctorID, concernID, message stri
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var status string
-	err = tx.QueryRow(ctx, `SELECT status FROM concerns WHERE id = $1 FOR SHARE`, concernID).Scan(&status)
+	var status, owner, title string
+	err = tx.QueryRow(ctx, `SELECT status, patient_id, title FROM concerns WHERE id = $1 FOR SHARE`,
+		concernID).Scan(&status, &owner, &title)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Offer{}, apperr.NotFound("concern not found")
 	}
@@ -390,6 +402,14 @@ func (s *Store) MakeOffer(ctx context.Context, doctorID, concernID, message stri
 	}
 	o, err := scanOffer(tx.QueryRow(ctx, offerSelect+` WHERE o.id = $1`, id))
 	if err != nil {
+		return Offer{}, err
+	}
+	if err := notify.Enqueue(ctx, tx, notify.Msg{
+		UserID: owner,
+		Kind:   notify.KindOfferReceived,
+		Title:  "New offer on your concern",
+		Body:   fmt.Sprintf("%s offered to help with \"%s\" for %d tokens.", o.DoctorName, title, o.FeeTokens),
+	}); err != nil {
 		return Offer{}, err
 	}
 	return o, tx.Commit(ctx)

@@ -16,9 +16,12 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/notify"
+	"healthcare-platform/internal/payment/sslcommerz"
 	"healthcare-platform/internal/platform/config"
 	"healthcare-platform/internal/platform/database"
 	"healthcare-platform/internal/platform/storage"
+	"healthcare-platform/internal/prescription"
 	"healthcare-platform/internal/realtime"
 	"healthcare-platform/internal/server"
 	"healthcare-platform/internal/user"
@@ -65,11 +68,37 @@ func run() error {
 		return err
 	}
 
+	// SMS: no provider account yet, so messages are written to the log.
+	var sms notify.Sender = notify.LogSender{Log: log}
+	if cfg.IsProduction() {
+		log.Warn("no SMS provider configured: SMS (including OTP codes) are only logged")
+	}
+
+	users := user.NewRepository(pool)
 	tokens := auth.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL)
-	authSvc := auth.NewService(user.NewRepository(pool), tokens)
+	otp := auth.NewOTPStore(pool, sms, users, cfg.JWTSecret)
+	authSvc := auth.NewService(users, tokens, otp)
 	walletStore := wallet.NewStore(pool)
 
+	// Payments: SSLCommerz when configured, otherwise the development simulator.
+	var gateway wallet.Gateway = wallet.DevGateway{}
+	var sslCallbacks *sslcommerz.Callbacks
+	if cfg.SSLCommerzStoreID != "" {
+		client := sslcommerz.New(sslcommerz.Config{
+			StoreID:       cfg.SSLCommerzStoreID,
+			StorePassword: cfg.SSLCommerzStorePassword,
+			Sandbox:       cfg.SSLCommerzSandbox,
+			PublicBaseURL: cfg.PublicBaseURL,
+		})
+		gateway = client
+		sslCallbacks = sslcommerz.NewCallbacks(client, walletStore, cfg.FrontendURL, log)
+		log.Info("payments: SSLCommerz", "sandbox", cfg.SSLCommerzSandbox)
+	} else {
+		log.Info("payments: development simulator (set SSLCOMMERZ_STORE_ID to use SSLCommerz)")
+	}
+
 	go expireTokensPeriodically(ctx, walletStore, log)
+	go notify.NewWorker(pool, sms, log).Run(ctx)
 
 	hub := realtime.NewHub()
 	go realtime.Listen(ctx, pool, hub, log)
@@ -80,12 +109,15 @@ func run() error {
 			Log:           log,
 			DB:            pool,
 			Tokens:        tokens,
-			Auth:          auth.NewHandler(authSvc, log),
+			Auth:          auth.NewHandler(authSvc, otp, log),
 			Doctors:       doctor.NewHandler(doctor.NewStore(pool), log),
 			Appointments:  appointment.NewHandler(appointment.NewStore(pool), log),
-			Wallet:        wallet.NewHandler(walletStore, log),
+			Wallet:        wallet.NewHandler(walletStore, gateway, log),
 			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log),
-			DevRoutes:     !cfg.IsProduction(),
+			Prescriptions: prescription.NewHandler(prescription.NewStore(pool), cfg.PublicBaseURL, log),
+			Notifications: notify.NewHandler(notify.NewStore(pool), log),
+			SSLCommerz:    sslCallbacks,
+			DevRoutes:     !cfg.IsProduction() && gateway.Name() == wallet.ProviderDev,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,

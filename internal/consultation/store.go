@@ -13,6 +13,7 @@ package consultation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
 	"healthcare-platform/internal/platform/storage"
@@ -167,8 +169,14 @@ func (s *Store) Request(ctx context.Context, patientID string, in RequestInput) 
 		return Consultation{}, apperr.Conflict("this doctor is not taking online consultations")
 	}
 
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return Consultation{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	var id string
-	err = s.db.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		INSERT INTO consultations (patient_id, doctor_id, subject, description, fee_tokens, commission_bps)
 		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 		patientID, in.DoctorID, in.Subject, in.Description, fee, bps).Scan(&id)
@@ -176,6 +184,18 @@ func (s *Store) Request(ctx context.Context, patientID string, in RequestInput) 
 		return Consultation{}, apperr.Conflict("you already have an open consultation with this doctor")
 	}
 	if err != nil {
+		return Consultation{}, err
+	}
+	if err := notify.Enqueue(ctx, tx, notify.Msg{
+		UserID: in.DoctorID,
+		Kind:   notify.KindConsultationRequested,
+		Title:  "New consultation request",
+		Body:   "New online consultation request: " + in.Subject,
+		SMS:    true,
+	}); err != nil {
+		return Consultation{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return Consultation{}, err
 	}
 	return s.Get(ctx, patientID, id)
@@ -220,10 +240,18 @@ func (s *Store) Accept(ctx context.Context, doctorID, id string) (Consultation, 
 		if err := requireStatus(c, StatusRequested, "accept"); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			UPDATE consultations SET status = 'accepted', responded_at = $2, updated_at = $2 WHERE id = $1`,
-			id, s.now())
-		return err
+			id, s.now()); err != nil {
+			return err
+		}
+		return notify.Enqueue(ctx, tx, notify.Msg{
+			UserID: c.PatientID,
+			Kind:   notify.KindConsultationAccepted,
+			Title:  "Consultation accepted",
+			Body:   fmt.Sprintf("%s accepted your consultation request. Confirm to start (%d tokens).", c.DoctorName, c.FeeTokens),
+			SMS:    true,
+		})
 	})
 }
 
@@ -239,11 +267,18 @@ func (s *Store) Reject(ctx context.Context, doctorID, id, reason string) (Consul
 		if err := requireStatus(c, StatusRequested, "reject"); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			UPDATE consultations
 			SET status = 'rejected', reject_reason = $2, responded_at = $3, closed_at = $3, updated_at = $3
-			WHERE id = $1`, id, reason, s.now())
-		return err
+			WHERE id = $1`, id, reason, s.now()); err != nil {
+			return err
+		}
+		return notify.Enqueue(ctx, tx, notify.Msg{
+			UserID: c.PatientID,
+			Kind:   notify.KindConsultationRejected,
+			Title:  "Consultation declined",
+			Body:   fmt.Sprintf("%s could not take your consultation: %s", c.DoctorName, reason),
+		})
 	})
 }
 
@@ -279,10 +314,17 @@ func (s *Store) Complete(ctx context.Context, doctorID, id string) (Consultation
 		if err := wallet.Release(ctx, tx, id, c.DoctorID, c.FeeTokens, c.CommissionBps); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			UPDATE consultations SET status = 'completed', closed_at = $2, updated_at = $2 WHERE id = $1`,
-			id, s.now())
-		return err
+			id, s.now()); err != nil {
+			return err
+		}
+		return notify.Enqueue(ctx, tx, notify.Msg{
+			UserID: c.PatientID,
+			Kind:   notify.KindConsultationCompleted,
+			Title:  "Consultation completed",
+			Body:   fmt.Sprintf("Your consultation with %s is complete. Messages and prescriptions remain available.", c.DoctorName),
+		})
 	})
 }
 
@@ -303,10 +345,27 @@ func (s *Store) Cancel(ctx context.Context, userID, id string) (Consultation, er
 		default:
 			return apperr.Conflict("cannot cancel a consultation that is %s", c.Status)
 		}
-		_, err := tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			UPDATE consultations SET status = 'cancelled', closed_at = $2, updated_at = $2 WHERE id = $1`,
-			id, s.now())
-		return err
+			id, s.now()); err != nil {
+			return err
+		}
+		// Tell the other side.
+		if userID == c.DoctorID {
+			return notify.Enqueue(ctx, tx, notify.Msg{
+				UserID: c.PatientID,
+				Kind:   notify.KindConsultationCancelled,
+				Title:  "Consultation cancelled",
+				Body:   fmt.Sprintf("%s cancelled your consultation. %d tokens have been returned to your wallet.", c.DoctorName, c.FeeTokens),
+				SMS:    true,
+			})
+		}
+		return notify.Enqueue(ctx, tx, notify.Msg{
+			UserID: c.DoctorID,
+			Kind:   notify.KindConsultationCancelled,
+			Title:  "Consultation request withdrawn",
+			Body:   "The patient withdrew their request: " + c.Subject,
+		})
 	})
 }
 

@@ -21,6 +21,9 @@ internal/
   wallet/             tokens, payments, double-entry ledger, escrow
   consultation/       online consultations, public concerns and offers, messages, uploads, WebSocket
   realtime/           in-process hub fed by PostgreSQL LISTEN/NOTIFY
+  prescription/       digital prescriptions, printable page, public verification
+  notify/             in-app notifications, SMS outbox and worker
+  payment/sslcommerz/ SSLCommerz checkout, validation and callbacks
   server/             HTTP routes and middleware
   platform/
     config/           environment configuration
@@ -70,8 +73,12 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/healthz`, `/readyz` (no prefix) | Liveness and database readiness |
-| POST | `/auth/register` | Register as a patient or doctor |
+| POST | `/auth/otp` | `{"phone", "purpose": "register"\|"reset_password"}` sends a 6-digit code by SMS |
+| POST | `/auth/register` | `{"name", "phone", "password", "role", "otp_code"}`: register as a patient or doctor |
 | POST | `/auth/login` | Log in with phone and password |
+| POST | `/auth/password/reset` | `{"phone", "otp_code", "new_password"}` |
+| GET | `/prescriptions/verify/{code}` | Check a prescription (for pharmacies). The patient's name is masked |
+| POST | `/payments/sslcommerz/{ipn,success,fail,cancel}` | SSLCommerz callbacks (only when SSLCommerz is configured) |
 | GET | `/doctors?name=&specialization=&location=&limit=&offset=` | Search approved doctors |
 | GET | `/doctors/{doctorID}` | Doctor profile with bookable chambers and schedules |
 | GET | `/schedules/{scheduleID}/availability?date=` | Serials booked and remaining for a session |
@@ -81,6 +88,18 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/me` | Current user |
+| GET | `/notifications?unread=true` | My notifications and unread count |
+| POST | `/notifications/{id}/read`, `/notifications/read-all` | Mark as read |
+
+**Prescriptions**
+
+| Method | Path | Who | Description |
+|---|---|---|---|
+| POST | `/prescriptions` | doctor | Issue for a `consultation_id` (active or completed) or an `appointment_id` (today or earlier). Includes `medicines` (`name`, `strength`, `form`, `dosage`, `duration`, `instructions`), `investigations`, `advice`, `follow_up_date` |
+| GET | `/prescriptions?consultation_id=&appointment_id=` | both | Patient: issued to me. Doctor: issued by me |
+| GET | `/prescriptions/{id}` | both | One prescription |
+| GET | `/prescriptions/{id}/print` | both | Printable HTML page with a QR code. Use the browser's "Save as PDF" |
+| POST | `/prescriptions/{id}/revoke` | doctor | `{"reason": "..."}`. Prescriptions are never edited: revoke and issue a new one |
 
 **Patient**
 
@@ -158,6 +177,20 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | GET | `/admin/withdrawals?status=requested` | admin | Requests to process |
 | POST | `/admin/withdrawals/{id}/process` | admin | `{"status": "paid", "payout_ref": "..."}` or `{"status": "rejected", "note": "..."}` |
 
+### Payments
+
+- Without SSLCommerz settings, purchases use a development simulator: open the returned `checkout_url` (`/api/v1/dev/payments/{id}/succeed`) to "pay".
+- With `SSLCOMMERZ_STORE_ID` and `SSLCOMMERZ_STORE_PASSWORD` set, `checkout_url` is the SSLCommerz payment page (cards, bKash, Nagad and others). SSLCommerz must be able to reach `PUBLIC_BASE_URL` for callbacks. In local development, expose the server with a tunnel such as ngrok or cloudflared.
+- Tokens are credited only after the SSLCommerz validation API confirms the payment and its amount. The posted callback form is never trusted.
+- After paying, the patient is sent to `FRONTEND_URL/payments/result?status=success|pending|failed|cancelled&payment_id=...`.
+
+### Notifications and SMS
+
+- Events such as bookings, consultation updates, offers, prescriptions, verification and withdrawals create in-app notifications. Important ones are also sent by SMS.
+- Notifications are written in the same transaction as the event. A background worker sends the SMS and retries up to 5 times.
+- No SMS provider is connected yet, so SMS (including OTP codes) are written to the server log. In development, copy the OTP from there.
+- OTP rules: codes expire after 5 minutes. A number can get one code per minute and five per hour. A code is burned after 5 wrong attempts.
+
 ### Live chat (WebSocket)
 
 Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message id you have>`. Browsers cannot set headers on WebSockets, so the token goes in the query string on this route only.
@@ -203,9 +236,15 @@ requested ──accept──> accepted ──confirm (pay)──> active ──c
 Example:
 
 ```
+# 1. Get a code (in development it appears in the server log)
+curl -X POST localhost:8080/api/v1/auth/otp \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"01712345678","purpose":"register"}'
+
+# 2. Register with it
 curl -X POST localhost:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Rahim","phone":"01712345678","password":"secret123","role":"patient"}'
+  -d '{"name":"Rahim","phone":"01712345678","password":"secret123","role":"patient","otp_code":"123456"}'
 ```
 
 Phone numbers can be sent as `01XXXXXXXXX`, `8801XXXXXXXXX` or `+8801XXXXXXXXX`. They are stored as `01XXXXXXXXX`.
@@ -217,6 +256,7 @@ Doctors start with `verification_status = pending` until an admin approves them.
 - [x] Phase 1: doctor profiles, chambers, schedules, e-ticket booking, admin verification
 - [x] Phase 2A: token wallet (double-entry ledger), private online consultation (chat + report upload), simulated payments
 - [x] Phase 2B: public medical concerns and doctor offers, doctor withdrawals, live chat over WebSocket
-- [ ] Next: real payment gateway (SSLCommerz / bKash, needs merchant credentials), SMS notifications, digital prescriptions, video calls, S3 storage
+- [x] Phase 2C: digital prescriptions, notifications and SMS outbox, OTP registration and password reset, SSLCommerz integration
+- [ ] Before launch: SMS provider account, SSLCommerz merchant account (test in sandbox), S3 storage, video calls
 - [ ] Phase 3: hospitals
 - [ ] Phase 4: pharmacy and delivery

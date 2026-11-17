@@ -82,11 +82,43 @@ func (m *memStore) GetByID(_ context.Context, id string) (user.User, error) {
 	return user.User{}, user.ErrNotFound
 }
 
+func (m *memStore) UpdatePassword(_ context.Context, id, hash string) error {
+	for p, u := range m.byPhone {
+		if u.ID == id {
+			u.PasswordHash = hash
+			m.byPhone[p] = u
+			return nil
+		}
+	}
+	return user.ErrNotFound
+}
+
+// fixedOTP accepts only the code "123456".
+type fixedOTP struct{}
+
+func (fixedOTP) Consume(_ context.Context, _, _, code string) error {
+	if code != "123456" {
+		return ValidationError{"incorrect code"}
+	}
+	return nil
+}
+
 func TestRegisterAndLogin(t *testing.T) {
 	ctx := context.Background()
-	svc := NewService(&memStore{byPhone: map[string]user.User{}}, NewTokenManager("test-secret-test-secret-test-secret", time.Hour))
+	svc := NewService(&memStore{byPhone: map[string]user.User{}}, NewTokenManager("test-secret-test-secret-test-secret", time.Hour), fixedOTP{})
 
-	res, err := svc.Register(ctx, RegisterInput{Name: "Rahim", Phone: "+8801812345678", Password: "secret123"})
+	reg := func(name, phone string, role user.Role, otp string) (AuthResult, error) {
+		return svc.Register(ctx, RegisterInput{Name: name, Phone: phone, Password: "secret123", Role: role, OTPCode: otp})
+	}
+
+	if _, err := reg("Rahim", "01812345678", "", ""); !errors.Is(err, ErrValidation) {
+		t.Fatalf("missing otp: got %v", err)
+	}
+	if _, err := reg("Rahim", "01812345678", "", "000000"); !errors.Is(err, ErrValidation) {
+		t.Fatalf("wrong otp: got %v", err)
+	}
+
+	res, err := reg("Rahim", "+8801812345678", "", "123456")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,13 +126,13 @@ func TestRegisterAndLogin(t *testing.T) {
 		t.Fatalf("unexpected result: %+v", res)
 	}
 
-	if _, err := svc.Register(ctx, RegisterInput{Name: "X", Phone: "01812345678", Password: "secret123"}); !errors.Is(err, ErrValidation) {
+	if _, err := reg("X", "01812345678", "", "123456"); !errors.Is(err, ErrValidation) {
 		t.Fatalf("short name: got %v", err)
 	}
-	if _, err := svc.Register(ctx, RegisterInput{Name: "Admin", Phone: "01912345678", Password: "secret123", Role: user.RoleAdmin}); !errors.Is(err, ErrValidation) {
+	if _, err := reg("Admin", "01912345678", user.RoleAdmin, "123456"); !errors.Is(err, ErrValidation) {
 		t.Fatalf("admin self-register must be rejected, got %v", err)
 	}
-	if _, err := svc.Register(ctx, RegisterInput{Name: "Rahim", Phone: "01812345678", Password: "secret123"}); !errors.Is(err, user.ErrPhoneTaken) {
+	if _, err := reg("Rahim", "01812345678", "", "123456"); !errors.Is(err, user.ErrPhoneTaken) {
 		t.Fatalf("duplicate phone: got %v", err)
 	}
 
@@ -109,6 +141,13 @@ func TestRegisterAndLogin(t *testing.T) {
 	}
 	if _, err := svc.Login(ctx, LoginInput{Phone: "01812345678", Password: "wrong-pass"}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("wrong password: got %v", err)
+	}
+
+	if err := svc.ResetPassword(ctx, ResetPasswordInput{Phone: "01812345678", OTPCode: "123456", NewPassword: "brand-new-pass"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Login(ctx, LoginInput{Phone: "01812345678", Password: "brand-new-pass"}); err != nil {
+		t.Fatalf("login with new password: %v", err)
 	}
 }
 

@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -10,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"healthcare-platform/internal/auth"
+	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
 )
@@ -210,6 +212,19 @@ func (s *Store) ProcessWithdrawal(ctx context.Context, id string, in ProcessInpu
 	if _, err := tx.Exec(ctx, `
 		UPDATE withdrawals SET status = $2, payout_ref = $3, admin_note = $4, processed_at = $5 WHERE id = $1`,
 		id, in.Status, nullIfEmpty(in.PayoutRef), nullIfEmpty(in.Note), s.now()); err != nil {
+		return Withdrawal{}, err
+	}
+
+	msg := notify.Msg{UserID: w.DoctorID, Kind: notify.KindWithdrawalProcessed, SMS: true}
+	taka := fmt.Sprintf("BDT %d.%02d", w.AmountPaisa/100, w.AmountPaisa%100)
+	if in.Status == WithdrawalPaid {
+		msg.Title = "Withdrawal paid"
+		msg.Body = fmt.Sprintf("Your withdrawal of %s has been sent via %s. Ref: %s", taka, w.Method, in.PayoutRef)
+	} else {
+		msg.Title = "Withdrawal rejected"
+		msg.Body = fmt.Sprintf("Your withdrawal of %s was rejected: %s. The amount is back in your earnings.", taka, in.Note)
+	}
+	if err := notify.Enqueue(ctx, tx, msg); err != nil {
 		return Withdrawal{}, err
 	}
 	w, err = s.getWithdrawal(ctx, tx, id)

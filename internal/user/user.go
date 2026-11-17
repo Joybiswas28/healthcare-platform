@@ -95,6 +95,18 @@ func (r *Repository) GetByPhone(ctx context.Context, phone string) (User, error)
 	return scanUser(r.db.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE phone = $1`, phone))
 }
 
+func (r *Repository) UpdatePassword(ctx context.Context, id, passwordHash string) error {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1`, id, passwordHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *Repository) GetByID(ctx context.Context, id string) (User, error) {
 	return scanUser(r.db.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1`, id))
 }
