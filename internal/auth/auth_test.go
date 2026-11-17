@@ -34,7 +34,7 @@ func TestNormalizePhone(t *testing.T) {
 
 func TestTokenRoundTripAndExpiry(t *testing.T) {
 	tm := NewTokenManager("test-secret-test-secret-test-secret", time.Hour)
-	tok, _, err := tm.Issue("user-1", user.RoleDoctor)
+	tok, _, err := tm.Issue("user-1", user.RoleDoctor, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestRegisterAndLogin(t *testing.T) {
 
 func TestRequireRole(t *testing.T) {
 	tm := NewTokenManager("test-secret-test-secret-test-secret", time.Hour)
-	h := Authenticate(tm)(RequireRole(user.RoleDoctor)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	h := Authenticate(tm, nil)(RequireRole(user.RoleDoctor)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})))
 
@@ -167,8 +167,8 @@ func TestRequireRole(t *testing.T) {
 		return rec.Code
 	}
 
-	doc, _, _ := tm.Issue("d1", user.RoleDoctor)
-	pat, _, _ := tm.Issue("p1", user.RolePatient)
+	doc, _, _ := tm.Issue("d1", user.RoleDoctor, 0)
+	pat, _, _ := tm.Issue("p1", user.RolePatient, 0)
 
 	if got := call(""); got != http.StatusUnauthorized {
 		t.Errorf("no token: %d", got)

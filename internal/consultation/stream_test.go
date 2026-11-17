@@ -51,12 +51,12 @@ func TestStreamDeliversMessagesLive(t *testing.T) {
 	tm := auth.NewTokenManager("test-secret-test-secret-test-secret", time.Hour)
 	h := NewHandler(f.store, hub, log)
 	r := chi.NewRouter()
-	r.With(auth.Authenticate(tm)).Get("/consultations/{consultationID}/ws", h.Stream)
+	r.With(auth.Authenticate(tm, nil)).Get("/consultations/{consultationID}/ws", h.Stream)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
 	wsURL := func(userID string, role user.Role) string {
-		tok, _, _ := tm.Issue(userID, role)
+		tok, _, _ := tm.Issue(userID, role, 0)
 		return "ws" + strings.TrimPrefix(srv.URL, "http") + "/consultations/" + c.ID + "/ws?access_token=" + tok
 	}
 

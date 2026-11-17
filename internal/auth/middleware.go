@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -22,8 +23,10 @@ func FromContext(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
-// Authenticate requires a valid "Authorization: Bearer <token>" header.
-func Authenticate(tm *TokenManager) func(http.Handler) http.Handler {
+// Authenticate requires a valid "Authorization: Bearer <token>" header. When
+// sessions is not nil, it also rejects tokens of suspended accounts and tokens
+// issued before a password reset.
+func Authenticate(tm *TokenManager, sessions *SessionChecker) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -41,6 +44,16 @@ func Authenticate(tm *TokenManager) func(http.Handler) http.Handler {
 			if err != nil {
 				httpx.Error(w, http.StatusUnauthorized, err.Error())
 				return
+			}
+			if sessions != nil {
+				if err := sessions.Check(r.Context(), claims); err != nil {
+					if errors.Is(err, ErrSessionRevoked) {
+						httpx.Error(w, http.StatusUnauthorized, err.Error())
+					} else {
+						httpx.Error(w, http.StatusServiceUnavailable, "could not verify session")
+					}
+					return
+				}
 			}
 			ctx := context.WithValue(r.Context(), ctxKey{}, Principal{UserID: claims.Subject, Role: claims.Role})
 			next.ServeHTTP(w, r.WithContext(ctx))

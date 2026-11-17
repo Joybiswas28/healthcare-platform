@@ -99,6 +99,8 @@ func (h *Handler) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		httpx.Error(w, http.StatusUnprocessableEntity, ve.Msg)
 	case errors.Is(err, ErrInvalidCredentials):
 		httpx.Error(w, http.StatusUnauthorized, err.Error())
+	case errors.Is(err, ErrAccountSuspended):
+		httpx.Error(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, user.ErrPhoneTaken):
 		httpx.Error(w, http.StatusConflict, err.Error())
 	case errors.Is(err, user.ErrNotFound):

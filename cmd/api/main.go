@@ -70,13 +70,15 @@ func run() error {
 		return err
 	}
 
-	// SMS: no provider account yet, so messages are written to the log.
-	var sms notify.Sender = notify.LogSender{Log: log}
+	// SMS: no provider account yet. In development messages (and OTP codes) are
+	// logged; in production their text is never logged.
+	var sms notify.Sender = notify.LogSender{Log: log, Redact: cfg.IsProduction()}
 	if cfg.IsProduction() {
-		log.Warn("no SMS provider configured: SMS (including OTP codes) are only logged")
+		log.Warn("no SMS provider configured: SMS are NOT delivered, so nobody can receive OTP codes")
 	}
 
 	users := user.NewRepository(pool)
+	sessions := auth.NewSessionChecker(users)
 	tokens := auth.NewTokenManager(cfg.JWTSecret, cfg.JWTTTL)
 	otp := auth.NewOTPStore(pool, sms, users, cfg.JWTSecret)
 	authSvc := auth.NewService(users, tokens, otp)
@@ -126,11 +128,17 @@ func run() error {
 			Notifications: notify.NewHandler(notify.NewStore(pool), log),
 			SSLCommerz:    sslCallbacks,
 			DevRoutes:     !cfg.IsProduction() && gateway.Name() == wallet.ProviderDev,
+			Sessions:      sessions,
+			AdminUsers:    auth.NewAdminHandler(users, sessions, log),
+			TrustProxy:    cfg.TrustProxy,
+			CORSOrigins:   cfg.CORSOrigins,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		// Generous enough for a 10 MB upload on a slow mobile connection; handlers
+		// still limit body sizes and the router times out ordinary requests at 30 s.
+		ReadTimeout:  2 * time.Minute,
+		WriteTimeout: 2 * time.Minute,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	errCh := make(chan error, 1)

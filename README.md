@@ -35,6 +35,11 @@ internal/
 migrations/           SQL migration files
 ```
 
+## Documentation
+
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): putting the API on a server with HTTPS, backups and updates
+- [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md): what was checked, what was fixed, what is still recommended
+
 ## Running locally
 
 1. Start PostgreSQL. With Docker:
@@ -306,6 +311,7 @@ request (open 24 h) ──quotes──> patient accepts one ──> order: confi
 |---|---|---|
 | GET / POST | `/admin/pharmacies[/{id}/verification]` | List, approve or reject pharmacies |
 | GET / POST | `/admin/riders[/{userID}/verification]` | List, approve or reject riders |
+| POST | `/admin/users/{id}/status` | `{"status": "suspended"}` or `active`. Suspending signs the user out everywhere |
 | GET | `/admin/hospitals?status=pending` | Hospitals awaiting verification |
 | POST | `/admin/hospitals/{id}/verification` | `{"status": "approved"}` or `{"status": "rejected", "note": "..."}` |
 | GET | `/admin/doctors?status=pending` | Doctors awaiting verification |

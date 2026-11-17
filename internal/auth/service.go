@@ -129,6 +129,9 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (AuthResult, error) 
 	}
 	u, err := s.users.GetByPhone(ctx, phone)
 	if errors.Is(err, user.ErrNotFound) {
+		// Spend the same time as a real check, so response timing does not reveal
+		// which numbers have accounts.
+		_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(in.Password))
 		return AuthResult{}, ErrInvalidCredentials
 	}
 	if err != nil {
@@ -138,13 +141,18 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (AuthResult, error) 
 		return AuthResult{}, ErrInvalidCredentials
 	}
 	if u.Status != "active" {
-		return AuthResult{}, ErrInvalidCredentials
+		return AuthResult{}, ErrAccountSuspended
 	}
 	return s.issue(u)
 }
 
+// dummyHash is a bcrypt hash of a random string, compared against when a phone is unknown.
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("timing-equaliser-not-a-real-password"), bcrypt.DefaultCost)
+
+var ErrAccountSuspended = errors.New("this account is suspended; contact support")
+
 // ResetPassword sets a new password after the user proves they hold the phone.
-// Tokens issued before the reset stay valid until they expire.
+// It also signs the user out of every device (all older tokens stop working).
 func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) error {
 	phone, err := NormalizePhone(in.Phone)
 	if err != nil {
@@ -172,7 +180,7 @@ func (s *Service) Me(ctx context.Context, userID string) (user.User, error) {
 }
 
 func (s *Service) issue(u user.User) (AuthResult, error) {
-	token, exp, err := s.tokens.Issue(u.ID, u.Role)
+	token, exp, err := s.tokens.Issue(u.ID, u.Role, u.TokenVersion)
 	if err != nil {
 		return AuthResult{}, err
 	}

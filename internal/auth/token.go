@@ -14,6 +14,8 @@ var ErrInvalidToken = errors.New("invalid or expired token")
 
 type Claims struct {
 	Role user.Role `json:"role"`
+	// TokenVersion must match the user's current token_version (see SessionChecker).
+	TokenVersion int `json:"tv"`
 	jwt.RegisteredClaims
 }
 
@@ -28,11 +30,12 @@ func NewTokenManager(secret string, ttl time.Duration) *TokenManager {
 	return &TokenManager{secret: []byte(secret), ttl: ttl, now: time.Now}
 }
 
-func (m *TokenManager) Issue(userID string, role user.Role) (token string, expiresAt time.Time, err error) {
+func (m *TokenManager) Issue(userID string, role user.Role, tokenVersion int) (token string, expiresAt time.Time, err error) {
 	now := m.now()
 	expiresAt = now.Add(m.ttl)
 	claims := Claims{
-		Role: role,
+		Role:         role,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),

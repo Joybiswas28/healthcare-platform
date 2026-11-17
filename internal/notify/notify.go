@@ -134,11 +134,19 @@ type Sender interface {
 	Send(ctx context.Context, phone, text string) error
 }
 
-// LogSender writes messages to the log instead of sending them. Used in development
-// until an SMS provider account is configured.
-type LogSender struct{ Log *slog.Logger }
+// LogSender writes messages to the log instead of sending them. Used until an SMS
+// provider account is configured. With Redact set (always in production) the text is
+// left out, because it can contain one-time passwords that must never reach logs.
+type LogSender struct {
+	Log    *slog.Logger
+	Redact bool
+}
 
 func (l LogSender) Send(ctx context.Context, phone, text string) error {
+	if l.Redact {
+		l.Log.WarnContext(ctx, "SMS NOT SENT: no SMS provider configured", "to", phone, "length", len(text))
+		return nil
+	}
 	l.Log.InfoContext(ctx, "SMS (not sent: development mode)", "to", phone, "text", text)
 	return nil
 }

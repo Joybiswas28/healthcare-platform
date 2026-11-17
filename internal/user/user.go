@@ -36,6 +36,7 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	Role         Role      `json:"role"`
 	Status       string    `json:"status"`
+	TokenVersion int       `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -47,11 +48,11 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
-const userColumns = `id, name, phone, email, password_hash, role, status, created_at`
+const userColumns = `id, name, phone, email, password_hash, role, status, token_version, created_at`
 
 func scanUser(row pgx.Row) (User, error) {
 	var u User
-	err := row.Scan(&u.ID, &u.Name, &u.Phone, &u.Email, &u.PasswordHash, &u.Role, &u.Status, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Name, &u.Phone, &u.Email, &u.PasswordHash, &u.Role, &u.Status, &u.TokenVersion, &u.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
@@ -95,9 +96,11 @@ func (r *Repository) GetByPhone(ctx context.Context, phone string) (User, error)
 	return scanUser(r.db.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE phone = $1`, phone))
 }
 
+// UpdatePassword sets a new password and signs the user out everywhere.
 func (r *Repository) UpdatePassword(ctx context.Context, id, passwordHash string) error {
-	tag, err := r.db.Exec(ctx,
-		`UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1`, id, passwordHash)
+	tag, err := r.db.Exec(ctx, `
+		UPDATE users SET password_hash = $2, token_version = token_version + 1, updated_at = now()
+		WHERE id = $1`, id, passwordHash)
 	if err != nil {
 		return err
 	}
@@ -105,6 +108,26 @@ func (r *Repository) UpdatePassword(ctx context.Context, id, passwordHash string
 		return ErrNotFound
 	}
 	return nil
+}
+
+// AuthState returns what token checks need: whether the account is active and
+// the current token version.
+func (r *Repository) AuthState(ctx context.Context, id string) (status string, tokenVersion int, err error) {
+	err = r.db.QueryRow(ctx, `SELECT status, token_version FROM users WHERE id = $1`, id).Scan(&status, &tokenVersion)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", 0, ErrNotFound
+	}
+	return status, tokenVersion, err
+}
+
+// SetStatus suspends or reactivates an account. Suspending signs the user out everywhere.
+// Admin accounts cannot be changed this way.
+func (r *Repository) SetStatus(ctx context.Context, id, status string) (User, error) {
+	u, err := scanUser(r.db.QueryRow(ctx, `
+		UPDATE users SET status = $2, token_version = token_version + 1, updated_at = now()
+		WHERE id = $1 AND role <> 'admin'
+		RETURNING `+userColumns, id, status))
+	return u, err
 }
 
 func (r *Repository) GetByID(ctx context.Context, id string) (User, error) {

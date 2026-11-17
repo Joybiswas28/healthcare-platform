@@ -28,6 +28,9 @@ var Dhaka = time.FixedZone("Asia/Dhaka", 6*60*60)
 // BookingWindowDays is how far ahead patients may book.
 const BookingWindowDays = 30
 
+// MaxUpcomingPerPatient caps a patient's confirmed future appointments.
+const MaxUpcomingPerPatient = 5
+
 const (
 	StatusConfirmed = "confirmed"
 	StatusCancelled = "cancelled"
@@ -258,6 +261,18 @@ func (s *Store) Book(ctx context.Context, patientID, scheduleID, rawDate string)
 	}
 	if err := s.checkDate(ss, date); err != nil {
 		return Appointment{}, err
+	}
+
+	// Bookings are free for now, so cap how many a patient can hold; otherwise one
+	// account could block every serial of a doctor.
+	var upcoming int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM appointments
+		WHERE patient_id = $1 AND status = 'confirmed' AND appointment_date >= $2::date`,
+		patientID, s.Today()).Scan(&upcoming); err != nil {
+		return Appointment{}, err
+	}
+	if upcoming >= MaxUpcomingPerPatient {
+		return Appointment{}, apperr.Conflict("you can hold at most %d upcoming appointments", MaxUpcomingPerPatient)
 	}
 
 	active, maxSerial, err := countBooked(ctx, tx, scheduleID, dateStr)

@@ -246,6 +246,8 @@ func (h *Handler) serveAttachment(w http.ResponseWriter, r *http.Request, patien
 	defer rc.Close()
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Content-Disposition", "inline")
+	// User-uploaded content: never let it run scripts in our origin.
+	w.Header().Set("Content-Security-Policy", "sandbox")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
 	_, _ = bufio.NewReader(rc).WriteTo(w)

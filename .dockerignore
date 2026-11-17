@@ -1,0 +1,11 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+bin/
+data/
+deploy/.env
+*.exe
+*.test
+*.out

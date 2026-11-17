@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,6 +31,11 @@ type Config struct {
 	// PharmacyCommissionBps is the platform's share of the medicine total on each
 	// delivered pharmacy order, in basis points (300 = 3%).
 	PharmacyCommissionBps int
+
+	// TrustProxy: read the client IP from proxy headers (only behind a reverse proxy).
+	TrustProxy bool
+	// CORSOrigins: comma-separated browser origins allowed to call the API.
+	CORSOrigins []string
 }
 
 func Load() (Config, error) {
@@ -50,6 +56,34 @@ func Load() (Config, error) {
 		return Config{}, errors.New("PHARMACY_COMMISSION_BPS must be between 0 and 10000 (300 = 3%)")
 	}
 	cfg.PharmacyCommissionBps = bps
+
+	cfg.TrustProxy = getEnv("TRUST_PROXY", "false") == "true"
+	for _, o := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
+		o = strings.TrimRight(strings.TrimSpace(o), "/")
+		if o == "" {
+			continue
+		}
+		if o == "*" {
+			return Config{}, errors.New("CORS_ALLOWED_ORIGINS must list exact origins, not *")
+		}
+		if !strings.HasPrefix(o, "https://") && !strings.HasPrefix(o, "http://") {
+			return Config{}, fmt.Errorf("CORS_ALLOWED_ORIGINS: %q must start with http:// or https://", o)
+		}
+		cfg.CORSOrigins = append(cfg.CORSOrigins, o)
+	}
+
+	if cfg.IsProduction() {
+		if strings.Contains(cfg.JWTSecret, "change-me") {
+			return Config{}, errors.New("JWT_SECRET still has the example value; generate a random secret")
+		}
+		if !strings.HasPrefix(cfg.PublicBaseURL, "https://") {
+			return Config{}, errors.New("PUBLIC_BASE_URL must use https:// in production")
+		}
+		if strings.Contains(cfg.DatabaseURL, "sslmode=disable") && !strings.Contains(cfg.DatabaseURL, "@db:") &&
+			!strings.Contains(cfg.DatabaseURL, "@localhost") && !strings.Contains(cfg.DatabaseURL, "@127.0.0.1") {
+			return Config{}, errors.New("DATABASE_URL disables TLS to a remote database; use sslmode=require")
+		}
+	}
 	if cfg.SSLCommerzStoreID != "" && cfg.SSLCommerzStorePassword == "" {
 		return Config{}, errors.New("SSLCOMMERZ_STORE_PASSWORD is required when SSLCOMMERZ_STORE_ID is set")
 	}

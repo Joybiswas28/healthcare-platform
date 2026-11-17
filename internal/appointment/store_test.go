@@ -170,6 +170,29 @@ func TestBookRules(t *testing.T) {
 	wantKind(t, err, apperr.KindValidation, "session ended")
 }
 
+func TestUpcomingAppointmentLimit(t *testing.T) {
+	f := setup(t, 10)
+	ctx := context.Background()
+	p := f.patient(t, 1)
+	for week := range MaxUpcomingPerPatient {
+		date := fixedNow.AddDate(0, 0, 7*week).Format(time.DateOnly)
+		if _, err := f.store.Book(ctx, p, f.scheduleID, date); err != nil {
+			t.Fatalf("booking %d: %v", week+1, err)
+		}
+	}
+	// A second, later session on the same day, so the sixth booking is inside the
+	// booking window and only the upcoming limit can stop it.
+	var late string
+	if err := f.pool.QueryRow(ctx, `
+		INSERT INTO chamber_schedules (chamber_id, weekday, start_time, end_time, max_patients)
+		SELECT chamber_id, weekday, '22:00', '23:00', 10 FROM chamber_schedules WHERE id = $1
+		RETURNING id`, f.scheduleID).Scan(&late); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.store.Book(ctx, p, late, today)
+	wantKind(t, err, apperr.KindConflict, "booking beyond the upcoming limit")
+}
+
 func TestConcurrentBookingNeverOverbooks(t *testing.T) {
 	const capacity, patients = 5, 20
 	f := setup(t, capacity)

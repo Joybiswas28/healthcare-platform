@@ -242,6 +242,8 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", a.ContentType)
 	w.Header().Set("Content-Length", strconv.FormatInt(a.SizeBytes, 10))
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": a.FileName}))
+	// User-uploaded content: never let it run scripts in our origin.
+	w.Header().Set("Content-Security-Policy", "sandbox")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)

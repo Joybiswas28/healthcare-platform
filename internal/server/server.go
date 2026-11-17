@@ -4,12 +4,15 @@ package server
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"healthcare-platform/internal/appointment"
@@ -43,15 +46,41 @@ type Deps struct {
 	SSLCommerz *sslcommerz.Callbacks
 	// DevRoutes enables endpoints that simulate external services (payment gateway).
 	DevRoutes bool
+
+	Sessions   *auth.SessionChecker
+	AdminUsers *auth.AdminHandler
+
+	// TrustProxy: take the client IP from X-Forwarded-For / X-Real-IP. Enable only
+	// behind a reverse proxy that sets these headers itself; otherwise clients
+	// could fake their IP and dodge rate limits.
+	TrustProxy bool
+	// CORSOrigins are the browser origins (e.g. https://app.example.com) allowed to
+	// call the API. Empty means no cross-origin browser access.
+	CORSOrigins []string
 }
 
 func NewRouter(d Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	if d.TrustProxy {
+		r.Use(middleware.RealIP)
+	}
+	r.Use(securityHeaders)
+	if len(d.CORSOrigins) > 0 {
+		r.Use(cors.Handler(cors.Options{
+			AllowedOrigins: d.CORSOrigins,
+			AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
+			AllowedHeaders: []string{"Authorization", "Content-Type"},
+			MaxAge:         600,
+		}))
+	}
 	r.Use(requestLogger(d.Log))
 	r.Use(middleware.Recoverer)
+	r.Use(rateLimit(600, time.Minute)) // generous per-IP ceiling for everything
 	r.Use(exceptWebSocket(middleware.Timeout(30 * time.Second)))
+
+	// Tight per-IP limits where guessing is the attack: passwords, OTPs, prescription codes.
+	strict := rateLimit(20, time.Minute)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -68,11 +97,11 @@ func NewRouter(d Deps) http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public
-		r.Post("/auth/otp", d.Auth.RequestOTP)
-		r.Post("/auth/register", d.Auth.Register)
-		r.Post("/auth/login", d.Auth.Login)
-		r.Post("/auth/password/reset", d.Auth.ResetPassword)
-		r.Get("/prescriptions/verify/{code}", d.Prescriptions.Verify)
+		r.With(strict).Post("/auth/otp", d.Auth.RequestOTP)
+		r.With(strict).Post("/auth/register", d.Auth.Register)
+		r.With(strict).Post("/auth/login", d.Auth.Login)
+		r.With(strict).Post("/auth/password/reset", d.Auth.ResetPassword)
+		r.With(strict).Get("/prescriptions/verify/{code}", d.Prescriptions.Verify)
 		r.Get("/hospitals", d.Hospitals.Search)
 		r.Get("/hospitals/{hospitalID}", d.Hospitals.Public)
 		r.Get("/hospitals/{hospitalID}/photos/{photoID}", d.Hospitals.Photo)
@@ -91,7 +120,7 @@ func NewRouter(d Deps) http.Handler {
 
 		// Authenticated
 		r.Group(func(r chi.Router) {
-			r.Use(auth.Authenticate(d.Tokens))
+			r.Use(auth.Authenticate(d.Tokens, d.Sessions))
 			r.Get("/me", d.Auth.Me)
 
 			r.Get("/notifications", d.Notifications.List)
@@ -280,6 +309,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/pharmacies", d.Pharmacies.AdminPharmacies)
 				r.Post("/pharmacies/{pharmacyID}/verification", d.Pharmacies.AdminVerifyPharmacy)
 				r.Get("/riders", d.Pharmacies.AdminRiders)
+				r.Post("/users/{userID}/status", d.AdminUsers.SetStatus)
 				r.Post("/riders/{userID}/verification", d.Pharmacies.AdminVerifyRider)
 				r.Get("/withdrawals", d.Wallet.AdminWithdrawals)
 				r.Post("/withdrawals/{withdrawalID}/process", d.Wallet.ProcessWithdrawal)
@@ -288,6 +318,38 @@ func NewRouter(d Deps) http.Handler {
 	})
 
 	return r
+}
+
+// securityHeaders sets defensive headers on every response. The API serves JSON,
+// so pages from it may not be framed and content types are never sniffed.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// rateLimit allows n requests per window per client IP (r.RemoteAddr, which RealIP
+// rewrites only when the proxy is trusted).
+func rateLimit(n int, window time.Duration) func(http.Handler) http.Handler {
+	return httprate.Limit(n, window,
+		httprate.WithKeyFuncs(func(r *http.Request) (string, error) {
+			host, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				return r.RemoteAddr, nil
+			}
+			return host, nil
+		}),
+		httprate.WithLimitHandler(func(w http.ResponseWriter, _ *http.Request) {
+			httpx.Error(w, http.StatusTooManyRequests, "too many requests; please slow down")
+		}),
+	)
 }
 
 // exceptWebSocket applies mw to every request except WebSocket upgrades, which are long-lived.

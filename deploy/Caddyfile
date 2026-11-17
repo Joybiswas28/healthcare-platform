@@ -1,0 +1,30 @@
+# Caddy obtains and renews a Let's Encrypt certificate for API_DOMAIN automatically.
+{$API_DOMAIN} {
+	encode gzip
+
+	# Uploads are capped at 10 MB by the API; leave a little room for form overhead.
+	request_body {
+		max_size 12MB
+	}
+
+	reverse_proxy api:8080 {
+		# The API trusts these headers (TRUST_PROXY=true). Set them from the real
+		# connection and drop any copy a client sent, so IPs cannot be faked.
+		header_up X-Real-IP {remote_host}
+		header_up -True-Client-IP
+	}
+
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				# WebSocket connections carry the login token in the URL.
+				request>uri query {
+					delete access_token
+				}
+				request>headers>Authorization delete
+			}
+		}
+	}
+}
