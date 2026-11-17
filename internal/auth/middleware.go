@@ -27,6 +27,12 @@ func Authenticate(tm *TokenManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+			// Browsers cannot set headers on WebSocket requests, so for an upgrade
+			// the token may come in the access_token query parameter instead.
+			if !ok && strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+				raw = r.URL.Query().Get("access_token")
+				ok = raw != ""
+			}
 			if !ok || raw == "" {
 				httpx.Error(w, http.StatusUnauthorized, "missing bearer token")
 				return

@@ -219,6 +219,90 @@ func TestReleaseSplitsFee(t *testing.T) {
 	checkInvariants(t, pool)
 }
 
+func TestWithdrawals(t *testing.T) {
+	s, pool := newStore(t)
+	ctx := context.Background()
+	patient := dbtest.CreateUser(t, pool, "Patient", "01811111111", user.RolePatient)
+	doctor := dbtest.CreateUser(t, pool, "Doctor", "01711111111", user.RoleDoctor)
+	buy(t, s, patient)
+
+	// Doctor earns BDT 800 (10 tokens at 20% commission).
+	c := consultationFor(t, pool, patient, doctor)
+	if err := inTx(t, pool, func(tx pgx.Tx) error {
+		if err := Hold(ctx, tx, s.now(), patient, c, 10); err != nil {
+			return err
+		}
+		return Release(ctx, tx, c, doctor, 10, 2000)
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	bkash := func(amount int64) WithdrawalInput {
+		return WithdrawalInput{AmountPaisa: amount, Method: "bKash", AccountDetails: "+8801711111111"}
+	}
+	_, err := s.RequestWithdrawal(ctx, doctor, bkash(100*100))
+	if !apperr.Is(err, apperr.KindValidation) {
+		t.Fatalf("below minimum: %v", err)
+	}
+	_, err = s.RequestWithdrawal(ctx, doctor, WithdrawalInput{AmountPaisa: 60000, Method: "bkash", AccountDetails: "12345"})
+	if !apperr.Is(err, apperr.KindValidation) {
+		t.Fatalf("bad bkash number: %v", err)
+	}
+	_, err = s.RequestWithdrawal(ctx, doctor, bkash(900*100))
+	if !apperr.Is(err, apperr.KindConflict) {
+		t.Fatalf("more than earned: %v", err)
+	}
+
+	w, err := s.RequestWithdrawal(ctx, doctor, bkash(600*100))
+	if err != nil || w.Status != WithdrawalRequested || w.Method != "bkash" || w.AccountDetails != "01711111111" {
+		t.Fatalf("request: %+v, %v", w, err)
+	}
+	e, _ := s.Earnings(ctx, doctor, 20, 0)
+	if e.BalancePaisa != 20000 || e.PendingWithdrawalPaisa != 60000 {
+		t.Fatalf("earnings during request = %+v", e)
+	}
+	_, err = s.RequestWithdrawal(ctx, doctor, bkash(500*100))
+	if !apperr.Is(err, apperr.KindConflict) {
+		t.Fatalf("second pending request: %v", err)
+	}
+
+	_, err = s.ProcessWithdrawal(ctx, w.ID, ProcessInput{Status: WithdrawalRejected})
+	if !apperr.Is(err, apperr.KindValidation) {
+		t.Fatalf("reject without note: %v", err)
+	}
+	if w, err = s.ProcessWithdrawal(ctx, w.ID, ProcessInput{Status: WithdrawalRejected, Note: "number not registered"}); err != nil {
+		t.Fatal(err)
+	}
+	if e, _ = s.Earnings(ctx, doctor, 20, 0); e.BalancePaisa != 80000 || e.PendingWithdrawalPaisa != 0 {
+		t.Fatalf("earnings after rejection = %+v", e)
+	}
+	_, err = s.ProcessWithdrawal(ctx, w.ID, ProcessInput{Status: WithdrawalPaid, PayoutRef: "X"})
+	if !apperr.Is(err, apperr.KindConflict) {
+		t.Fatalf("process twice: %v", err)
+	}
+
+	w, err = s.RequestWithdrawal(ctx, doctor, WithdrawalInput{
+		AmountPaisa: 80000, Method: "bank", AccountDetails: "Dutch-Bangla Bank, Dhanmondi, Dr Doctor, 1234567890",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w, err = s.ProcessWithdrawal(ctx, w.ID, ProcessInput{Status: WithdrawalPaid, PayoutRef: "DBBL-TXN-991"}); err != nil || w.Status != WithdrawalPaid {
+		t.Fatalf("pay: %+v, %v", w, err)
+	}
+	if e, _ = s.Earnings(ctx, doctor, 20, 0); e.BalancePaisa != 0 {
+		t.Fatalf("earnings after payout = %+v", e)
+	}
+	if got := balance(t, pool, nil, AcctPayoutsPending); got != 0 {
+		t.Fatalf("payouts pending = %d", got)
+	}
+	list, err := s.ListWithdrawals(ctx, doctor, "", 20, 0)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("list: %d, %v", len(list), err)
+	}
+	checkInvariants(t, pool)
+}
+
 func TestExpireTokens(t *testing.T) {
 	s, pool := newStore(t)
 	ctx := context.Background()

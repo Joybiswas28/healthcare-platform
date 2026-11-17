@@ -19,7 +19,8 @@ internal/
   doctor/             doctor profiles, chambers, schedules, search, admin verification
   appointment/        serial-based chamber booking (e-ticketing)
   wallet/             tokens, payments, double-entry ledger, escrow
-  consultation/       private online consultations, messages, file uploads
+  consultation/       online consultations, public concerns and offers, messages, uploads, WebSocket
+  realtime/           in-process hub fed by PostgreSQL LISTEN/NOTIFY
   server/             HTTP routes and middleware
   platform/
     config/           environment configuration
@@ -133,6 +134,38 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | POST | `/consultations/{id}/messages` | both | `{"body": "..."}` (active only) |
 | POST | `/consultations/{id}/attachments` | both | Multipart field `file`: PDF, JPEG or PNG, max 10 MB |
 | GET | `/attachments/{id}` | both | Download a shared file |
+| GET (WebSocket) | `/consultations/{id}/ws?access_token=<jwt>&after=<last id>` | both | Live chat (see below) |
+
+**Public medical concerns**
+
+| Method | Path | Who | Description |
+|---|---|---|---|
+| POST | `/concerns` | patient | `{"title", "description", "specialization"}` (max 3 open at once) |
+| GET | `/concerns` | both | Patient: my concerns. Doctor: open feed (`?specialization=`), never showing who posted |
+| GET | `/concerns/{id}` | both | Patient: with all offers. Doctor: with their own offer |
+| POST | `/concerns/{id}/close` | patient | Close; pending offers are declined |
+| POST | `/concerns/{id}/offers` | doctor | `{"message": "..."}` at the doctor's current fee |
+| POST | `/offers/{id}/withdraw` | doctor | Withdraw a pending offer (can be renewed later) |
+| POST | `/offers/{id}/accept` | patient | Pays with tokens and starts an active consultation with that doctor |
+| GET | `/doctor/offers` | doctor | My offers |
+
+**Doctor withdrawals**
+
+| Method | Path | Who | Description |
+|---|---|---|---|
+| POST | `/doctor/withdrawals` | doctor | `{"amount_paisa", "method": "bkash"\|"nagad"\|"bank", "account_details"}` (min BDT 500, one pending at a time) |
+| GET | `/doctor/withdrawals` | doctor | My withdrawal requests |
+| GET | `/admin/withdrawals?status=requested` | admin | Requests to process |
+| POST | `/admin/withdrawals/{id}/process` | admin | `{"status": "paid", "payout_ref": "..."}` or `{"status": "rejected", "note": "..."}` |
+
+### Live chat (WebSocket)
+
+Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message id you have>`. Browsers cannot set headers on WebSockets, so the token goes in the query string on this route only.
+
+- The server first sends every message after `after`, then pushes new ones as `{"type": "message", "message": {...}}`.
+- Send `{"body": "..."}` to post a message. If it is rejected, you get `{"type": "error", "error": "..."}`.
+- Messages sent through REST or file uploads also appear live.
+- New messages are announced by a PostgreSQL trigger (`NOTIFY`), so this works with any number of API servers.
 
 **Admin**
 
@@ -183,6 +216,7 @@ Doctors start with `verification_status = pending` until an admin approves them.
 - [x] Phase 0: project skeleton, auth, roles
 - [x] Phase 1: doctor profiles, chambers, schedules, e-ticket booking, admin verification
 - [x] Phase 2A: token wallet (double-entry ledger), private online consultation (chat + report upload), simulated payments
-- [ ] Phase 2B: public medical concerns and doctor offers, doctor withdrawals, real payment gateway (SSLCommerz / bKash), WebSocket chat, video calls, S3 storage
+- [x] Phase 2B: public medical concerns and doctor offers, doctor withdrawals, live chat over WebSocket
+- [ ] Next: real payment gateway (SSLCommerz / bKash, needs merchant credentials), SMS notifications, digital prescriptions, video calls, S3 storage
 - [ ] Phase 3: hospitals
 - [ ] Phase 4: pharmacy and delivery

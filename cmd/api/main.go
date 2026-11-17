@@ -19,6 +19,7 @@ import (
 	"healthcare-platform/internal/platform/config"
 	"healthcare-platform/internal/platform/database"
 	"healthcare-platform/internal/platform/storage"
+	"healthcare-platform/internal/realtime"
 	"healthcare-platform/internal/server"
 	"healthcare-platform/internal/user"
 	"healthcare-platform/internal/wallet"
@@ -70,6 +71,9 @@ func run() error {
 
 	go expireTokensPeriodically(ctx, walletStore, log)
 
+	hub := realtime.NewHub()
+	go realtime.Listen(ctx, pool, hub, log)
+
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: server.NewRouter(server.Deps{
@@ -80,7 +84,7 @@ func run() error {
 			Doctors:       doctor.NewHandler(doctor.NewStore(pool), log),
 			Appointments:  appointment.NewHandler(appointment.NewStore(pool), log),
 			Wallet:        wallet.NewHandler(walletStore, log),
-			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), log),
+			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log),
 			DevRoutes:     !cfg.IsProduction(),
 		}),
 		ReadHeaderTimeout: 5 * time.Second,

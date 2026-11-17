@@ -122,6 +122,68 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"entries": es, "limit": limit, "offset": offset})
 }
 
+// POST /doctor/withdrawals
+func (h *Handler) RequestWithdrawal(w http.ResponseWriter, r *http.Request) {
+	var in WithdrawalInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	wd, err := h.store.RequestWithdrawal(r.Context(), callerID(r), in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusCreated, wd)
+}
+
+// GET /doctor/withdrawals
+func (h *Handler) MyWithdrawals(w http.ResponseWriter, r *http.Request) {
+	h.listWithdrawals(w, r, callerID(r))
+}
+
+// GET /admin/withdrawals?status=requested
+func (h *Handler) AdminWithdrawals(w http.ResponseWriter, r *http.Request) {
+	h.listWithdrawals(w, r, "")
+}
+
+func (h *Handler) listWithdrawals(w http.ResponseWriter, r *http.Request, doctorID string) {
+	status := r.URL.Query().Get("status")
+	switch status {
+	case "", WithdrawalRequested, WithdrawalPaid, WithdrawalRejected:
+	default:
+		h.fail(w, r, apperr.Validation("status must be requested, paid or rejected"))
+		return
+	}
+	limit, offset := httpx.Page(r)
+	ws, err := h.store.ListWithdrawals(r.Context(), doctorID, status, limit, offset)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"withdrawals": ws, "limit": limit, "offset": offset})
+}
+
+// POST /admin/withdrawals/{withdrawalID}/process
+func (h *Handler) ProcessWithdrawal(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "withdrawalID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	var in ProcessInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	wd, err := h.store.ProcessWithdrawal(r.Context(), id, in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, wd)
+}
+
 // GET /doctor/earnings
 func (h *Handler) Earnings(w http.ResponseWriter, r *http.Request) {
 	limit, offset := httpx.Page(r)

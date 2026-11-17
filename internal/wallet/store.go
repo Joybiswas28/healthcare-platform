@@ -54,8 +54,9 @@ type Entry struct {
 }
 
 type Earnings struct {
-	BalancePaisa int64   `json:"balance_paisa"`
-	Entries      []Entry `json:"entries"`
+	BalancePaisa           int64   `json:"balance_paisa"`            // available to withdraw
+	PendingWithdrawalPaisa int64   `json:"pending_withdrawal_paisa"` // requested, not yet paid
+	Entries                []Entry `json:"entries"`
 }
 
 type Store struct {
@@ -207,10 +208,12 @@ func (s *Store) History(ctx context.Context, ownerID, accountKind string, limit,
 
 func (s *Store) Earnings(ctx context.Context, doctorID string, limit, offset int) (Earnings, error) {
 	var e Earnings
-	err := s.db.QueryRow(ctx,
-		`SELECT balance_paisa FROM ledger_accounts WHERE owner_id = $1 AND kind = $2`,
-		doctorID, AcctDoctorEarnings).Scan(&e.BalancePaisa)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	err := s.db.QueryRow(ctx, `
+		SELECT
+		  COALESCE((SELECT balance_paisa FROM ledger_accounts WHERE owner_id = $1 AND kind = $2), 0),
+		  COALESCE((SELECT sum(amount_paisa) FROM withdrawals WHERE doctor_id = $1 AND status = 'requested'), 0)::bigint`,
+		doctorID, AcctDoctorEarnings).Scan(&e.BalancePaisa, &e.PendingWithdrawalPaisa)
+	if err != nil {
 		return Earnings{}, err
 	}
 	e.Entries, err = s.History(ctx, doctorID, AcctDoctorEarnings, limit, offset)

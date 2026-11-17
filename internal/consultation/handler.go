@@ -14,6 +14,8 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/httpx"
+	"healthcare-platform/internal/realtime"
+	"healthcare-platform/internal/user"
 )
 
 // MaxUploadBytes is the largest file a user may upload (10 MB).
@@ -29,11 +31,12 @@ var allowedTypes = map[string]bool{
 
 type Handler struct {
 	store *Store
+	hub   *realtime.Hub
 	log   *slog.Logger
 }
 
-func NewHandler(store *Store, log *slog.Logger) *Handler {
-	return &Handler{store: store, log: log}
+func NewHandler(store *Store, hub *realtime.Hub, log *slog.Logger) *Handler {
+	return &Handler{store: store, hub: hub, log: log}
 }
 
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
@@ -245,6 +248,143 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 	if _, err := bufio.NewReader(rc).WriteTo(w); err != nil {
 		h.log.WarnContext(r.Context(), "download interrupted", "attachment", id, "err", err)
 	}
+}
+
+// ---------------------------------------------------------------- public concerns
+
+// POST /concerns (patient)
+func (h *Handler) PostConcern(w http.ResponseWriter, r *http.Request) {
+	var in ConcernInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	c, err := h.store.PostConcern(r.Context(), caller(r).UserID, in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusCreated, c)
+}
+
+// GET /concerns: patients get their own concerns; doctors get the open feed
+// (?specialization= filters it).
+func (h *Handler) Concerns(w http.ResponseWriter, r *http.Request) {
+	p := caller(r)
+	limit, offset := httpx.Page(r)
+	var cs []Concern
+	var err error
+	if p.Role == user.RoleDoctor {
+		cs, err = h.store.OpenConcerns(r.Context(), r.URL.Query().Get("specialization"), limit, offset)
+	} else {
+		cs, err = h.store.MyConcerns(r.Context(), p.UserID, limit, offset)
+	}
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"concerns": cs, "limit": limit, "offset": offset})
+}
+
+// GET /concerns/{concernID}: the patient sees all offers; a doctor sees only their own.
+func (h *Handler) Concern(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "concernID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	p := caller(r)
+	var c Concern
+	if p.Role == user.RoleDoctor {
+		c, err = h.store.DoctorConcern(r.Context(), p.UserID, id)
+	} else {
+		c, err = h.store.PatientConcern(r.Context(), p.UserID, id)
+	}
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, c)
+}
+
+// POST /concerns/{concernID}/close (patient)
+func (h *Handler) CloseConcern(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "concernID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	c, err := h.store.CloseConcern(r.Context(), caller(r).UserID, id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, c)
+}
+
+type offerInput struct {
+	Message string `json:"message"`
+}
+
+// POST /concerns/{concernID}/offers (doctor)
+func (h *Handler) MakeOffer(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "concernID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	var in offerInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	o, err := h.store.MakeOffer(r.Context(), caller(r).UserID, id, in.Message)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusCreated, o)
+}
+
+// GET /doctor/offers
+func (h *Handler) MyOffers(w http.ResponseWriter, r *http.Request) {
+	limit, offset := httpx.Page(r)
+	offers, err := h.store.MyOffers(r.Context(), caller(r).UserID, limit, offset)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"offers": offers, "limit": limit, "offset": offset})
+}
+
+// POST /offers/{offerID}/withdraw (doctor)
+func (h *Handler) WithdrawOffer(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "offerID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	o, err := h.store.WithdrawOffer(r.Context(), caller(r).UserID, id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, o)
+}
+
+// POST /offers/{offerID}/accept (patient): pays with tokens and starts the consultation
+func (h *Handler) AcceptOffer(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "offerID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	c, err := h.store.AcceptOffer(r.Context(), caller(r).UserID, id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusCreated, c)
 }
 
 // cleanFileName keeps only the base name and limits its length.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -39,7 +40,7 @@ func NewRouter(d Deps) http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(requestLogger(d.Log))
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
+	r.Use(exceptWebSocket(middleware.Timeout(30 * time.Second)))
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -99,7 +100,17 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/consultations/{consultationID}/messages", c.Messages)
 				r.Post("/consultations/{consultationID}/messages", c.PostMessage)
 				r.Post("/consultations/{consultationID}/attachments", c.Upload)
+				r.Get("/consultations/{consultationID}/ws", c.Stream)
 				r.Get("/attachments/{attachmentID}", c.Download)
+
+				// Public medical concerns
+				r.Get("/concerns", c.Concerns)
+				r.Get("/concerns/{concernID}", c.Concern)
+				r.With(auth.RequireRole(user.RolePatient)).Post("/concerns", c.PostConcern)
+				r.With(auth.RequireRole(user.RolePatient)).Post("/concerns/{concernID}/close", c.CloseConcern)
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/concerns/{concernID}/offers", c.MakeOffer)
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/offers/{offerID}/withdraw", c.WithdrawOffer)
+				r.With(auth.RequireRole(user.RolePatient)).Post("/offers/{offerID}/accept", c.AcceptOffer)
 			})
 
 			// Doctor
@@ -109,6 +120,9 @@ func NewRouter(d Deps) http.Handler {
 				r.Put("/profile", d.Doctors.UpdateMyProfile)
 				r.Put("/consultation-settings", d.Doctors.UpdateConsultationSettings)
 				r.Get("/earnings", d.Wallet.Earnings)
+				r.Post("/withdrawals", d.Wallet.RequestWithdrawal)
+				r.Get("/withdrawals", d.Wallet.MyWithdrawals)
+				r.Get("/offers", d.Consultations.MyOffers)
 				r.Get("/chambers", d.Doctors.MyChambers)
 				r.Post("/chambers", d.Doctors.CreateChamber)
 				r.Put("/chambers/{chamberID}", d.Doctors.UpdateChamber)
@@ -126,11 +140,27 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/doctors", d.Doctors.AdminList)
 				r.Post("/doctors/{doctorID}/verification", d.Doctors.AdminVerify)
 				r.Put("/doctors/{doctorID}/commission", d.Doctors.AdminSetCommission)
+				r.Get("/withdrawals", d.Wallet.AdminWithdrawals)
+				r.Post("/withdrawals/{withdrawalID}/process", d.Wallet.ProcessWithdrawal)
 			})
 		})
 	})
 
 	return r
+}
+
+// exceptWebSocket applies mw to every request except WebSocket upgrades, which are long-lived.
+func exceptWebSocket(mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		wrapped := mw(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			wrapped.ServeHTTP(w, r)
+		})
+	}
 }
 
 func requestLogger(log *slog.Logger) func(http.Handler) http.Handler {
