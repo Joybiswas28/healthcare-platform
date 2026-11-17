@@ -12,7 +12,9 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"healthcare-platform/internal/appointment"
 	"healthcare-platform/internal/auth"
+	"healthcare-platform/internal/doctor"
 	"healthcare-platform/internal/platform/config"
 	"healthcare-platform/internal/platform/database"
 	"healthcare-platform/internal/server"
@@ -60,10 +62,12 @@ func run() error {
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: server.NewRouter(server.Deps{
-			Log:    log,
-			DB:     pool,
-			Tokens: tokens,
-			Auth:   auth.NewHandler(authSvc, log),
+			Log:          log,
+			DB:           pool,
+			Tokens:       tokens,
+			Auth:         auth.NewHandler(authSvc, log),
+			Doctors:      doctor.NewHandler(doctor.NewStore(pool), log),
+			Appointments: appointment.NewHandler(appointment.NewStore(pool), log),
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
