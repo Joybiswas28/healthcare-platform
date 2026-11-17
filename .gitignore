@@ -13,3 +13,6 @@ coverage.*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Uploaded files (local storage)
+/data/

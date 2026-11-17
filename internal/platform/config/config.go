@@ -15,6 +15,7 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 	JWTTTL      time.Duration
+	UploadDir   string
 }
 
 func Load() (Config, error) {
@@ -23,6 +24,7 @@ func Load() (Config, error) {
 		HTTPAddr:    getEnv("HTTP_ADDR", ":8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
+		UploadDir:   getEnv("UPLOAD_DIR", "./data/uploads"),
 	}
 
 	ttlMinutes, err := strconv.Atoi(getEnv("JWT_TTL_MINUTES", "60"))

@@ -22,20 +22,67 @@ var errDoctorNotFound = apperr.NotFound("doctor not found")
 
 // ---------------------------------------------------------------- profile
 
-const profileSelect = `
-SELECT u.id, u.name, d.bmdc_reg_no, d.specialization, d.degrees, d.experience_years,
-       d.bio, d.verification_status, d.verification_note
+const profileColumns = `u.id, u.name, d.bmdc_reg_no, d.specialization, d.degrees, d.experience_years,
+       d.bio, d.verification_status, d.verification_note,
+       d.consultation_enabled, d.consultation_fee_tokens, d.commission_bps`
+
+const profileSelect = `SELECT ` + profileColumns + `
 FROM doctor_profiles d
 JOIN users u ON u.id = d.user_id`
 
+func profileDest(p *Profile) []any {
+	return []any{&p.UserID, &p.Name, &p.BMDCRegNo, &p.Specialization, &p.Degrees,
+		&p.ExperienceYears, &p.Bio, &p.VerificationStatus, &p.VerificationNote,
+		&p.ConsultationEnabled, &p.ConsultationFeeTokens, &p.CommissionBps}
+}
+
 func scanProfile(row pgx.Row) (Profile, error) {
 	var p Profile
-	err := row.Scan(&p.UserID, &p.Name, &p.BMDCRegNo, &p.Specialization, &p.Degrees,
-		&p.ExperienceYears, &p.Bio, &p.VerificationStatus, &p.VerificationNote)
+	err := row.Scan(profileDest(&p)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Profile{}, errDoctorNotFound
 	}
 	return p, err
+}
+
+// SetConsultationSettings turns online consultations on or off and sets the fee in tokens.
+// Only verified doctors can turn them on.
+func (s *Store) SetConsultationSettings(ctx context.Context, doctorID string, in ConsultationSettingsInput) (Profile, error) {
+	if in.FeeTokens < 1 || in.FeeTokens > 20 {
+		return Profile{}, apperr.Validation("fee_tokens must be between 1 and 20")
+	}
+	tag, err := s.db.Exec(ctx, `
+		UPDATE doctor_profiles SET consultation_enabled = $2, consultation_fee_tokens = $3, updated_at = now()
+		WHERE user_id = $1 AND (NOT $2 OR verification_status = 'approved')`,
+		doctorID, in.Enabled, in.FeeTokens)
+	if err != nil {
+		return Profile{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		if _, err := s.GetProfile(ctx, doctorID); err != nil {
+			return Profile{}, err
+		}
+		return Profile{}, apperr.Conflict("your profile must be verified before you can offer online consultations")
+	}
+	return s.GetProfile(ctx, doctorID)
+}
+
+// SetCommission sets the platform's share of this doctor's consultation fees.
+// It applies to consultations requested from now on.
+func (s *Store) SetCommission(ctx context.Context, doctorID string, in CommissionInput) (Profile, error) {
+	if in.CommissionBps < 0 || in.CommissionBps > 10000 {
+		return Profile{}, apperr.Validation("commission_bps must be between 0 and 10000")
+	}
+	tag, err := s.db.Exec(ctx,
+		`UPDATE doctor_profiles SET commission_bps = $2, updated_at = now() WHERE user_id = $1`,
+		doctorID, in.CommissionBps)
+	if err != nil {
+		return Profile{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return Profile{}, errDoctorNotFound
+	}
+	return s.GetProfile(ctx, doctorID)
 }
 
 func (s *Store) GetProfile(ctx context.Context, doctorID string) (Profile, error) {
@@ -276,6 +323,7 @@ type SearchParams struct {
 	Name           string
 	Specialization string
 	Location       string // matches chamber district or area
+	OnlineOnly     bool   // only doctors taking online consultations
 	Limit, Offset  int
 }
 
@@ -284,29 +332,31 @@ func (s *Store) Search(ctx context.Context, p SearchParams) ([]Summary, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT u.id, u.name, d.specialization, d.degrees, d.experience_years,
 		       COALESCE(array_agg(DISTINCT c.district) FILTER (WHERE c.id IS NOT NULL), '{}')::text[],
-		       MIN(c.fee_paisa)
+		       MIN(c.fee_paisa), d.consultation_enabled, d.consultation_fee_tokens
 		FROM doctor_profiles d
 		JOIN users u ON u.id = d.user_id
 		LEFT JOIN chambers c ON c.doctor_id = d.user_id AND c.booking_enabled
 		WHERE d.verification_status = 'approved' AND u.status = 'active'
+		  AND (NOT $6 OR d.consultation_enabled)
 		  AND ($1 = '' OR u.name ILIKE $1)
 		  AND ($2 = '' OR d.specialization ILIKE $2)
 		  AND ($3 = '' OR EXISTS (
 		        SELECT 1 FROM chambers c2
 		        WHERE c2.doctor_id = d.user_id AND c2.booking_enabled
 		          AND (c2.district ILIKE $3 OR c2.area ILIKE $3)))
-		GROUP BY u.id, u.name, d.specialization, d.degrees, d.experience_years
+		GROUP BY u.id, u.name, d.specialization, d.degrees, d.experience_years,
+		         d.consultation_enabled, d.consultation_fee_tokens
 		ORDER BY u.name, u.id
 		LIMIT $4 OFFSET $5`,
 		containsPattern(p.Name), containsPattern(p.Specialization), containsPattern(p.Location),
-		p.Limit, p.Offset)
+		p.Limit, p.Offset, p.OnlineOnly)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Summary, error) {
 		var sm Summary
 		err := r.Scan(&sm.ID, &sm.Name, &sm.Specialization, &sm.Degrees, &sm.ExperienceYears,
-			&sm.Districts, &sm.MinFeePaisa)
+			&sm.Districts, &sm.MinFeePaisa, &sm.ConsultationEnabled, &sm.ConsultationFeeTokens)
 		return sm, err
 	})
 }
@@ -320,6 +370,7 @@ func (s *Store) GetPublic(ctx context.Context, doctorID string) (PublicDoctor, e
 		return PublicDoctor{}, err
 	}
 	p.VerificationNote = nil
+	p.CommissionBps = nil
 	chambers, err := s.ListChambers(ctx, doctorID, true)
 	if err != nil {
 		return PublicDoctor{}, err
@@ -331,8 +382,7 @@ func (s *Store) GetPublic(ctx context.Context, doctorID string) (PublicDoctor, e
 
 func (s *Store) ListForAdmin(ctx context.Context, status string, limit, offset int) ([]AdminDoctor, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT u.id, u.name, d.bmdc_reg_no, d.specialization, d.degrees, d.experience_years,
-		       d.bio, d.verification_status, d.verification_note, u.phone, u.created_at
+		SELECT `+profileColumns+`, u.phone, u.created_at
 		FROM doctor_profiles d
 		JOIN users u ON u.id = d.user_id
 		WHERE ($1 = '' OR d.verification_status = $1)
@@ -343,8 +393,7 @@ func (s *Store) ListForAdmin(ctx context.Context, status string, limit, offset i
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (AdminDoctor, error) {
 		var a AdminDoctor
-		err := r.Scan(&a.UserID, &a.Name, &a.BMDCRegNo, &a.Specialization, &a.Degrees,
-			&a.ExperienceYears, &a.Bio, &a.VerificationStatus, &a.VerificationNote, &a.Phone, &a.CreatedAt)
+		err := r.Scan(append(profileDest(&a.Profile), &a.Phone, &a.CreatedAt)...)
 		return a, err
 	})
 }

@@ -13,18 +13,24 @@ import (
 
 	"healthcare-platform/internal/appointment"
 	"healthcare-platform/internal/auth"
+	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
 	"healthcare-platform/internal/platform/httpx"
 	"healthcare-platform/internal/user"
+	"healthcare-platform/internal/wallet"
 )
 
 type Deps struct {
-	Log          *slog.Logger
-	DB           *pgxpool.Pool
-	Tokens       *auth.TokenManager
-	Auth         *auth.Handler
-	Doctors      *doctor.Handler
-	Appointments *appointment.Handler
+	Log           *slog.Logger
+	DB            *pgxpool.Pool
+	Tokens        *auth.TokenManager
+	Auth          *auth.Handler
+	Doctors       *doctor.Handler
+	Appointments  *appointment.Handler
+	Wallet        *wallet.Handler
+	Consultations *consultation.Handler
+	// DevRoutes enables endpoints that simulate external services (payment gateway).
+	DevRoutes bool
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -55,6 +61,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/doctors", d.Doctors.Search)
 		r.Get("/doctors/{doctorID}", d.Doctors.Get)
 		r.Get("/schedules/{scheduleID}/availability", d.Appointments.Availability)
+		r.Get("/token-packages", d.Wallet.Packages)
 
 		// Authenticated
 		r.Group(func(r chi.Router) {
@@ -67,6 +74,32 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/appointments", d.Appointments.Book)
 				r.Get("/appointments", d.Appointments.Mine)
 				r.Post("/appointments/{appointmentID}/cancel", d.Appointments.Cancel)
+
+				r.Get("/wallet", d.Wallet.Wallet)
+				r.Get("/wallet/history", d.Wallet.History)
+				r.Post("/wallet/purchases", d.Wallet.StartPurchase)
+				r.Get("/wallet/purchases/{paymentID}", d.Wallet.GetPurchase)
+				if d.DevRoutes {
+					r.Post("/dev/payments/{paymentID}/succeed", d.Wallet.DevSucceed)
+				}
+			})
+
+			// Consultations (patient and doctor; the store checks who may do what)
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireRole(user.RolePatient, user.RoleDoctor))
+				c := d.Consultations
+				r.With(auth.RequireRole(user.RolePatient)).Post("/consultations", c.Request)
+				r.Get("/consultations", c.List)
+				r.Get("/consultations/{consultationID}", c.Get())
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/consultations/{consultationID}/accept", c.Accept())
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/consultations/{consultationID}/reject", c.Reject)
+				r.With(auth.RequireRole(user.RolePatient)).Post("/consultations/{consultationID}/confirm", c.Confirm())
+				r.With(auth.RequireRole(user.RoleDoctor)).Post("/consultations/{consultationID}/complete", c.Complete())
+				r.Post("/consultations/{consultationID}/cancel", c.Cancel())
+				r.Get("/consultations/{consultationID}/messages", c.Messages)
+				r.Post("/consultations/{consultationID}/messages", c.PostMessage)
+				r.Post("/consultations/{consultationID}/attachments", c.Upload)
+				r.Get("/attachments/{attachmentID}", c.Download)
 			})
 
 			// Doctor
@@ -74,6 +107,8 @@ func NewRouter(d Deps) http.Handler {
 				r.Use(auth.RequireRole(user.RoleDoctor))
 				r.Get("/profile", d.Doctors.MyProfile)
 				r.Put("/profile", d.Doctors.UpdateMyProfile)
+				r.Put("/consultation-settings", d.Doctors.UpdateConsultationSettings)
+				r.Get("/earnings", d.Wallet.Earnings)
 				r.Get("/chambers", d.Doctors.MyChambers)
 				r.Post("/chambers", d.Doctors.CreateChamber)
 				r.Put("/chambers/{chamberID}", d.Doctors.UpdateChamber)
@@ -90,6 +125,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Use(auth.RequireRole(user.RoleAdmin))
 				r.Get("/doctors", d.Doctors.AdminList)
 				r.Post("/doctors/{doctorID}/verification", d.Doctors.AdminVerify)
+				r.Put("/doctors/{doctorID}/commission", d.Doctors.AdminSetCommission)
 			})
 		})
 	})

@@ -36,6 +36,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		Name:           q.Get("name"),
 		Specialization: q.Get("specialization"),
 		Location:       q.Get("location"),
+		OnlineOnly:     q.Get("online") == "true",
 		Limit:          limit,
 		Offset:         offset,
 	})
@@ -167,7 +168,42 @@ func (h *Handler) RemoveSchedule(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// PUT /doctor/consultation-settings
+func (h *Handler) UpdateConsultationSettings(w http.ResponseWriter, r *http.Request) {
+	var in ConsultationSettingsInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	p, err := h.store.SetConsultationSettings(r.Context(), callerID(r), in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, p)
+}
+
 // ---- admin
+
+// PUT /admin/doctors/{doctorID}/commission
+func (h *Handler) AdminSetCommission(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "doctorID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	var in CommissionInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	p, err := h.store.SetCommission(r.Context(), id, in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, p)
+}
 
 // GET /admin/doctors?status=pending
 func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {

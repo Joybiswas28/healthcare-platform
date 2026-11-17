@@ -27,6 +27,19 @@ type Profile struct {
 	Bio                *string `json:"bio"`
 	VerificationStatus string  `json:"verification_status"`
 	VerificationNote   *string `json:"verification_note,omitempty"`
+
+	ConsultationEnabled   bool `json:"consultation_enabled"`
+	ConsultationFeeTokens int  `json:"consultation_fee_tokens"`
+	CommissionBps         *int `json:"commission_bps,omitempty"` // shown to the doctor and admins only
+}
+
+type ConsultationSettingsInput struct {
+	Enabled   bool `json:"enabled"`
+	FeeTokens int  `json:"fee_tokens"`
+}
+
+type CommissionInput struct {
+	CommissionBps int `json:"commission_bps"`
 }
 
 type Chamber struct {
@@ -61,6 +74,9 @@ type Summary struct {
 	ExperienceYears *int     `json:"experience_years"`
 	Districts       []string `json:"districts"`
 	MinFeePaisa     *int64   `json:"min_fee_paisa"`
+
+	ConsultationEnabled   bool `json:"consultation_enabled"`
+	ConsultationFeeTokens int  `json:"consultation_fee_tokens"`
 }
 
 type PublicDoctor struct {

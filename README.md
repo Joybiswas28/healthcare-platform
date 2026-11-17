@@ -18,11 +18,14 @@ internal/
   user/               user model and repository
   doctor/             doctor profiles, chambers, schedules, search, admin verification
   appointment/        serial-based chamber booking (e-ticketing)
+  wallet/             tokens, payments, double-entry ledger, escrow
+  consultation/       private online consultations, messages, file uploads
   server/             HTTP routes and middleware
   platform/
     config/           environment configuration
     database/         connection pool and migrations
     httpx/            JSON helpers
+    storage/          file storage (local disk in development)
 migrations/           SQL migration files
 ```
 
@@ -100,12 +103,61 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | POST | `/doctor/appointments/{id}/no-show` | Mark as no-show |
 | GET | `/doctor/tickets/{code}` | Look up a ticket shown at the chamber |
 
+| PUT | `/doctor/consultation-settings` | `{"enabled": true, "fee_tokens": 2}` (verified doctors only) |
+| GET | `/doctor/earnings` | Earnings balance and history |
+
+**Tokens and wallet (patient)**
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/token-packages` | Available packages (public) |
+| POST | `/wallet/purchases` | `{"package_id": "..."}` starts a payment and returns `checkout_url` |
+| GET | `/wallet/purchases/{id}` | Payment status |
+| POST | `/dev/payments/{id}/succeed` | **Development only**: simulates the gateway confirming the payment |
+| GET | `/wallet` | Tokens available, per lot with expiry |
+| GET | `/wallet/history` | Token purchases, holds, refunds and expiries |
+
+**Online consultation (patient and doctor)**
+
+| Method | Path | Who | Description |
+|---|---|---|---|
+| POST | `/consultations` | patient | `{"doctor_id", "subject", "description"}` |
+| GET | `/consultations?status=` | both | My consultations |
+| GET | `/consultations/{id}` | both | One consultation |
+| POST | `/consultations/{id}/accept` | doctor | Accept a request |
+| POST | `/consultations/{id}/reject` | doctor | `{"reason": "..."}` |
+| POST | `/consultations/{id}/confirm` | patient | Pay with tokens; the consultation becomes active |
+| POST | `/consultations/{id}/complete` | doctor | Close and receive payment |
+| POST | `/consultations/{id}/cancel` | both | Patient: before it starts. Doctor: while active (full refund) |
+| GET | `/consultations/{id}/messages?after=` | both | Messages after a given id (poll for new ones) |
+| POST | `/consultations/{id}/messages` | both | `{"body": "..."}` (active only) |
+| POST | `/consultations/{id}/attachments` | both | Multipart field `file`: PDF, JPEG or PNG, max 10 MB |
+| GET | `/attachments/{id}` | both | Download a shared file |
+
 **Admin**
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/admin/doctors?status=pending` | Doctors awaiting verification |
 | POST | `/admin/doctors/{id}/verification` | `{"status": "approved"}` or `{"status": "rejected", "note": "..."}` |
+| PUT | `/admin/doctors/{id}/commission` | `{"commission_bps": 3333}`: platform share in basis points (5000 = 50%) |
+
+### Tokens and money
+
+- 1 token = BDT 100. The standard package is 10 tokens for BDT 1,000, valid for 365 days.
+- Tokens are spent from the batch that expires first. Expired tokens are swept every hour and booked as platform revenue.
+- Confirming a consultation moves its fee into escrow. Completing it splits the fee between doctor and platform by the doctor's commission rate. A doctor cancelling an active consultation refunds the patient in full, back to the same batches.
+- Every money movement is recorded in a double-entry ledger in paisa: each transaction sums to zero, and account balances can be rebuilt from their entries.
+- The fee and commission are fixed when the patient sends the request, so later price changes don't affect it.
+
+### Consultation lifecycle
+
+```
+requested ──accept──> accepted ──confirm (pay)──> active ──complete──> completed
+    │                     │                          │
+    ├─reject──> rejected  └─patient cancel─┐         └─doctor cancel (refund)─┐
+    └─patient cancel──────────────────────> cancelled <───────────────────────┘
+```
 
 ### Booking rules
 
@@ -130,7 +182,7 @@ Doctors start with `verification_status = pending` until an admin approves them.
 
 - [x] Phase 0: project skeleton, auth, roles
 - [x] Phase 1: doctor profiles, chambers, schedules, e-ticket booking, admin verification
-- [ ] Phase 1: private online consultation (chat + report upload)
-- [ ] Phase 2: token wallet (double-entry ledger), payment gateway, public concerns, video calls
+- [x] Phase 2A: token wallet (double-entry ledger), private online consultation (chat + report upload), simulated payments
+- [ ] Phase 2B: public medical concerns and doctor offers, doctor withdrawals, real payment gateway (SSLCommerz / bKash), WebSocket chat, video calls, S3 storage
 - [ ] Phase 3: hospitals
 - [ ] Phase 4: pharmacy and delivery
