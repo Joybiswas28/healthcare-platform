@@ -26,6 +26,10 @@ type Config struct {
 	SSLCommerzStoreID       string
 	SSLCommerzStorePassword string
 	SSLCommerzSandbox       bool
+
+	// PharmacyCommissionBps is the platform's share of the medicine total on each
+	// delivered pharmacy order, in basis points (300 = 3%).
+	PharmacyCommissionBps int
 }
 
 func Load() (Config, error) {
@@ -41,6 +45,11 @@ func Load() (Config, error) {
 		SSLCommerzStorePassword: os.Getenv("SSLCOMMERZ_STORE_PASSWORD"),
 		SSLCommerzSandbox:       getEnv("SSLCOMMERZ_SANDBOX", "true") == "true",
 	}
+	bps, err := strconv.Atoi(getEnv("PHARMACY_COMMISSION_BPS", "300"))
+	if err != nil || bps < 0 || bps > 10000 {
+		return Config{}, errors.New("PHARMACY_COMMISSION_BPS must be between 0 and 10000 (300 = 3%)")
+	}
+	cfg.PharmacyCommissionBps = bps
 	if cfg.SSLCommerzStoreID != "" && cfg.SSLCommerzStorePassword == "" {
 		return Config{}, errors.New("SSLCOMMERZ_STORE_PASSWORD is required when SSLCOMMERZ_STORE_ID is set")
 	}

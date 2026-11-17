@@ -19,6 +19,7 @@ import (
 	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
+	"healthcare-platform/internal/pharmacy"
 	"healthcare-platform/internal/platform/httpx"
 	"healthcare-platform/internal/prescription"
 	"healthcare-platform/internal/user"
@@ -36,6 +37,7 @@ type Deps struct {
 	Consultations *consultation.Handler
 	Prescriptions *prescription.Handler
 	Hospitals     *hospital.Handler
+	Pharmacies    *pharmacy.Handler
 	Notifications *notify.Handler
 	// SSLCommerz is nil when the gateway is not configured.
 	SSLCommerz *sslcommerz.Callbacks
@@ -74,6 +76,8 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/hospitals", d.Hospitals.Search)
 		r.Get("/hospitals/{hospitalID}", d.Hospitals.Public)
 		r.Get("/hospitals/{hospitalID}/photos/{photoID}", d.Hospitals.Photo)
+		r.Get("/pharmacies", d.Pharmacies.Nearby)
+		r.Get("/pharmacies/{pharmacyID}", d.Pharmacies.Public)
 		if d.SSLCommerz != nil {
 			r.Post("/payments/sslcommerz/ipn", d.SSLCommerz.IPN)
 			r.Post("/payments/sslcommerz/success", d.SSLCommerz.Success)
@@ -119,6 +123,62 @@ func NewRouter(d Deps) http.Handler {
 				if d.DevRoutes {
 					r.Post("/dev/payments/{paymentID}/succeed", d.Wallet.DevSucceed)
 				}
+
+				ph := d.Pharmacies
+				r.Post("/medicine-requests", ph.CreateRequest)
+				r.Get("/medicine-requests", ph.MyRequests)
+				r.Get("/medicine-requests/{requestID}", ph.MyRequest)
+				r.Post("/medicine-requests/{requestID}/cancel", ph.CancelRequest)
+				r.Get("/medicine-requests/{requestID}/attachment", ph.MyAttachment)
+				r.Post("/quotes/{quoteID}/accept", ph.AcceptQuote)
+				r.Get("/medicine-orders", ph.MyOrders)
+				r.Get("/medicine-orders/{orderID}", ph.MyOrder)
+				r.Post("/medicine-orders/{orderID}/cancel", ph.CancelMyOrder)
+				r.Post("/medicine-orders/{orderID}/review", ph.ReviewOrder)
+			})
+
+			// Pharmacies (owner checked per pharmacy)
+			r.Group(func(r chi.Router) {
+				ph := d.Pharmacies
+				r.Use(auth.RequireRole(user.RolePharmacy))
+				r.Post("/pharmacies", ph.Create)
+				r.Get("/manage/pharmacies", ph.Mine)
+				r.Route("/manage/pharmacies/{pharmacyID}", func(r chi.Router) {
+					r.Use(ph.Owner)
+					r.Get("/", ph.Get)
+					r.Put("/", ph.Update)
+					r.Get("/requests", ph.Feed)
+					r.Get("/requests/{requestID}", ph.Request)
+					r.Get("/requests/{requestID}/attachment", ph.RequestAttachment)
+					r.Post("/requests/{requestID}/quote", ph.Quote)
+					r.Post("/quotes/{quoteID}/withdraw", ph.WithdrawQuote)
+					r.Get("/orders", ph.Orders)
+					r.Get("/orders/{orderID}", ph.Order)
+					r.Post("/orders/{orderID}/preparing", ph.Advance(pharmacy.OrderPreparing))
+					r.Post("/orders/{orderID}/ready", ph.Advance(pharmacy.OrderReady))
+					r.Post("/orders/{orderID}/dispatch", ph.Dispatch)
+					r.Post("/orders/{orderID}/complete", ph.Complete)
+					r.Post("/orders/{orderID}/cancel", ph.Cancel)
+					r.Get("/statement", ph.Statement)
+				})
+			})
+
+			// Riders
+			r.Route("/rider", func(r chi.Router) {
+				ph := d.Pharmacies
+				r.Use(auth.RequireRole(user.RoleRider))
+				r.Get("/profile", ph.RiderProfile)
+				r.Put("/profile", ph.RegisterRider)
+				r.Put("/availability", ph.Availability)
+				r.Put("/location", ph.Location)
+				r.Get("/jobs", ph.Jobs)
+				r.Post("/jobs/{orderID}/accept", ph.AcceptJob)
+				r.Get("/orders", ph.RiderOrders)
+				r.Get("/orders/{orderID}", ph.RiderOrder)
+				r.Post("/orders/{orderID}/release", ph.ReleaseJob)
+				r.Post("/orders/{orderID}/picked-up", ph.PickedUp)
+				r.Post("/orders/{orderID}/delivered", ph.Delivered)
+				r.Get("/earnings", ph.RiderEarnings)
 			})
 
 			// Consultations (patient and doctor; the store checks who may do what)
@@ -217,6 +277,10 @@ func NewRouter(d Deps) http.Handler {
 				r.Put("/doctors/{doctorID}/commission", d.Doctors.AdminSetCommission)
 				r.Get("/hospitals", d.Hospitals.AdminList)
 				r.Post("/hospitals/{hospitalID}/verification", d.Hospitals.AdminVerify)
+				r.Get("/pharmacies", d.Pharmacies.AdminPharmacies)
+				r.Post("/pharmacies/{pharmacyID}/verification", d.Pharmacies.AdminVerifyPharmacy)
+				r.Get("/riders", d.Pharmacies.AdminRiders)
+				r.Post("/riders/{userID}/verification", d.Pharmacies.AdminVerifyRider)
 				r.Get("/withdrawals", d.Wallet.AdminWithdrawals)
 				r.Post("/withdrawals/{withdrawalID}/process", d.Wallet.ProcessWithdrawal)
 			})

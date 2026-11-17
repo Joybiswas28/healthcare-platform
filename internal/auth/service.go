@@ -80,7 +80,10 @@ func (e ValidationError) Unwrap() error { return ErrValidation }
 
 // Only these roles may self-register (doctors and hospitals are then verified by
 // admins); the rest are created by admins.
-var selfRegisterRoles = map[user.Role]bool{user.RolePatient: true, user.RoleDoctor: true, user.RoleHospitalAdmin: true}
+var selfRegisterRoles = map[user.Role]bool{
+	user.RolePatient: true, user.RoleDoctor: true, user.RoleHospitalAdmin: true,
+	user.RolePharmacy: true, user.RoleRider: true,
+}
 
 func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, error) {
 	name := strings.TrimSpace(in.Name)
@@ -98,7 +101,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 		in.Role = user.RolePatient
 	}
 	if !selfRegisterRoles[in.Role] {
-		return AuthResult{}, ValidationError{"role must be 'patient', 'doctor' or 'hospital_admin'"}
+		return AuthResult{}, ValidationError{"role must be patient, doctor, hospital_admin, pharmacy or rider"}
 	}
 	if strings.TrimSpace(in.OTPCode) == "" {
 		return AuthResult{}, ValidationError{"otp_code is required; request one with POST /auth/otp"}

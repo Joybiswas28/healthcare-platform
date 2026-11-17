@@ -19,6 +19,7 @@ import (
 	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
+	"healthcare-platform/internal/pharmacy"
 	"healthcare-platform/internal/platform/config"
 	"healthcare-platform/internal/platform/database"
 	"healthcare-platform/internal/platform/storage"
@@ -118,6 +119,7 @@ func run() error {
 			Appointments: appointment.NewHandler(appointmentStore, log),
 			Hospitals: hospital.NewHandler(hospital.NewStore(pool, doctorStore, files),
 				doctorStore, appointmentStore, log),
+			Pharmacies:    pharmacy.NewHandler(pharmacy.NewStore(pool, files, cfg.PharmacyCommissionBps), log),
 			Wallet:        wallet.NewHandler(walletStore, gateway, log),
 			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log),
 			Prescriptions: prescription.NewHandler(prescription.NewStore(pool), cfg.PublicBaseURL, log),

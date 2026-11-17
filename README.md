@@ -19,6 +19,7 @@ internal/
   doctor/             doctor profiles, chambers, schedules, search, admin verification
   appointment/        serial-based chamber booking (e-ticketing), hospital cancel/reschedule
   hospital/           hospital profiles, staff doctors, hospital chambers, photos, members
+  pharmacy/           pharmacies, medicine requests, quotes, orders, riders, reviews
   wallet/             tokens, payments, double-entry ledger, escrow
   consultation/       online consultations, public concerns and offers, messages, uploads, WebSocket
   realtime/           in-process hub fed by PostgreSQL LISTEN/NOTIFY
@@ -242,10 +243,69 @@ Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message
 - Doctors cannot edit hospital chambers or schedules. Hospitals cannot touch a doctor's private chambers.
 - A hospital chamber takes bookings only while the hospital is verified, the doctor is on staff and booking is on. Removing a doctor turns booking off but keeps existing bookings, so the hospital can cancel or reschedule them.
 
+**Pharmacy: patient**
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/pharmacies?latitude=&longitude=&radius_km=` | Verified pharmacies nearby, nearest first (public) |
+| GET | `/pharmacies/{id}` | Pharmacy with rating and reviews (public) |
+| POST | `/medicine-requests` | Ask nearby pharmacies for medicines. JSON with `prescription_id` (a platform prescription), or multipart with a `data` field (the JSON) followed by a `file` field (scanned prescription: PDF/JPEG/PNG, max 10 MB). Also `fulfilment` (`delivery`/`pickup`), `address`, `latitude`, `longitude`, optional `items`, `note`, `contact_phone` |
+| GET | `/medicine-requests[/{id}]` | My requests. One request includes all quotes, cheapest first |
+| POST | `/medicine-requests/{id}/cancel` | Cancel an open request |
+| POST | `/quotes/{id}/accept` | Choose a pharmacy. Creates the order and returns your 6-digit **delivery code** |
+| GET | `/medicine-orders[/{id}]` | Orders with status timeline and live rider location |
+| POST | `/medicine-orders/{id}/cancel` | Before the order is ready |
+| POST | `/medicine-orders/{id}/review` | `{"rating": 1-5, "comment"}` after delivery |
+
+**Pharmacy: owner** (`pharmacy` accounts)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/pharmacies` | Register a pharmacy (DGDA drug licence, address, location, delivery radius) |
+| GET / PUT | `/manage/pharmacies[/{id}]` | My pharmacies, edit (including `accepting_orders`) |
+| GET | `/manage/pharmacies/{id}/requests[/{rid}]` | Open requests nearby, with distance only (no patient identity or address) |
+| GET | `/manage/pharmacies/{id}/requests/{rid}/attachment` | The uploaded prescription |
+| POST | `/manage/pharmacies/{id}/requests/{rid}/quote` | `{"items": [{name, strength, quantity, available, price_paisa}], "delivery_charge_paisa", "eta_minutes", "note"}`. Can be revised while pending |
+| POST | `/manage/pharmacies/{id}/quotes/{qid}/withdraw` | Withdraw a quote |
+| GET | `/manage/pharmacies/{id}/orders?status=active` | Orders |
+| POST | `/manage/pharmacies/{id}/orders/{oid}/preparing`, `/ready` | Progress |
+| POST | `/manage/pharmacies/{id}/orders/{oid}/dispatch` | `{"mode": "pharmacy"}` (own staff) or `{"mode": "rider"}` (platform riders) |
+| POST | `/manage/pharmacies/{id}/orders/{oid}/complete` | `{"code"}`: hand over a pickup order, or the pharmacy's own delivery |
+| POST | `/manage/pharmacies/{id}/orders/{oid}/cancel` | `{"reason"}` before it leaves the shop |
+| GET | `/manage/pharmacies/{id}/statement?from=&to=` | Delivered orders and platform commission due |
+
+**Riders** (`rider` accounts)
+
+| Method | Path | Description |
+|---|---|---|
+| GET / PUT | `/rider/profile` | `{"nid_number", "vehicle"}`. Verified by an admin |
+| PUT | `/rider/availability` | `{"available", "latitude", "longitude"}` |
+| PUT | `/rider/location` | Send position periodically while on duty (shown to the patient) |
+| GET | `/rider/jobs` | Deliveries waiting at pharmacies within 5 km |
+| POST | `/rider/jobs/{orderID}/accept` | Take a job (one at a time) |
+| POST | `/rider/orders/{id}/release`, `/picked-up`, `/delivered` | `delivered` needs `{"code"}` from the patient |
+| GET | `/rider/orders`, `/rider/earnings` | History and earnings |
+
+### How medicine orders work
+
+```
+request (open 24 h) ──quotes──> patient accepts one ──> order: confirmed → preparing → ready
+   pickup:            ready ──patient shows code──> delivered
+   pharmacy delivery: ready → out_for_delivery ──code──> delivered
+   rider delivery:    ready → rider_assigned → out_for_delivery ──code──> delivered
+```
+
+- Only verified pharmacies that are taking orders, within their delivery radius (and delivering, for delivery requests), see a request.
+- Pharmacies can mark a prescribed medicine unavailable, but cannot substitute another one.
+- The handover needs the patient's 6-digit code. Pharmacies and riders never see it. After 5 wrong codes the order is locked for support.
+- Payment is cash on delivery for now. The platform commission (`PHARMACY_COMMISSION_BPS`, default 3% of the medicine total) is recorded on each delivered order and summed in the pharmacy statement. Riders earn the delivery charge.
+
 **Admin**
 
 | Method | Path | Description |
 |---|---|---|
+| GET / POST | `/admin/pharmacies[/{id}/verification]` | List, approve or reject pharmacies |
+| GET / POST | `/admin/riders[/{userID}/verification]` | List, approve or reject riders |
 | GET | `/admin/hospitals?status=pending` | Hospitals awaiting verification |
 | POST | `/admin/hospitals/{id}/verification` | `{"status": "approved"}` or `{"status": "rejected", "note": "..."}` |
 | GET | `/admin/doctors?status=pending` | Doctors awaiting verification |
@@ -304,4 +364,5 @@ Doctors start with `verification_status = pending` until an admin approves them.
 - [ ] Before launch: SMS provider account, SSLCommerz merchant account (test in sandbox), S3 storage, video calls
 - [x] Phase 3: hospitals (profiles, verification, doctor invitations, hospital chambers, booking management, photos, staff accounts)
 - [ ] Billing: subscription packages for doctors and hospitals
-- [ ] Phase 4: pharmacy and delivery
+- [x] Phase 4: pharmacies, medicine requests and quotes, orders, riders and delivery tracking, reviews, commission statements
+- [ ] Later: online payment for medicine orders, cash settlement between riders and pharmacies, pharmacy inventory
