@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Build output
+/bin/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
