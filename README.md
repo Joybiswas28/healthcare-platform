@@ -37,6 +37,7 @@ migrations/           SQL migration files
 
 ## Documentation
 
+- **Interactive API docs:** run the server and open http://localhost:8080/docs (Swagger UI). Click **Authorize** and paste the `access_token` from login to try authenticated calls. The raw spec is at `/openapi.yaml` (source: [api/openapi.yaml](api/openapi.yaml)). Frontends can generate typed clients from it, for example `npx openapi-typescript http://localhost:8080/openapi.yaml -o api.d.ts`.
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): putting the API on a server with HTTPS, backups and updates
 - [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md): what was checked, what was fixed, what is still recommended
 

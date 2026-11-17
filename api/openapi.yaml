@@ -1,0 +1,2797 @@
+openapi: 3.0.3
+info:
+  title: Digital Healthcare Platform API
+  version: 1.0.0
+  description: |
+    Backend for doctors, patients, hospitals, pharmacies and delivery riders in Bangladesh.
+
+    **Conventions**
+    - Money is in **paisa** (BDT 1 = 100 paisa). One consultation token is worth 10000 paisa.
+    - Dates are `YYYY-MM-DD` and times are `HH:MM`, both in Bangladesh time. `weekday`: 0 = Sunday … 6 = Saturday.
+    - Phone numbers are Bangladeshi mobiles: `01XXXXXXXXX`, `8801XXXXXXXXX` or `+8801XXXXXXXXX`.
+    - Authenticated endpoints need `Authorization: Bearer <access_token>` from login or register.
+    - Errors are JSON: `{"error": "message"}`. Status codes: 400 malformed request, 401 not logged in,
+      403 wrong role or not allowed, 404 not found (also for other people's resources), 409 conflict with
+      the current state, 413 file too large, 415 file type not allowed, 422 validation failed,
+      429 too many requests.
+    - Lists accept `limit` (default 20, max 100) and `offset`.
+servers:
+  - url: /
+tags:
+  - name: System
+  - name: Auth
+  - name: Notifications
+  - name: Doctors
+  - name: Doctor (self)
+  - name: Appointments
+  - name: Wallet
+  - name: Payments
+  - name: Consultations
+  - name: Concerns
+  - name: Prescriptions
+  - name: Hospitals
+  - name: Hospital management
+  - name: Pharmacies
+  - name: Medicine orders
+  - name: Pharmacy management
+  - name: Riders
+  - name: Admin
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ------------------------------------------------------------------ system
+  /healthz:
+    get:
+      tags: [System]
+      summary: Liveness check
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Status" }
+  /readyz:
+    get:
+      tags: [System]
+      summary: Readiness check (database reachable)
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Status" }
+        "503": { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ auth
+  /api/v1/auth/otp:
+    post:
+      tags: [Auth]
+      summary: Send a one-time code by SMS
+      description: |
+        For `register`, an already registered number gets 409. For `reset_password`, an unknown number
+        gets the same 202 but no SMS. One code per minute and five per hour per number. Codes expire in 5 minutes.
+        In development the code is printed in the server log.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, purpose]
+              properties:
+                phone: { type: string, example: "01712345678" }
+                purpose: { type: string, enum: [register, reset_password] }
+      responses:
+        "202": { $ref: "#/components/responses/Message" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register (patient, doctor, hospital_admin, pharmacy or rider)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterInput" }
+      responses:
+        "201": { description: Registered and logged in, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResult" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with phone and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password]
+              properties:
+                phone: { type: string }
+                password: { type: string }
+      responses:
+        "200": { description: Logged in, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResult" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/auth/password/reset:
+    post:
+      tags: [Auth]
+      summary: Set a new password with a reset_password code
+      description: Signs the user out of every device.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp_code, new_password]
+              properties:
+                phone: { type: string }
+                otp_code: { type: string, example: "123456" }
+                new_password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        "200": { $ref: "#/components/responses/Message" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      responses:
+        "200": { description: The user, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ notifications
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: My notifications, newest first
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean }, description: Only unread ones }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+                  unread_count: { type: integer }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all as read
+      responses:
+        "204": { description: Done }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/notifications/{notificationID}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark one as read
+      parameters:
+        - { name: notificationID, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: Done }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ doctors (public)
+  /api/v1/doctors:
+    get:
+      tags: [Doctors]
+      summary: Search verified doctors
+      security: []
+      parameters:
+        - { name: name, in: query, schema: { type: string } }
+        - { name: specialization, in: query, schema: { type: string } }
+        - { name: location, in: query, schema: { type: string }, description: Chamber district or area }
+        - { name: online, in: query, schema: { type: boolean }, description: Only doctors taking online consultations }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctors: { type: array, items: { $ref: "#/components/schemas/DoctorSummary" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctors/{doctorID}:
+    get:
+      tags: [Doctors]
+      summary: Doctor profile with bookable chambers and schedules
+      security: []
+      parameters: [{ $ref: "#/components/parameters/doctorID" }]
+      responses:
+        "200": { description: Doctor, content: { application/json: { schema: { $ref: "#/components/schemas/PublicDoctor" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/schedules/{scheduleID}/availability:
+    get:
+      tags: [Appointments]
+      summary: Serials booked and remaining for a session on a date
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/scheduleID"
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Availability, content: { application/json: { schema: { $ref: "#/components/schemas/Availability" } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ doctor (self)
+  /api/v1/doctor/profile:
+    get:
+      tags: [Doctor (self)]
+      summary: My doctor profile
+      responses:
+        "200": { $ref: "#/components/responses/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Doctor (self)]
+      summary: Update my professional details
+      description: A rejected doctor who resubmits goes back to pending. A verified doctor cannot change the BMDC number.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ProfileInput" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/consultation-settings:
+    put:
+      tags: [Doctor (self)]
+      summary: Turn online consultations on/off and set the fee in tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, fee_tokens]
+              properties:
+                enabled: { type: boolean }
+                fee_tokens: { type: integer, minimum: 1, maximum: 20 }
+      responses:
+        "200": { $ref: "#/components/responses/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/chambers:
+    get:
+      tags: [Doctor (self)]
+      summary: My chambers (own and hospital ones) with schedules
+      responses:
+        "200":
+          description: Chambers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Doctor (self)]
+      summary: Add a private chamber
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChamberInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Chamber" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/chambers/{chamberID}:
+    put:
+      tags: [Doctor (self)]
+      summary: Update a private chamber (hospital chambers are managed by the hospital)
+      parameters: [{ $ref: "#/components/parameters/chamberID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChamberInput" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Chamber" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/chambers/{chamberID}/schedules:
+    post:
+      tags: [Doctor (self)]
+      summary: Add a weekly session to a private chamber
+      description: Sessions of the same doctor may not overlap, across all chambers and hospitals (409).
+      parameters: [{ $ref: "#/components/parameters/chamberID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ScheduleInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Schedule" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/schedules/{scheduleID}:
+    delete:
+      tags: [Doctor (self)]
+      summary: Remove a session (existing bookings stay valid)
+      parameters: [{ $ref: "#/components/parameters/scheduleID" }]
+      responses:
+        "204": { description: Removed }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/appointments:
+    get:
+      tags: [Doctor (self)]
+      summary: My patient list for a day
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date }, description: Defaults to today }
+      responses:
+        "200":
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date: { type: string, format: date }
+                  appointments: { type: array, items: { $ref: "#/components/schemas/Appointment" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/appointments/{appointmentID}/complete:
+    post:
+      tags: [Doctor (self)]
+      summary: Mark a patient as seen
+      parameters: [{ $ref: "#/components/parameters/appointmentID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/appointments/{appointmentID}/no-show:
+    post:
+      tags: [Doctor (self)]
+      summary: Mark a patient as no-show
+      parameters: [{ $ref: "#/components/parameters/appointmentID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/tickets/{code}:
+    get:
+      tags: [Doctor (self)]
+      summary: Look up a ticket shown at the chamber
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, example: K7Q2M4XA } }
+      responses:
+        "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/earnings:
+    get:
+      tags: [Doctor (self)]
+      summary: Consultation earnings and history
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200": { description: Earnings, content: { application/json: { schema: { $ref: "#/components/schemas/Earnings" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/withdrawals:
+    get:
+      tags: [Doctor (self)]
+      summary: My withdrawal requests
+      parameters:
+        - $ref: "#/components/parameters/withdrawalStatus"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200": { $ref: "#/components/responses/WithdrawalList" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Doctor (self)]
+      summary: Request a withdrawal (min BDT 500, one pending at a time)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_paisa, method, account_details]
+              properties:
+                amount_paisa: { type: integer, format: int64, minimum: 50000 }
+                method: { type: string, enum: [bkash, nagad, bank] }
+                account_details: { type: string, description: "Mobile number for bkash/nagad; bank name, branch, account name and number for bank" }
+      responses:
+        "201": { description: Requested, content: { application/json: { schema: { $ref: "#/components/schemas/Withdrawal" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/offers:
+    get:
+      tags: [Concerns]
+      summary: My offers on public concerns
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Offers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offers: { type: array, items: { $ref: "#/components/schemas/Offer" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/hospitals:
+    get:
+      tags: [Doctor (self)]
+      summary: Hospital invitations and hospitals I work at
+      responses:
+        "200":
+          description: Hospitals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hospitals: { type: array, items: { $ref: "#/components/schemas/Invitation" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/hospitals/{hospitalID}/accept:
+    post:
+      tags: [Doctor (self)]
+      summary: Accept a hospital's invitation
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "204": { description: Joined }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/hospitals/{hospitalID}/decline:
+    post:
+      tags: [Doctor (self)]
+      summary: Decline a hospital's invitation
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "204": { description: Declined }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/hospitals/{hospitalID}/leave:
+    post:
+      tags: [Doctor (self)]
+      summary: Leave a hospital (booking stops; existing bookings remain for the hospital to handle)
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "200": { $ref: "#/components/responses/AssociationEnded" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ appointments (patient)
+  /api/v1/appointments:
+    get:
+      tags: [Appointments]
+      summary: My appointments, newest first
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appointments: { type: array, items: { $ref: "#/components/schemas/Appointment" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Appointments]
+      summary: Book the next serial in a session
+      description: |
+        Up to 30 days ahead, one booking per session, at most 5 upcoming appointments per patient.
+        409 when the session is full.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schedule_id, date]
+              properties:
+                schedule_id: { type: string, format: uuid }
+                date: { type: string, format: date }
+      responses:
+        "201": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/appointments/{appointmentID}/cancel:
+    post:
+      tags: [Appointments]
+      summary: Cancel an upcoming appointment
+      parameters: [{ $ref: "#/components/parameters/appointmentID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ wallet & payments
+  /api/v1/token-packages:
+    get:
+      tags: [Wallet]
+      summary: Token packages for sale
+      security: []
+      responses:
+        "200":
+          description: Packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packages: { type: array, items: { $ref: "#/components/schemas/TokenPackage" } }
+                  token_value_paisa: { type: integer, format: int64, example: 10000 }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/wallet:
+    get:
+      tags: [Wallet]
+      summary: My tokens (spendable lots, earliest expiry first)
+      responses:
+        "200": { description: Wallet, content: { application/json: { schema: { $ref: "#/components/schemas/Wallet" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/wallet/history:
+    get:
+      tags: [Wallet]
+      summary: Token purchases, holds, refunds and expiries
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries: { type: array, items: { $ref: "#/components/schemas/LedgerEntry" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/wallet/purchases:
+    post:
+      tags: [Wallet]
+      summary: Start buying a token package
+      description: Open the returned `checkout_url` to pay. Tokens arrive once the payment provider confirms.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [package_id]
+              properties:
+                package_id: { type: string, format: uuid }
+      responses:
+        "201": { $ref: "#/components/responses/Payment" }
+        "502": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/wallet/purchases/{paymentID}:
+    get:
+      tags: [Wallet]
+      summary: Payment status (poll after returning from checkout)
+      parameters: [{ $ref: "#/components/parameters/paymentID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Payment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/dev/payments/{paymentID}/succeed:
+    post:
+      tags: [Payments]
+      summary: "Development only: simulate a successful payment"
+      description: Exists only outside production while SSLCommerz is not configured.
+      parameters: [{ $ref: "#/components/parameters/paymentID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Payment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/payments/sslcommerz/ipn:
+    post:
+      tags: [Payments]
+      summary: SSLCommerz server-to-server notification (called by SSLCommerz, not by apps)
+      security: []
+      requestBody: { $ref: "#/components/requestBodies/SSLCommerzForm" }
+      responses:
+        "200": { description: Received }
+  /api/v1/payments/sslcommerz/success:
+    post:
+      tags: [Payments]
+      summary: SSLCommerz browser redirect after paying
+      description: "Redirects to `FRONTEND_URL/payments/result?status=success|pending&payment_id=…`."
+      security: []
+      requestBody: { $ref: "#/components/requestBodies/SSLCommerzForm" }
+      responses:
+        "303": { description: Redirect to the frontend }
+  /api/v1/payments/sslcommerz/fail:
+    post:
+      tags: [Payments]
+      summary: SSLCommerz browser redirect after a failed payment
+      security: []
+      requestBody: { $ref: "#/components/requestBodies/SSLCommerzForm" }
+      responses:
+        "303": { description: "Redirect to the frontend with status=failed" }
+  /api/v1/payments/sslcommerz/cancel:
+    post:
+      tags: [Payments]
+      summary: SSLCommerz browser redirect after cancelling
+      security: []
+      requestBody: { $ref: "#/components/requestBodies/SSLCommerzForm" }
+      responses:
+        "303": { description: "Redirect to the frontend with status=cancelled" }
+
+  # ------------------------------------------------------------------ consultations
+  /api/v1/consultations:
+    get:
+      tags: [Consultations]
+      summary: My consultations (as patient or doctor)
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ConsultationStatus" } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Consultations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consultations: { type: array, items: { $ref: "#/components/schemas/Consultation" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Consultations]
+      summary: "Patient: request a private consultation"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doctor_id, subject, description]
+              properties:
+                doctor_id: { type: string, format: uuid }
+                subject: { type: string, minLength: 5, maxLength: 150 }
+                description: { type: string, minLength: 20, maxLength: 5000 }
+      responses:
+        "201": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}:
+    get:
+      tags: [Consultations]
+      summary: One consultation (patient or doctor only)
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/accept:
+    post:
+      tags: [Consultations]
+      summary: "Doctor: accept a request"
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/reject:
+    post:
+      tags: [Consultations]
+      summary: "Doctor: reject a request"
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      requestBody: { $ref: "#/components/requestBodies/Reason" }
+      responses:
+        "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/confirm:
+    post:
+      tags: [Consultations]
+      summary: "Patient: pay with tokens; the consultation becomes active"
+      description: 409 when the patient does not have enough tokens.
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/complete:
+    post:
+      tags: [Consultations]
+      summary: "Doctor: complete and receive payment"
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/cancel:
+    post:
+      tags: [Consultations]
+      summary: Cancel (patient before it starts; doctor while active, with full refund)
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/messages:
+    get:
+      tags: [Consultations]
+      summary: Messages after a given id, oldest first
+      parameters:
+        - $ref: "#/components/parameters/consultationID"
+        - { name: after, in: query, schema: { type: integer, format: int64 }, description: Last message id you have }
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages: { type: array, items: { $ref: "#/components/schemas/ChatMessage" } }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Consultations]
+      summary: Send a message (active consultations only)
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        "201": { description: Sent, content: { application/json: { schema: { $ref: "#/components/schemas/ChatMessage" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/attachments:
+    post:
+      tags: [Consultations]
+      summary: Share a report (PDF/JPEG/PNG, max 10 MB) as a message
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201": { description: Shared, content: { application/json: { schema: { $ref: "#/components/schemas/ChatMessage" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/ws:
+    get:
+      tags: [Consultations]
+      summary: Live chat over WebSocket
+      description: |
+        Connect with `wss://…/consultations/{id}/ws?access_token=<jwt>&after=<last message id>`
+        (browsers cannot send headers on WebSockets). The server sends the backlog after `after`, then pushes
+        `{"type":"message","message":{…ChatMessage}}` as messages arrive. Send `{"body":"…"}` to post a message.
+        Rejected messages produce `{"type":"error","error":"…"}`.
+      parameters:
+        - $ref: "#/components/parameters/consultationID"
+        - { name: access_token, in: query, required: true, schema: { type: string } }
+        - { name: after, in: query, schema: { type: integer, format: int64 } }
+      responses:
+        "101": { description: Switching to WebSocket }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/attachments/{attachmentID}:
+    get:
+      tags: [Consultations]
+      summary: Download a shared file (consultation participants only)
+      parameters:
+        - { name: attachmentID, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { $ref: "#/components/responses/File" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ concerns
+  /api/v1/concerns:
+    get:
+      tags: [Concerns]
+      summary: "Patient: my concerns. Doctor: the open feed (no patient identity)"
+      parameters:
+        - { name: specialization, in: query, schema: { type: string }, description: Doctor feed filter }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Concerns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  concerns: { type: array, items: { $ref: "#/components/schemas/Concern" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Concerns]
+      summary: "Patient: post a medical concern (max 3 open)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description]
+              properties:
+                title: { type: string, minLength: 5, maxLength: 150 }
+                description: { type: string, minLength: 20, maxLength: 5000 }
+                specialization: { type: string, maxLength: 100 }
+      responses:
+        "201": { $ref: "#/components/responses/Concern" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/concerns/{concernID}:
+    get:
+      tags: [Concerns]
+      summary: "Patient: with all offers. Doctor: with my offer"
+      parameters: [{ $ref: "#/components/parameters/concernID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Concern" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/concerns/{concernID}/close:
+    post:
+      tags: [Concerns]
+      summary: "Patient: close (pending offers are declined)"
+      parameters: [{ $ref: "#/components/parameters/concernID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Concern" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/concerns/{concernID}/offers:
+    post:
+      tags: [Concerns]
+      summary: "Doctor: offer to help (at my current fee)"
+      parameters: [{ $ref: "#/components/parameters/concernID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        "201": { $ref: "#/components/responses/Offer" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/offers/{offerID}/withdraw:
+    post:
+      tags: [Concerns]
+      summary: "Doctor: withdraw a pending offer"
+      parameters: [{ $ref: "#/components/parameters/offerID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Offer" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/offers/{offerID}/accept:
+    post:
+      tags: [Concerns]
+      summary: "Patient: accept an offer; pays with tokens and starts an active consultation"
+      parameters: [{ $ref: "#/components/parameters/offerID" }]
+      responses:
+        "201": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ prescriptions
+  /api/v1/prescriptions:
+    get:
+      tags: [Prescriptions]
+      summary: "Patient: issued to me. Doctor: issued by me"
+      parameters:
+        - { name: consultation_id, in: query, schema: { type: string, format: uuid } }
+        - { name: appointment_id, in: query, schema: { type: string, format: uuid } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Prescriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prescriptions: { type: array, items: { $ref: "#/components/schemas/Prescription" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Prescriptions]
+      summary: "Doctor: issue a prescription"
+      description: For a consultation (active or completed) or an appointment (today or earlier, not cancelled). Give exactly one.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PrescriptionInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Prescription" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/prescriptions/{prescriptionID}:
+    get:
+      tags: [Prescriptions]
+      summary: One prescription (its doctor or patient)
+      parameters: [{ $ref: "#/components/parameters/prescriptionID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Prescription" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/prescriptions/{prescriptionID}/print:
+    get:
+      tags: [Prescriptions]
+      summary: Printable HTML page with a QR code (use the browser's "Save as PDF")
+      parameters: [{ $ref: "#/components/parameters/prescriptionID" }]
+      responses:
+        "200": { description: HTML page, content: { text/html: { schema: { type: string } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/prescriptions/{prescriptionID}/revoke:
+    post:
+      tags: [Prescriptions]
+      summary: "Doctor: revoke (prescriptions are never edited)"
+      parameters: [{ $ref: "#/components/parameters/prescriptionID" }]
+      requestBody: { $ref: "#/components/requestBodies/Reason" }
+      responses:
+        "200": { $ref: "#/components/responses/Prescription" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/prescriptions/verify/{code}:
+    get:
+      tags: [Prescriptions]
+      summary: Check a prescription by its code (for pharmacies; the patient's name is masked)
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, example: MFP3B5E7R2 } }
+      responses:
+        "200": { description: Verification, content: { application/json: { schema: { $ref: "#/components/schemas/PrescriptionVerification" } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ hospitals (public)
+  /api/v1/hospitals:
+    get:
+      tags: [Hospitals]
+      summary: Search verified hospitals
+      security: []
+      parameters:
+        - { name: name, in: query, schema: { type: string } }
+        - { name: location, in: query, schema: { type: string }, description: District or area }
+        - { name: department, in: query, schema: { type: string } }
+        - { name: facility, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Hospitals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hospitals: { type: array, items: { $ref: "#/components/schemas/Hospital" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Hospital management]
+      summary: "Hospital admin: register a hospital (hidden until verified)"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HospitalInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Hospital" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/hospitals/{hospitalID}:
+    get:
+      tags: [Hospitals]
+      summary: Hospital page with photos, doctors, chambers and schedules
+      security: []
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "200": { description: Hospital, content: { application/json: { schema: { $ref: "#/components/schemas/PublicHospital" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/hospitals/{hospitalID}/photos/{photoID}:
+    get:
+      tags: [Hospitals]
+      summary: Hospital photo
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/photoID"
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ hospital management
+  /api/v1/manage/hospitals:
+    get:
+      tags: [Hospital management]
+      summary: Hospitals I manage
+      responses:
+        "200":
+          description: Hospitals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hospitals: { type: array, items: { $ref: "#/components/schemas/Hospital" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}:
+    get:
+      tags: [Hospital management]
+      summary: My hospital
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Hospital" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Hospital management]
+      summary: Edit the hospital profile
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HospitalInput" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Hospital" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/photos:
+    post:
+      tags: [Hospital management]
+      summary: Upload a photo (JPEG/PNG/WebP, max 5 MB, max 10; the first becomes the logo)
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201": { description: Uploaded, content: { application/json: { schema: { $ref: "#/components/schemas/Photo" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/photos/{photoID}:
+    delete:
+      tags: [Hospital management]
+      summary: Delete a photo
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/photoID"
+      responses:
+        "204": { description: Deleted }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/photos/{photoID}/logo:
+    post:
+      tags: [Hospital management]
+      summary: Use a photo as the logo
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/photoID"
+      responses:
+        "204": { description: Set }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/doctors:
+    get:
+      tags: [Hospital management]
+      summary: Doctors (any status) with their chambers here
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "200":
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctors: { type: array, items: { $ref: "#/components/schemas/StaffDoctor" } }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Hospital management]
+      summary: Invite a verified doctor by BMDC number (hospital must be verified)
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bmdc_reg_no]
+              properties:
+                bmdc_reg_no: { type: string, example: A-12345 }
+                department: { type: string, maxLength: 60 }
+                designation: { type: string, maxLength: 80, example: Consultant }
+      responses:
+        "201": { $ref: "#/components/responses/StaffDoctor" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/doctors/{doctorID}:
+    put:
+      tags: [Hospital management]
+      summary: Set department and designation
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/doctorID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                department: { type: string, maxLength: 60 }
+                designation: { type: string, maxLength: 80 }
+      responses:
+        "200": { $ref: "#/components/responses/StaffDoctor" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Hospital management]
+      summary: Remove a doctor or withdraw an invitation
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/doctorID"
+      responses:
+        "200": { $ref: "#/components/responses/AssociationEnded" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/doctors/{doctorID}/chambers:
+    post:
+      tags: [Hospital management]
+      summary: Open a chamber for a doctor on staff
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/doctorID"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HospitalChamberInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Chamber" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/chambers:
+    get:
+      tags: [Hospital management]
+      summary: Hospital chambers
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - { name: doctor_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Chambers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/chambers/{chamberID}:
+    put:
+      tags: [Hospital management]
+      summary: Update fee, room or booking switch
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/chamberID"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HospitalChamberInput" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Chamber" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/chambers/{chamberID}/schedules:
+    post:
+      tags: [Hospital management]
+      summary: Add a weekly session (no overlap with the doctor's other sessions)
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/chamberID"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ScheduleInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Schedule" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/schedules/{scheduleID}:
+    delete:
+      tags: [Hospital management]
+      summary: Remove a session
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/scheduleID"
+      responses:
+        "204": { description: Removed }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/appointments:
+    get:
+      tags: [Hospital management]
+      summary: Bookings for a day
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - { name: date, in: query, schema: { type: string, format: date }, description: Defaults to today }
+        - { name: doctor_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date: { type: string, format: date }
+                  appointments: { type: array, items: { $ref: "#/components/schemas/Appointment" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/appointments/{appointmentID}/cancel:
+    post:
+      tags: [Hospital management]
+      summary: Cancel a booking (the patient gets an SMS)
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/appointmentID"
+      requestBody: { $ref: "#/components/requestBodies/Reason" }
+      responses:
+        "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/appointments/{appointmentID}/reschedule:
+    post:
+      tags: [Hospital management]
+      summary: Move a booking to another session of the same doctor here (new serial and ticket)
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/appointmentID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schedule_id, date]
+              properties:
+                schedule_id: { type: string, format: uuid }
+                date: { type: string, format: date }
+      responses:
+        "201": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/members:
+    get:
+      tags: [Hospital management]
+      summary: Accounts that manage the hospital
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members: { type: array, items: { $ref: "#/components/schemas/Member" } }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Hospital management]
+      summary: "Owner: add a hospital_admin account as staff"
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
+      responses:
+        "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/Member" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/members/{userID}:
+    delete:
+      tags: [Hospital management]
+      summary: "Owner: remove a staff member"
+      parameters:
+        - $ref: "#/components/parameters/hospitalID"
+        - $ref: "#/components/parameters/userID"
+      responses:
+        "204": { description: Removed }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ pharmacies (public)
+  /api/v1/pharmacies:
+    get:
+      tags: [Pharmacies]
+      summary: Verified pharmacies near a point, nearest first
+      security: []
+      parameters:
+        - { name: latitude, in: query, required: true, schema: { type: number } }
+        - { name: longitude, in: query, required: true, schema: { type: number } }
+        - { name: radius_km, in: query, schema: { type: number, default: 5, maximum: 20 } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Pharmacies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pharmacies: { type: array, items: { $ref: "#/components/schemas/Pharmacy" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Pharmacy management]
+      summary: "Pharmacy account: register a pharmacy (verified by an admin)"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PharmacyInput" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Pharmacy" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/pharmacies/{pharmacyID}:
+    get:
+      tags: [Pharmacies]
+      summary: Pharmacy with rating and latest reviews
+      security: []
+      parameters: [{ $ref: "#/components/parameters/pharmacyID" }]
+      responses:
+        "200":
+          description: Pharmacy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pharmacy: { $ref: "#/components/schemas/Pharmacy" }
+                  reviews: { type: array, items: { $ref: "#/components/schemas/Review" } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ medicine orders (patient)
+  /api/v1/medicine-requests:
+    get:
+      tags: [Medicine orders]
+      summary: My medicine requests
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests: { type: array, items: { $ref: "#/components/schemas/MedicineRequest" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Medicine orders]
+      summary: Ask nearby pharmacies for medicines
+      description: |
+        With a platform prescription send JSON with `prescription_id` (items are filled in from it).
+        With a paper prescription send multipart/form-data: a `data` field holding the same JSON (without
+        `prescription_id`) **followed by** a `file` field (PDF/JPEG/PNG, max 10 MB).
+        409 if no verified pharmacy serves the location, or the patient already has 3 open requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MedicineRequestInput" }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [data, file]
+              properties:
+                data: { $ref: "#/components/schemas/MedicineRequestInput" }
+                file: { type: string, format: binary }
+            encoding:
+              data: { contentType: application/json }
+      responses:
+        "201": { $ref: "#/components/responses/MedicineRequest" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-requests/{requestID}:
+    get:
+      tags: [Medicine orders]
+      summary: A request with all quotes, cheapest first
+      parameters: [{ $ref: "#/components/parameters/requestID" }]
+      responses:
+        "200": { $ref: "#/components/responses/MedicineRequest" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-requests/{requestID}/cancel:
+    post:
+      tags: [Medicine orders]
+      summary: Cancel an open request
+      parameters: [{ $ref: "#/components/parameters/requestID" }]
+      responses:
+        "200": { $ref: "#/components/responses/MedicineRequest" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-requests/{requestID}/attachment:
+    get:
+      tags: [Medicine orders]
+      summary: My uploaded prescription
+      parameters: [{ $ref: "#/components/parameters/requestID" }]
+      responses:
+        "200": { $ref: "#/components/responses/File" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/quotes/{quoteID}/accept:
+    post:
+      tags: [Medicine orders]
+      summary: Choose a pharmacy's quote; creates the order with my delivery code
+      parameters: [{ $ref: "#/components/parameters/quoteID" }]
+      responses:
+        "201": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-orders:
+    get:
+      tags: [Medicine orders]
+      summary: My medicine orders
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200": { $ref: "#/components/responses/OrderList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-orders/{orderID}:
+    get:
+      tags: [Medicine orders]
+      summary: An order with timeline and live rider location
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-orders/{orderID}/cancel:
+    post:
+      tags: [Medicine orders]
+      summary: Cancel before the order is ready
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, maxLength: 300 }
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/medicine-orders/{orderID}/review:
+    post:
+      tags: [Medicine orders]
+      summary: Rate the pharmacy once, after delivery
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: string, maxLength: 1000 }
+      responses:
+        "204": { description: Saved }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ pharmacy management
+  /api/v1/manage/pharmacies:
+    get:
+      tags: [Pharmacy management]
+      summary: Pharmacies I own
+      responses:
+        "200":
+          description: Pharmacies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pharmacies: { type: array, items: { $ref: "#/components/schemas/Pharmacy" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}:
+    get:
+      tags: [Pharmacy management]
+      summary: My pharmacy
+      parameters: [{ $ref: "#/components/parameters/pharmacyID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Pharmacy" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Pharmacy management]
+      summary: Edit (including accepting_orders)
+      parameters: [{ $ref: "#/components/parameters/pharmacyID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PharmacyInput" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Pharmacy" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/requests:
+    get:
+      tags: [Pharmacy management]
+      summary: Open requests I can serve, nearest first (distance only, no patient identity)
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests: { type: array, items: { $ref: "#/components/schemas/MedicineRequest" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/requests/{requestID}:
+    get:
+      tags: [Pharmacy management]
+      summary: One request, with the prescription and my quote
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/requestID"
+      responses:
+        "200": { $ref: "#/components/responses/MedicineRequest" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/requests/{requestID}/attachment:
+    get:
+      tags: [Pharmacy management]
+      summary: The uploaded prescription
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/requestID"
+      responses:
+        "200": { $ref: "#/components/responses/File" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/requests/{requestID}/quote:
+    post:
+      tags: [Pharmacy management]
+      summary: Send or revise my quote
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/requestID"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/QuoteInput" } } }
+      responses:
+        "201": { description: Quote, content: { application/json: { schema: { $ref: "#/components/schemas/Quote" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/quotes/{quoteID}/withdraw:
+    post:
+      tags: [Pharmacy management]
+      summary: Withdraw a pending quote
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/quoteID"
+      responses:
+        "200": { description: Quote, content: { application/json: { schema: { $ref: "#/components/schemas/Quote" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders:
+    get:
+      tags: [Pharmacy management]
+      summary: Orders (status=active for unfinished ones)
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - { name: status, in: query, schema: { type: string, enum: [active, confirmed, preparing, ready, rider_assigned, out_for_delivery, delivered, cancelled] } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200": { $ref: "#/components/responses/OrderList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}:
+    get:
+      tags: [Pharmacy management]
+      summary: One order
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/orderID"
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}/preparing:
+    post:
+      tags: [Pharmacy management]
+      summary: Start preparing
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/orderID"
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}/ready:
+    post:
+      tags: [Pharmacy management]
+      summary: Mark ready (pickup orders tell the patient to come)
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/orderID"
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}/dispatch:
+    post:
+      tags: [Pharmacy management]
+      summary: Send out with own staff, or offer to platform riders
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/orderID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode: { type: string, enum: [pharmacy, rider] }
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}/complete:
+    post:
+      tags: [Pharmacy management]
+      summary: Hand over a pickup order or own delivery (needs the patient's code)
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/orderID"
+      requestBody: { $ref: "#/components/requestBodies/DeliveryCode" }
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}/cancel:
+    post:
+      tags: [Pharmacy management]
+      summary: Cancel before it leaves the shop (the patient gets an SMS)
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - $ref: "#/components/parameters/orderID"
+      requestBody: { $ref: "#/components/requestBodies/Reason" }
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/pharmacies/{pharmacyID}/statement:
+    get:
+      tags: [Pharmacy management]
+      summary: Delivered orders and commission due between two dates
+      parameters:
+        - $ref: "#/components/parameters/pharmacyID"
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Statement, content: { application/json: { schema: { $ref: "#/components/schemas/Statement" } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ riders
+  /api/v1/rider/profile:
+    get:
+      tags: [Riders]
+      summary: My rider profile
+      responses:
+        "200": { $ref: "#/components/responses/Rider" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Riders]
+      summary: Create or update my profile (until verified)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nid_number, vehicle]
+              properties:
+                nid_number: { type: string, description: "10, 13 or 17 digits" }
+                vehicle: { type: string, enum: [bicycle, motorcycle, car, on_foot] }
+      responses:
+        "200": { $ref: "#/components/responses/Rider" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/availability:
+    put:
+      tags: [Riders]
+      summary: Go on or off duty (on duty needs a location)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [available]
+              properties:
+                available: { type: boolean }
+                latitude: { type: number }
+                longitude: { type: number }
+      responses:
+        "200": { $ref: "#/components/responses/Rider" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/location:
+    put:
+      tags: [Riders]
+      summary: Report my position (every minute or so while on duty)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [latitude, longitude]
+              properties:
+                latitude: { type: number }
+                longitude: { type: number }
+      responses:
+        "204": { description: Saved }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/jobs:
+    get:
+      tags: [Riders]
+      summary: Deliveries waiting at pharmacies within 5 km
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs: { type: array, items: { $ref: "#/components/schemas/Job" } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/jobs/{orderID}/accept:
+    post:
+      tags: [Riders]
+      summary: Take a job (one at a time)
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/orders:
+    get:
+      tags: [Riders]
+      summary: My deliveries, current first
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200": { $ref: "#/components/responses/OrderList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/orders/{orderID}:
+    get:
+      tags: [Riders]
+      summary: One of my deliveries
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/orders/{orderID}/release:
+    post:
+      tags: [Riders]
+      summary: Give a job back before pickup
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      responses:
+        "204": { description: Released }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/orders/{orderID}/picked-up:
+    post:
+      tags: [Riders]
+      summary: Collected from the pharmacy
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/orders/{orderID}/delivered:
+    post:
+      tags: [Riders]
+      summary: Handed over (needs the patient's code; 5 wrong codes lock the order)
+      parameters: [{ $ref: "#/components/parameters/orderID" }]
+      requestBody: { $ref: "#/components/requestBodies/DeliveryCode" }
+      responses:
+        "200": { $ref: "#/components/responses/Order" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/rider/earnings:
+    get:
+      tags: [Riders]
+      summary: Completed deliveries and delivery charges earned
+      responses:
+        "200":
+          description: Earnings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries: { type: integer }
+                  earning_paisa: { type: integer, format: int64 }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ admin
+  /api/v1/admin/doctors:
+    get:
+      tags: [Admin]
+      summary: Doctors by verification status
+      parameters:
+        - $ref: "#/components/parameters/verificationStatus"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctors: { type: array, items: { $ref: "#/components/schemas/AdminDoctor" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/doctors/{doctorID}/verification:
+    post:
+      tags: [Admin]
+      summary: Approve or reject a doctor
+      parameters: [{ $ref: "#/components/parameters/doctorID" }]
+      requestBody: { $ref: "#/components/requestBodies/Verify" }
+      responses:
+        "200": { $ref: "#/components/responses/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/doctors/{doctorID}/commission:
+    put:
+      tags: [Admin]
+      summary: Platform share of this doctor's consultation fees
+      parameters: [{ $ref: "#/components/parameters/doctorID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commission_bps]
+              properties:
+                commission_bps: { type: integer, minimum: 0, maximum: 10000, description: "Basis points: 5000 = 50%" }
+      responses:
+        "200": { $ref: "#/components/responses/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/hospitals:
+    get:
+      tags: [Admin]
+      summary: Hospitals by verification status
+      parameters:
+        - $ref: "#/components/parameters/verificationStatus"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Hospitals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hospitals: { type: array, items: { $ref: "#/components/schemas/Hospital" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/hospitals/{hospitalID}/verification:
+    post:
+      tags: [Admin]
+      summary: Approve or reject a hospital
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      requestBody: { $ref: "#/components/requestBodies/Verify" }
+      responses:
+        "200": { $ref: "#/components/responses/Hospital" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/pharmacies:
+    get:
+      tags: [Admin]
+      summary: Pharmacies by verification status
+      parameters:
+        - $ref: "#/components/parameters/verificationStatus"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Pharmacies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pharmacies: { type: array, items: { $ref: "#/components/schemas/Pharmacy" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/pharmacies/{pharmacyID}/verification:
+    post:
+      tags: [Admin]
+      summary: Approve or reject a pharmacy
+      parameters: [{ $ref: "#/components/parameters/pharmacyID" }]
+      requestBody: { $ref: "#/components/requestBodies/Verify" }
+      responses:
+        "200": { $ref: "#/components/responses/Pharmacy" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/riders:
+    get:
+      tags: [Admin]
+      summary: Riders by verification status
+      parameters:
+        - $ref: "#/components/parameters/verificationStatus"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Riders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  riders: { type: array, items: { $ref: "#/components/schemas/Rider" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/riders/{userID}/verification:
+    post:
+      tags: [Admin]
+      summary: Approve or reject a rider
+      parameters: [{ $ref: "#/components/parameters/userID" }]
+      requestBody: { $ref: "#/components/requestBodies/Verify" }
+      responses:
+        "200": { $ref: "#/components/responses/Rider" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/users/{userID}/status:
+    post:
+      tags: [Admin]
+      summary: Suspend or reactivate an account (suspending signs the user out everywhere)
+      parameters: [{ $ref: "#/components/parameters/userID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, suspended] }
+      responses:
+        "200": { description: The user, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/withdrawals:
+    get:
+      tags: [Admin]
+      summary: Doctor withdrawal requests
+      parameters:
+        - $ref: "#/components/parameters/withdrawalStatus"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200": { $ref: "#/components/responses/WithdrawalList" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/withdrawals/{withdrawalID}/process:
+    post:
+      tags: [Admin]
+      summary: Mark paid (after sending the money) or reject (money returns to the doctor)
+      parameters:
+        - { name: withdrawalID, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [paid, rejected] }
+                payout_ref: { type: string, description: Required when paid (e.g. bKash transaction id) }
+                note: { type: string, description: Required when rejected }
+      responses:
+        "200": { description: Withdrawal, content: { application/json: { schema: { $ref: "#/components/schemas/Withdrawal" } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    limit: { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+    offset: { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+    verificationStatus: { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected] } }
+    withdrawalStatus: { name: status, in: query, schema: { type: string, enum: [requested, paid, rejected] } }
+    doctorID: { name: doctorID, in: path, required: true, schema: { type: string, format: uuid } }
+    chamberID: { name: chamberID, in: path, required: true, schema: { type: string, format: uuid } }
+    scheduleID: { name: scheduleID, in: path, required: true, schema: { type: string, format: uuid } }
+    appointmentID: { name: appointmentID, in: path, required: true, schema: { type: string, format: uuid } }
+    paymentID: { name: paymentID, in: path, required: true, schema: { type: string, format: uuid } }
+    consultationID: { name: consultationID, in: path, required: true, schema: { type: string, format: uuid } }
+    concernID: { name: concernID, in: path, required: true, schema: { type: string, format: uuid } }
+    offerID: { name: offerID, in: path, required: true, schema: { type: string, format: uuid } }
+    prescriptionID: { name: prescriptionID, in: path, required: true, schema: { type: string, format: uuid } }
+    hospitalID: { name: hospitalID, in: path, required: true, schema: { type: string, format: uuid } }
+    photoID: { name: photoID, in: path, required: true, schema: { type: string, format: uuid } }
+    userID: { name: userID, in: path, required: true, schema: { type: string, format: uuid } }
+    pharmacyID: { name: pharmacyID, in: path, required: true, schema: { type: string, format: uuid } }
+    requestID: { name: requestID, in: path, required: true, schema: { type: string, format: uuid } }
+    quoteID: { name: quoteID, in: path, required: true, schema: { type: string, format: uuid } }
+    orderID: { name: orderID, in: path, required: true, schema: { type: string, format: uuid } }
+
+  requestBodies:
+    Reason:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [reason]
+            properties:
+              reason: { type: string, minLength: 5 }
+    Verify:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status: { type: string, enum: [approved, rejected] }
+              note: { type: string, description: Required when rejecting }
+    DeliveryCode:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code: { type: string, example: "036717" }
+    SSLCommerzForm:
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            type: object
+            properties:
+              val_id: { type: string }
+              tran_id: { type: string }
+              status: { type: string }
+
+  responses:
+    Error:
+      description: Error (see the status codes in the API description)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Status:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status: { type: string }
+    Message:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+    File:
+      description: File content (PDF or image)
+      content:
+        application/octet-stream:
+          schema: { type: string, format: binary }
+    Profile: { description: Doctor profile, content: { application/json: { schema: { $ref: "#/components/schemas/DoctorProfile" } } } }
+    Chamber: { description: Chamber, content: { application/json: { schema: { $ref: "#/components/schemas/Chamber" } } } }
+    Schedule: { description: Schedule, content: { application/json: { schema: { $ref: "#/components/schemas/Schedule" } } } }
+    Appointment: { description: Appointment, content: { application/json: { schema: { $ref: "#/components/schemas/Appointment" } } } }
+    Payment: { description: Payment, content: { application/json: { schema: { $ref: "#/components/schemas/Payment" } } } }
+    Consultation: { description: Consultation, content: { application/json: { schema: { $ref: "#/components/schemas/Consultation" } } } }
+    Concern: { description: Concern, content: { application/json: { schema: { $ref: "#/components/schemas/Concern" } } } }
+    Offer: { description: Offer, content: { application/json: { schema: { $ref: "#/components/schemas/Offer" } } } }
+    Prescription: { description: Prescription, content: { application/json: { schema: { $ref: "#/components/schemas/Prescription" } } } }
+    Hospital: { description: Hospital, content: { application/json: { schema: { $ref: "#/components/schemas/Hospital" } } } }
+    StaffDoctor: { description: Doctor at the hospital, content: { application/json: { schema: { $ref: "#/components/schemas/StaffDoctor" } } } }
+    Pharmacy: { description: Pharmacy, content: { application/json: { schema: { $ref: "#/components/schemas/Pharmacy" } } } }
+    MedicineRequest: { description: Medicine request, content: { application/json: { schema: { $ref: "#/components/schemas/MedicineRequest" } } } }
+    Order: { description: Order, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+    Rider: { description: Rider, content: { application/json: { schema: { $ref: "#/components/schemas/Rider" } } } }
+    OrderList:
+      description: Orders
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              orders: { type: array, items: { $ref: "#/components/schemas/Order" } }
+              limit: { type: integer }
+              offset: { type: integer }
+    WithdrawalList:
+      description: Withdrawals
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              withdrawals: { type: array, items: { $ref: "#/components/schemas/Withdrawal" } }
+              limit: { type: integer }
+              offset: { type: integer }
+    AssociationEnded:
+      description: Association ended; booking is off for the doctor's chambers at this hospital
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status: { type: string, enum: [removed, left] }
+              upcoming_appointments: { type: integer, description: Bookings the hospital should cancel or reschedule }
+              upcoming_appointments_note: { type: string }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    # ---- auth
+    Role: { type: string, enum: [patient, doctor, hospital_admin, pharmacy, rider, admin] }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string }
+        email: { type: string, nullable: true }
+        role: { $ref: "#/components/schemas/Role" }
+        status: { type: string, enum: [active, suspended] }
+        created_at: { type: string, format: date-time }
+    RegisterInput:
+      type: object
+      required: [name, phone, password, otp_code]
+      properties:
+        name: { type: string, minLength: 2 }
+        phone: { type: string }
+        password: { type: string, minLength: 8, maxLength: 72 }
+        role: { type: string, enum: [patient, doctor, hospital_admin, pharmacy, rider], default: patient }
+        otp_code: { type: string, description: From POST /auth/otp with purpose register }
+    AuthResult:
+      type: object
+      properties:
+        access_token: { type: string }
+        expires_at: { type: string, format: date-time }
+        user: { $ref: "#/components/schemas/User" }
+    Notification:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { type: string, example: appointment_booked }
+        title: { type: string }
+        body: { type: string }
+        read_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    # ---- doctors
+    VerificationStatus: { type: string, enum: [pending, approved, rejected] }
+    DoctorProfile:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        name: { type: string }
+        bmdc_reg_no: { type: string, nullable: true }
+        specialization: { type: string, nullable: true }
+        degrees: { type: string, nullable: true }
+        experience_years: { type: integer, nullable: true }
+        bio: { type: string, nullable: true }
+        verification_status: { $ref: "#/components/schemas/VerificationStatus" }
+        verification_note: { type: string, nullable: true }
+        consultation_enabled: { type: boolean }
+        consultation_fee_tokens: { type: integer }
+        commission_bps: { type: integer, nullable: true, description: Only shown to the doctor and admins }
+    ProfileInput:
+      type: object
+      required: [bmdc_reg_no, specialization, degrees]
+      properties:
+        bmdc_reg_no: { type: string, example: A-12345 }
+        specialization: { type: string }
+        degrees: { type: string, example: "MBBS, FCPS (Medicine)" }
+        experience_years: { type: integer, minimum: 0, maximum: 70 }
+        bio: { type: string, maxLength: 2000 }
+    Schedule:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        chamber_id: { type: string, format: uuid }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        start_time: { type: string, example: "17:00" }
+        end_time: { type: string, example: "21:00" }
+        max_patients: { type: integer }
+    ScheduleInput:
+      type: object
+      required: [weekday, start_time, end_time, max_patients]
+      properties:
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        start_time: { type: string, example: "17:00" }
+        end_time: { type: string, example: "21:00" }
+        max_patients: { type: integer, minimum: 1, maximum: 500 }
+    Chamber:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        doctor_id: { type: string, format: uuid }
+        name: { type: string }
+        address: { type: string }
+        district: { type: string }
+        area: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        fee_paisa: { type: integer, format: int64 }
+        booking_enabled: { type: boolean }
+        hospital_id: { type: string, format: uuid, nullable: true, description: Set for chambers run by a hospital }
+        hospital_name: { type: string, nullable: true }
+        room: { type: string, nullable: true }
+        schedules: { type: array, items: { $ref: "#/components/schemas/Schedule" } }
+    ChamberInput:
+      type: object
+      required: [name, address, district, fee_paisa]
+      properties:
+        name: { type: string }
+        address: { type: string }
+        district: { type: string }
+        area: { type: string }
+        phone: { type: string }
+        fee_paisa: { type: integer, format: int64 }
+        booking_enabled: { type: boolean, default: true }
+    DoctorSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        specialization: { type: string, nullable: true }
+        degrees: { type: string, nullable: true }
+        experience_years: { type: integer, nullable: true }
+        districts: { type: array, items: { type: string } }
+        min_fee_paisa: { type: integer, format: int64, nullable: true }
+        consultation_enabled: { type: boolean }
+        consultation_fee_tokens: { type: integer }
+    PublicDoctor:
+      allOf:
+        - $ref: "#/components/schemas/DoctorProfile"
+        - type: object
+          properties:
+            chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
+    AdminDoctor:
+      allOf:
+        - $ref: "#/components/schemas/DoctorProfile"
+        - type: object
+          properties:
+            phone: { type: string }
+            created_at: { type: string, format: date-time }
+
+    # ---- appointments
+    Appointment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ticket_code: { type: string, example: K7Q2M4XA }
+        status: { type: string, enum: [confirmed, cancelled, completed, no_show, rescheduled] }
+        date: { type: string, format: date }
+        serial_no: { type: integer }
+        fee_paisa: { type: integer, format: int64 }
+        start_time: { type: string }
+        end_time: { type: string }
+        schedule_id: { type: string, format: uuid }
+        doctor_id: { type: string, format: uuid }
+        doctor_name: { type: string }
+        chamber_id: { type: string, format: uuid }
+        chamber_name: { type: string }
+        chamber_address: { type: string }
+        chamber_district: { type: string }
+        patient_id: { type: string, format: uuid }
+        patient_name: { type: string }
+        patient_phone: { type: string }
+        hospital_id: { type: string, format: uuid, nullable: true }
+        hospital_name: { type: string, nullable: true }
+        room: { type: string, nullable: true }
+        cancelled_by: { type: string, enum: [patient, hospital, doctor], nullable: true }
+        cancel_reason: { type: string, nullable: true }
+        rescheduled_to: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+    Availability:
+      type: object
+      properties:
+        schedule_id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        max_patients: { type: integer }
+        booked: { type: integer }
+        remaining: { type: integer }
+
+    # ---- wallet
+    TokenPackage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        price_paisa: { type: integer, format: int64 }
+        tokens: { type: integer }
+        validity_days: { type: integer }
+    Payment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        package_id: { type: string, format: uuid }
+        amount_paisa: { type: integer, format: int64 }
+        tokens: { type: integer }
+        validity_days: { type: integer }
+        provider: { type: string, enum: [dev, sslcommerz] }
+        status: { type: string, enum: [pending, paid, failed] }
+        checkout_url: { type: string, description: Only when starting a purchase }
+        created_at: { type: string, format: date-time }
+        paid_at: { type: string, format: date-time, nullable: true }
+    Wallet:
+      type: object
+      properties:
+        tokens_available: { type: integer }
+        token_value_paisa: { type: integer, format: int64 }
+        lots:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              tokens_total: { type: integer }
+              tokens_remaining: { type: integer }
+              expires_at: { type: string, format: date-time }
+    LedgerEntry:
+      type: object
+      properties:
+        kind: { type: string, example: consultation_hold }
+        reference_id: { type: string, format: uuid, nullable: true }
+        amount_paisa: { type: integer, format: int64, description: "Positive is money in, negative is money out" }
+        created_at: { type: string, format: date-time }
+    Earnings:
+      type: object
+      properties:
+        balance_paisa: { type: integer, format: int64, description: Available to withdraw }
+        pending_withdrawal_paisa: { type: integer, format: int64 }
+        entries: { type: array, items: { $ref: "#/components/schemas/LedgerEntry" } }
+    Withdrawal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        doctor_id: { type: string, format: uuid }
+        doctor_name: { type: string }
+        amount_paisa: { type: integer, format: int64 }
+        method: { type: string, enum: [bkash, nagad, bank] }
+        account_details: { type: string }
+        status: { type: string, enum: [requested, paid, rejected] }
+        admin_note: { type: string, nullable: true }
+        payout_ref: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        processed_at: { type: string, format: date-time, nullable: true }
+
+    # ---- consultations
+    ConsultationStatus: { type: string, enum: [requested, accepted, rejected, active, completed, cancelled] }
+    Consultation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        patient_id: { type: string, format: uuid }
+        patient_name: { type: string }
+        doctor_id: { type: string, format: uuid }
+        doctor_name: { type: string }
+        subject: { type: string }
+        description: { type: string }
+        fee_tokens: { type: integer }
+        status: { $ref: "#/components/schemas/ConsultationStatus" }
+        reject_reason: { type: string, nullable: true }
+        requested_at: { type: string, format: date-time }
+        responded_at: { type: string, format: date-time, nullable: true }
+        confirmed_at: { type: string, format: date-time, nullable: true }
+        closed_at: { type: string, format: date-time, nullable: true }
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sender_id: { type: string, format: uuid }
+        sender_name: { type: string }
+        body: { type: string, nullable: true }
+        attachment:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            file_name: { type: string }
+            content_type: { type: string }
+            size_bytes: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+    Offer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        concern_id: { type: string, format: uuid }
+        doctor_id: { type: string, format: uuid }
+        doctor_name: { type: string }
+        specialization: { type: string, nullable: true }
+        degrees: { type: string, nullable: true }
+        experience_years: { type: integer, nullable: true }
+        message: { type: string }
+        fee_tokens: { type: integer }
+        status: { type: string, enum: [pending, accepted, declined, withdrawn] }
+        created_at: { type: string, format: date-time }
+    Concern:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        patient_id: { type: string, format: uuid, description: Only for the patient who posted it }
+        title: { type: string }
+        description: { type: string }
+        specialization: { type: string, nullable: true }
+        status: { type: string, enum: [open, closed, converted] }
+        consultation_id: { type: string, format: uuid, nullable: true }
+        offer_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time, nullable: true }
+        offers: { type: array, items: { $ref: "#/components/schemas/Offer" }, description: Patient view }
+        my_offer: { $ref: "#/components/schemas/Offer" }
+
+    # ---- prescriptions
+    Medicine:
+      type: object
+      required: [name, dosage, duration]
+      properties:
+        name: { type: string, example: Napa }
+        strength: { type: string, example: 500 mg }
+        form: { type: string, example: Tab. }
+        dosage: { type: string, example: 1+0+1 }
+        duration: { type: string, example: 5 days }
+        instructions: { type: string, example: after meal }
+    PrescriptionInput:
+      type: object
+      properties:
+        consultation_id: { type: string, format: uuid }
+        appointment_id: { type: string, format: uuid }
+        patient_age: { type: string, example: 34 years }
+        patient_gender: { type: string, enum: [male, female, other] }
+        chief_complaints: { type: string }
+        diagnosis: { type: string }
+        medicines: { type: array, maxItems: 30, items: { $ref: "#/components/schemas/Medicine" } }
+        investigations: { type: array, maxItems: 20, items: { type: string } }
+        advice: { type: string, maxLength: 2000 }
+        follow_up_date: { type: string, format: date }
+    Prescription:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: MFP3B5E7R2 }
+        doctor_id: { type: string, format: uuid }
+        patient_id: { type: string, format: uuid }
+        consultation_id: { type: string, format: uuid, nullable: true }
+        appointment_id: { type: string, format: uuid, nullable: true }
+        doctor_name: { type: string }
+        doctor_degrees: { type: string, nullable: true }
+        doctor_specialization: { type: string, nullable: true }
+        doctor_bmdc: { type: string }
+        patient_name: { type: string }
+        patient_age: { type: string, nullable: true }
+        patient_gender: { type: string, nullable: true }
+        chief_complaints: { type: string, nullable: true }
+        diagnosis: { type: string, nullable: true }
+        medicines: { type: array, items: { $ref: "#/components/schemas/Medicine" } }
+        investigations: { type: array, items: { type: string } }
+        advice: { type: string, nullable: true }
+        follow_up_date: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [issued, revoked] }
+        revoked_reason: { type: string, nullable: true }
+        issued_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, nullable: true }
+    PrescriptionVerification:
+      type: object
+      properties:
+        code: { type: string }
+        status: { type: string, enum: [issued, revoked] }
+        issued_at: { type: string, format: date-time }
+        doctor_name: { type: string }
+        doctor_bmdc: { type: string }
+        doctor_specialization: { type: string, nullable: true }
+        patient_name: { type: string, example: "K**** U****" }
+        medicines: { type: array, items: { $ref: "#/components/schemas/Medicine" } }
+
+    # ---- hospitals
+    Hospital:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        registration_no: { type: string }
+        description: { type: string, nullable: true }
+        address: { type: string }
+        district: { type: string }
+        area: { type: string, nullable: true }
+        phone: { type: string }
+        email: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        departments: { type: array, items: { type: string } }
+        facilities: { type: array, items: { type: string } }
+        visiting_hours: { type: string, nullable: true }
+        latitude: { type: number, nullable: true }
+        longitude: { type: number, nullable: true }
+        map_url: { type: string, nullable: true }
+        logo_url: { type: string, nullable: true }
+        verification_status: { $ref: "#/components/schemas/VerificationStatus" }
+        verification_note: { type: string, nullable: true }
+        doctor_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        verified_at: { type: string, format: date-time, nullable: true }
+        my_role: { type: string, enum: [owner, staff], description: Only in management views }
+    HospitalInput:
+      type: object
+      required: [name, registration_no, address, district, phone]
+      properties:
+        name: { type: string }
+        registration_no: { type: string, description: DGHS licence number }
+        description: { type: string }
+        address: { type: string }
+        district: { type: string }
+        area: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        website: { type: string }
+        departments: { type: array, items: { type: string } }
+        facilities: { type: array, items: { type: string } }
+        visiting_hours: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+    HospitalChamberInput:
+      type: object
+      required: [fee_paisa]
+      properties:
+        fee_paisa: { type: integer, format: int64 }
+        room: { type: string, example: "Room 412, 4th floor" }
+        booking_enabled: { type: boolean, default: true }
+    Photo:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string }
+    StaffDoctor:
+      type: object
+      properties:
+        doctor_id: { type: string, format: uuid }
+        name: { type: string }
+        specialization: { type: string, nullable: true }
+        degrees: { type: string, nullable: true }
+        experience_years: { type: integer, nullable: true }
+        bmdc_reg_no: { type: string, nullable: true }
+        department: { type: string, nullable: true }
+        designation: { type: string, nullable: true }
+        status: { type: string, enum: [invited, active, declined, removed, left] }
+        chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
+    PublicHospital:
+      allOf:
+        - $ref: "#/components/schemas/Hospital"
+        - type: object
+          properties:
+            photos: { type: array, items: { $ref: "#/components/schemas/Photo" } }
+            doctors: { type: array, items: { $ref: "#/components/schemas/StaffDoctor" } }
+    Invitation:
+      type: object
+      properties:
+        hospital_id: { type: string, format: uuid }
+        hospital_name: { type: string }
+        district: { type: string }
+        department: { type: string, nullable: true }
+        designation: { type: string, nullable: true }
+        status: { type: string, enum: [invited, active] }
+        created_at: { type: string, format: date-time }
+    Member:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string }
+        role: { type: string, enum: [owner, staff] }
+        created_at: { type: string, format: date-time }
+
+    # ---- pharmacy
+    Pharmacy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        drug_license_no: { type: string }
+        address: { type: string }
+        district: { type: string }
+        area: { type: string, nullable: true }
+        phone: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        opening_hours: { type: string, nullable: true }
+        offers_delivery: { type: boolean }
+        delivery_radius_km: { type: number }
+        accepting_orders: { type: boolean }
+        verification_status: { $ref: "#/components/schemas/VerificationStatus" }
+        verification_note: { type: string, nullable: true }
+        rating: { type: number, nullable: true }
+        review_count: { type: integer }
+        distance_km: { type: number, description: Only in nearby search }
+        created_at: { type: string, format: date-time }
+        verified_at: { type: string, format: date-time, nullable: true }
+    PharmacyInput:
+      type: object
+      required: [name, drug_license_no, address, district, phone, latitude, longitude]
+      properties:
+        name: { type: string }
+        drug_license_no: { type: string, description: DGDA drug licence }
+        address: { type: string }
+        district: { type: string }
+        area: { type: string }
+        phone: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        opening_hours: { type: string }
+        offers_delivery: { type: boolean, default: true }
+        delivery_radius_km: { type: number, default: 5, minimum: 0.5, maximum: 20 }
+        accepting_orders: { type: boolean, default: true }
+    Review:
+      type: object
+      properties:
+        rating: { type: integer }
+        comment: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    Item:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        strength: { type: string }
+        quantity: { type: string, example: 10 tablets }
+    QuotedItem:
+      type: object
+      required: [name, available, price_paisa]
+      properties:
+        name: { type: string }
+        strength: { type: string }
+        quantity: { type: string }
+        available: { type: boolean }
+        price_paisa: { type: integer, format: int64, description: For the whole quantity; 0 when unavailable }
+    MedicineRequestInput:
+      type: object
+      required: [fulfilment, latitude, longitude]
+      properties:
+        prescription_id: { type: string, format: uuid, description: A platform prescription (JSON requests only) }
+        items: { type: array, items: { $ref: "#/components/schemas/Item" } }
+        note: { type: string, maxLength: 500 }
+        fulfilment: { type: string, enum: [delivery, pickup] }
+        address: { type: string, description: Required for delivery }
+        latitude: { type: number }
+        longitude: { type: number }
+        contact_phone: { type: string, description: Defaults to the account's phone }
+    Quote:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        pharmacy_id: { type: string, format: uuid }
+        pharmacy_name: { type: string }
+        pharmacy_area: { type: string, nullable: true }
+        pharmacy_rating: { type: number, nullable: true }
+        pharmacy_review_count: { type: integer }
+        distance_km: { type: number }
+        items: { type: array, items: { $ref: "#/components/schemas/QuotedItem" } }
+        available_count: { type: integer }
+        medicines_total_paisa: { type: integer, format: int64 }
+        delivery_charge_paisa: { type: integer, format: int64 }
+        total_paisa: { type: integer, format: int64 }
+        eta_minutes: { type: integer }
+        note: { type: string, nullable: true }
+        status: { type: string, enum: [pending, accepted, declined, withdrawn] }
+        created_at: { type: string, format: date-time }
+    QuoteInput:
+      type: object
+      required: [items, eta_minutes]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/QuotedItem" } }
+        delivery_charge_paisa: { type: integer, format: int64, description: Must be 0 for pickup }
+        eta_minutes: { type: integer, minimum: 5, maximum: 1440 }
+        note: { type: string, maxLength: 500 }
+    MedicineRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        prescription_id: { type: string, format: uuid }
+        prescription:
+          type: object
+          properties:
+            code: { type: string }
+            status: { type: string }
+            doctor_name: { type: string }
+            doctor_bmdc: { type: string }
+            issued_at: { type: string, format: date-time }
+            medicines: { type: array, items: { $ref: "#/components/schemas/Medicine" } }
+        has_attachment: { type: boolean }
+        items: { type: array, items: { $ref: "#/components/schemas/Item" } }
+        note: { type: string, nullable: true }
+        fulfilment: { type: string, enum: [delivery, pickup] }
+        status: { type: string, enum: [open, ordered, cancelled, expired] }
+        quote_count: { type: integer }
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        address: { type: string, description: Patient view only }
+        contact_phone: { type: string, description: Patient view only }
+        quotes: { type: array, items: { $ref: "#/components/schemas/Quote" }, description: Patient view only }
+        order_id: { type: string, format: uuid, description: Patient view only }
+        distance_km: { type: number, description: Pharmacy view only }
+        my_quote: { $ref: "#/components/schemas/Quote" }
+    Location:
+      type: object
+      properties:
+        latitude: { type: number }
+        longitude: { type: number }
+        at: { type: string, format: date-time }
+    OrderStatus: { type: string, enum: [confirmed, preparing, ready, rider_assigned, out_for_delivery, delivered, cancelled] }
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        prescription_id: { type: string, format: uuid, nullable: true }
+        patient_id: { type: string, format: uuid }
+        patient_name: { type: string }
+        contact_phone: { type: string }
+        address: { type: string, nullable: true }
+        latitude: { type: number }
+        longitude: { type: number }
+        pharmacy_id: { type: string, format: uuid }
+        pharmacy_name: { type: string }
+        pharmacy_phone: { type: string }
+        pharmacy_address: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/QuotedItem" } }
+        medicines_total_paisa: { type: integer, format: int64 }
+        delivery_charge_paisa: { type: integer, format: int64 }
+        total_paisa: { type: integer, format: int64, description: Cash to pay on delivery }
+        payment_method: { type: string, example: cash_on_delivery }
+        fulfilment: { type: string, enum: [delivery, pickup] }
+        delivery_mode: { type: string, enum: [pharmacy, rider], nullable: true }
+        rider_id: { type: string, format: uuid, nullable: true }
+        rider_name: { type: string, nullable: true }
+        rider_phone: { type: string, nullable: true }
+        rider_location: { $ref: "#/components/schemas/Location" }
+        status: { $ref: "#/components/schemas/OrderStatus" }
+        cancelled_by: { type: string, enum: [patient, pharmacy], nullable: true }
+        cancel_reason: { type: string, nullable: true }
+        commission_paisa: { type: integer, format: int64, description: "Pharmacy view, after delivery" }
+        delivery_code: { type: string, description: Patient view only; give it at handover }
+        reviewed: { type: boolean }
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              status: { type: string }
+              note: { type: string, nullable: true }
+              created_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        delivered_at: { type: string, format: date-time, nullable: true }
+    Statement:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        delivered_orders: { type: integer }
+        medicines_total_paisa: { type: integer, format: int64 }
+        delivery_total_paisa: { type: integer, format: int64 }
+        commission_due_paisa: { type: integer, format: int64 }
+    Rider:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string }
+        nid_number: { type: string }
+        vehicle: { type: string, enum: [bicycle, motorcycle, car, on_foot] }
+        verification_status: { $ref: "#/components/schemas/VerificationStatus" }
+        verification_note: { type: string, nullable: true }
+        available: { type: boolean }
+        location:
+          description: Last reported position; null until the rider sends one
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/Location" }]
+        created_at: { type: string, format: date-time }
+    Job:
+      type: object
+      properties:
+        order_id: { type: string, format: uuid }
+        pharmacy_name: { type: string }
+        pharmacy_address: { type: string }
+        pharmacy_latitude: { type: number }
+        pharmacy_longitude: { type: number }
+        distance_to_pharmacy_km: { type: number }
+        delivery_distance_km: { type: number }
+        earning_paisa: { type: integer, format: int64 }
+        cash_to_collect_paisa: { type: integer, format: int64 }

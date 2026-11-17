@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/api"
 	"healthcare-platform/internal/appointment"
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
@@ -81,6 +82,9 @@ func NewRouter(d Deps) http.Handler {
 
 	// Tight per-IP limits where guessing is the attack: passwords, OTPs, prescription codes.
 	strict := rateLimit(20, time.Minute)
+
+	r.Get("/openapi.yaml", api.SpecHandler)
+	r.Get("/docs", api.DocsHandler)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
