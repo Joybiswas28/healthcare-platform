@@ -51,7 +51,7 @@ func setup(t *testing.T, maxPatients int) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sc, err := ds.AddSchedule(ctx, doctorID, ch.ID, doctor.ScheduleInput{
+	sc, err := ds.AddSchedule(ctx, doctor.DoctorScope(doctorID), ch.ID, doctor.ScheduleInput{
 		Weekday: int(fixedNow.Weekday()), StartTime: "17:00", EndTime: "21:00", MaxPatients: maxPatients,
 	})
 	if err != nil {
@@ -223,7 +223,7 @@ func TestUnapprovedDoctorCannotBeBooked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sc, err := ds.AddSchedule(ctx, pending, ch.ID, doctor.ScheduleInput{
+	sc, err := ds.AddSchedule(ctx, doctor.DoctorScope(pending), ch.ID, doctor.ScheduleInput{
 		Weekday: int(fixedNow.Weekday()), StartTime: "10:00", EndTime: "12:00", MaxPatients: 10,
 	})
 	if err != nil {

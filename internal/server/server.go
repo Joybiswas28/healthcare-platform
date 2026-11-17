@@ -16,6 +16,7 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
 	"healthcare-platform/internal/platform/httpx"
@@ -34,6 +35,7 @@ type Deps struct {
 	Wallet        *wallet.Handler
 	Consultations *consultation.Handler
 	Prescriptions *prescription.Handler
+	Hospitals     *hospital.Handler
 	Notifications *notify.Handler
 	// SSLCommerz is nil when the gateway is not configured.
 	SSLCommerz *sslcommerz.Callbacks
@@ -69,6 +71,9 @@ func NewRouter(d Deps) http.Handler {
 		r.Post("/auth/login", d.Auth.Login)
 		r.Post("/auth/password/reset", d.Auth.ResetPassword)
 		r.Get("/prescriptions/verify/{code}", d.Prescriptions.Verify)
+		r.Get("/hospitals", d.Hospitals.Search)
+		r.Get("/hospitals/{hospitalID}", d.Hospitals.Public)
+		r.Get("/hospitals/{hospitalID}/photos/{photoID}", d.Hospitals.Photo)
 		if d.SSLCommerz != nil {
 			r.Post("/payments/sslcommerz/ipn", d.SSLCommerz.IPN)
 			r.Post("/payments/sslcommerz/success", d.SSLCommerz.Success)
@@ -154,6 +159,10 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/withdrawals", d.Wallet.RequestWithdrawal)
 				r.Get("/withdrawals", d.Wallet.MyWithdrawals)
 				r.Get("/offers", d.Consultations.MyOffers)
+				r.Get("/hospitals", d.Hospitals.Invitations)
+				r.Post("/hospitals/{hospitalID}/accept", d.Hospitals.AcceptInvitation())
+				r.Post("/hospitals/{hospitalID}/decline", d.Hospitals.DeclineInvitation())
+				r.Post("/hospitals/{hospitalID}/leave", d.Hospitals.Leave)
 				r.Get("/chambers", d.Doctors.MyChambers)
 				r.Post("/chambers", d.Doctors.CreateChamber)
 				r.Put("/chambers/{chamberID}", d.Doctors.UpdateChamber)
@@ -165,12 +174,49 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/tickets/{code}", d.Appointments.Ticket)
 			})
 
+			// Hospital management (hospital_admin accounts; membership checked per hospital)
+			r.Group(func(r chi.Router) {
+				hs := d.Hospitals
+				r.Use(auth.RequireRole(user.RoleHospitalAdmin))
+				r.Post("/hospitals", hs.Create)
+				r.Get("/manage/hospitals", hs.Mine)
+				r.Route("/manage/hospitals/{hospitalID}", func(r chi.Router) {
+					r.Use(hs.Member)
+					r.Get("/", hs.Get)
+					r.Put("/", hs.Update)
+					r.Post("/photos", hs.UploadPhoto)
+					r.Delete("/photos/{photoID}", hs.DeletePhoto)
+					r.Post("/photos/{photoID}/logo", hs.SetLogo)
+
+					r.Get("/doctors", hs.Staff)
+					r.Post("/doctors", hs.Invite)
+					r.Put("/doctors/{doctorID}", hs.UpdateStaff)
+					r.Delete("/doctors/{doctorID}", hs.RemoveStaff)
+					r.Post("/doctors/{doctorID}/chambers", hs.CreateChamber)
+
+					r.Get("/chambers", hs.Chambers)
+					r.Put("/chambers/{chamberID}", hs.UpdateChamber)
+					r.Post("/chambers/{chamberID}/schedules", hs.AddSchedule)
+					r.Delete("/schedules/{scheduleID}", hs.RemoveSchedule)
+
+					r.Get("/appointments", hs.Appointments)
+					r.Post("/appointments/{appointmentID}/cancel", hs.CancelAppointment)
+					r.Post("/appointments/{appointmentID}/reschedule", hs.RescheduleAppointment)
+
+					r.Get("/members", hs.Members)
+					r.With(hs.OwnerOnly).Post("/members", hs.AddMember)
+					r.With(hs.OwnerOnly).Delete("/members/{userID}", hs.RemoveMember)
+				})
+			})
+
 			// Admin
 			r.Route("/admin", func(r chi.Router) {
 				r.Use(auth.RequireRole(user.RoleAdmin))
 				r.Get("/doctors", d.Doctors.AdminList)
 				r.Post("/doctors/{doctorID}/verification", d.Doctors.AdminVerify)
 				r.Put("/doctors/{doctorID}/commission", d.Doctors.AdminSetCommission)
+				r.Get("/hospitals", d.Hospitals.AdminList)
+				r.Post("/hospitals/{hospitalID}/verification", d.Hospitals.AdminVerify)
 				r.Get("/withdrawals", d.Wallet.AdminWithdrawals)
 				r.Post("/withdrawals/{withdrawalID}/process", d.Wallet.ProcessWithdrawal)
 			})

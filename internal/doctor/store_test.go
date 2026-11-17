@@ -91,30 +91,30 @@ func TestSchedules(t *testing.T) {
 	}
 
 	evening := ScheduleInput{Weekday: 0, StartTime: "17:00", EndTime: "21:00", MaxPatients: 20}
-	sc, err := s.AddSchedule(ctx, d1, c1.ID, evening)
+	sc, err := s.AddSchedule(ctx, DoctorScope(d1), c1.ID, evening)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = s.AddSchedule(ctx, d1, c2.ID, ScheduleInput{Weekday: 0, StartTime: "20:00", EndTime: "22:00", MaxPatients: 5})
+	_, err = s.AddSchedule(ctx, DoctorScope(d1), c2.ID, ScheduleInput{Weekday: 0, StartTime: "20:00", EndTime: "22:00", MaxPatients: 5})
 	wantKind(t, err, apperr.KindConflict, "overlap across chambers")
 
-	if _, err := s.AddSchedule(ctx, d1, c2.ID, ScheduleInput{Weekday: 0, StartTime: "21:00", EndTime: "22:00", MaxPatients: 5}); err != nil {
+	if _, err := s.AddSchedule(ctx, DoctorScope(d1), c2.ID, ScheduleInput{Weekday: 0, StartTime: "21:00", EndTime: "22:00", MaxPatients: 5}); err != nil {
 		t.Fatalf("back-to-back session should be allowed: %v", err)
 	}
 
-	_, err = s.AddSchedule(ctx, d1, c1.ID, ScheduleInput{Weekday: 1, StartTime: "21:00", EndTime: "20:00", MaxPatients: 5})
+	_, err = s.AddSchedule(ctx, DoctorScope(d1), c1.ID, ScheduleInput{Weekday: 1, StartTime: "21:00", EndTime: "20:00", MaxPatients: 5})
 	wantKind(t, err, apperr.KindValidation, "end before start")
 
-	_, err = s.AddSchedule(ctx, d2, c1.ID, ScheduleInput{Weekday: 3, StartTime: "09:00", EndTime: "10:00", MaxPatients: 5})
+	_, err = s.AddSchedule(ctx, DoctorScope(d2), c1.ID, ScheduleInput{Weekday: 3, StartTime: "09:00", EndTime: "10:00", MaxPatients: 5})
 	wantKind(t, err, apperr.KindNotFound, "schedule on someone else's chamber")
 
-	wantKind(t, s.RemoveSchedule(ctx, d2, sc.ID), apperr.KindNotFound, "remove someone else's schedule")
-	if err := s.RemoveSchedule(ctx, d1, sc.ID); err != nil {
+	wantKind(t, s.RemoveSchedule(ctx, DoctorScope(d2), sc.ID), apperr.KindNotFound, "remove someone else's schedule")
+	if err := s.RemoveSchedule(ctx, DoctorScope(d1), sc.ID); err != nil {
 		t.Fatal(err)
 	}
 	// The slot is free again once removed.
-	if _, err := s.AddSchedule(ctx, d1, c2.ID, evening); err != nil {
+	if _, err := s.AddSchedule(ctx, DoctorScope(d1), c2.ID, evening); err != nil {
 		t.Fatalf("re-add after removal: %v", err)
 	}
 }
@@ -145,7 +145,7 @@ func TestSearchAndPublicProfile(t *testing.T) {
 	if _, err := s.CreateChamber(ctx, approved, closed); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AddSchedule(ctx, approved, open.ID, ScheduleInput{Weekday: 5, StartTime: "15:00", EndTime: "18:00", MaxPatients: 10}); err != nil {
+	if _, err := s.AddSchedule(ctx, DoctorScope(approved), open.ID, ScheduleInput{Weekday: 5, StartTime: "15:00", EndTime: "18:00", MaxPatients: 10}); err != nil {
 		t.Fatal(err)
 	}
 

@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/internal/doctor"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
@@ -53,6 +54,12 @@ type Appointment struct {
 	PatientID       string    `json:"patient_id"`
 	PatientName     string    `json:"patient_name"`
 	PatientPhone    string    `json:"patient_phone"`
+	HospitalID      *string   `json:"hospital_id"`
+	HospitalName    *string   `json:"hospital_name"`
+	Room            *string   `json:"room"`
+	CancelledBy     *string   `json:"cancelled_by"`
+	CancelReason    *string   `json:"cancel_reason"`
+	RescheduledTo   *string   `json:"rescheduled_to"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 
@@ -102,6 +109,7 @@ func (s *Store) parseBookableDate(raw string) (time.Time, error) {
 
 type session struct {
 	ChamberID   string
+	HospitalID  *string
 	DoctorID    string
 	Weekday     int
 	EndTime     string // "HH:MM"
@@ -112,8 +120,8 @@ type session struct {
 
 func loadSession(ctx context.Context, q database.Querier, scheduleID string, lock bool) (session, error) {
 	sql := `
-		SELECT c.id, c.doctor_id, s.weekday, to_char(s.end_time, 'HH24:MI'), s.max_patients, c.fee_paisa,
-		       (s.active AND c.booking_enabled AND d.verification_status = 'approved' AND u.status = 'active')
+		SELECT c.id, c.hospital_id, c.doctor_id, s.weekday, to_char(s.end_time, 'HH24:MI'), s.max_patients, c.fee_paisa,
+		       (s.active AND d.verification_status = 'approved' AND u.status = 'active' AND ` + doctor.LiveChamberSQL("c") + `)
 		FROM chamber_schedules s
 		JOIN chambers c        ON c.id = s.chamber_id
 		JOIN doctor_profiles d ON d.user_id = c.doctor_id
@@ -123,7 +131,7 @@ func loadSession(ctx context.Context, q database.Querier, scheduleID string, loc
 		sql += ` FOR UPDATE OF s`
 	}
 	var ss session
-	err := q.QueryRow(ctx, sql, scheduleID).Scan(&ss.ChamberID, &ss.DoctorID, &ss.Weekday, &ss.EndTime,
+	err := q.QueryRow(ctx, sql, scheduleID).Scan(&ss.ChamberID, &ss.HospitalID, &ss.DoctorID, &ss.Weekday, &ss.EndTime,
 		&ss.MaxPatients, &ss.FeePaisa, &ss.Bookable)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return session{}, apperr.NotFound("schedule not found")
@@ -144,7 +152,7 @@ func (s *Store) checkDate(ss session, date time.Time) error {
 
 func countBooked(ctx context.Context, q database.Querier, scheduleID, date string) (active, maxSerial int, err error) {
 	err = q.QueryRow(ctx, `
-		SELECT count(*) FILTER (WHERE status <> 'cancelled'), COALESCE(max(serial_no), 0)
+		SELECT count(*) FILTER (WHERE status NOT IN ('cancelled', 'rescheduled')), COALESCE(max(serial_no), 0)
 		FROM appointments
 		WHERE schedule_id = $1 AND appointment_date = $2::date`, scheduleID, date).Scan(&active, &maxSerial)
 	return active, maxSerial, err
@@ -156,19 +164,22 @@ const appointmentSelect = `
 SELECT a.id, a.ticket_code, a.status, to_char(a.appointment_date, 'YYYY-MM-DD'), a.serial_no, a.fee_paisa,
        to_char(s.start_time, 'HH24:MI'), to_char(s.end_time, 'HH24:MI'), a.schedule_id,
        a.doctor_id, du.name, c.id, c.name, c.address, c.district,
-       a.patient_id, pu.name, pu.phone, a.created_at
+       a.patient_id, pu.name, pu.phone, c.hospital_id, h.name, c.room,
+       a.cancelled_by, a.cancel_reason, a.rescheduled_to, a.created_at
 FROM appointments a
 JOIN chamber_schedules s ON s.id = a.schedule_id
 JOIN chambers c          ON c.id = a.chamber_id
 JOIN users du            ON du.id = a.doctor_id
-JOIN users pu            ON pu.id = a.patient_id`
+JOIN users pu            ON pu.id = a.patient_id
+LEFT JOIN hospitals h    ON h.id = c.hospital_id`
 
 func scanAppointment(row pgx.Row) (Appointment, error) {
 	var a Appointment
 	err := row.Scan(&a.ID, &a.TicketCode, &a.Status, &a.Date, &a.SerialNo, &a.FeePaisa,
 		&a.StartTime, &a.EndTime, &a.ScheduleID,
 		&a.DoctorID, &a.DoctorName, &a.ChamberID, &a.ChamberName, &a.ChamberAddress, &a.ChamberDistrict,
-		&a.PatientID, &a.PatientName, &a.PatientPhone, &a.CreatedAt)
+		&a.PatientID, &a.PatientName, &a.PatientPhone, &a.HospitalID, &a.HospitalName, &a.Room,
+		&a.CancelledBy, &a.CancelReason, &a.RescheduledTo, &a.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Appointment{}, errAppointmentNotFound
 	}
@@ -315,7 +326,7 @@ func (s *Store) ListForDoctor(ctx context.Context, doctorID, rawDate string) ([]
 // Cancel lets a patient cancel one of their own upcoming, confirmed appointments.
 func (s *Store) Cancel(ctx context.Context, patientID, id string) (Appointment, error) {
 	tag, err := s.db.Exec(ctx, `
-		UPDATE appointments SET status = 'cancelled', updated_at = now()
+		UPDATE appointments SET status = 'cancelled', cancelled_by = 'patient', updated_at = now()
 		WHERE id = $1 AND patient_id = $2 AND status = 'confirmed' AND appointment_date >= $3::date`,
 		id, patientID, s.Today())
 	if err != nil {

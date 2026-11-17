@@ -146,7 +146,7 @@ func (h *Handler) AddSchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	sc, err := h.store.AddSchedule(r.Context(), callerID(r), id, in)
+	sc, err := h.store.AddSchedule(r.Context(), DoctorScope(callerID(r)), id, in)
 	if err != nil {
 		h.fail(w, r, err)
 		return
@@ -161,7 +161,7 @@ func (h *Handler) RemoveSchedule(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	if err := h.store.RemoveSchedule(r.Context(), callerID(r), id); err != nil {
+	if err := h.store.RemoveSchedule(r.Context(), DoctorScope(callerID(r)), id); err != nil {
 		h.fail(w, r, err)
 		return
 	}

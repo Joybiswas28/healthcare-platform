@@ -143,12 +143,15 @@ func (s *Store) UpdateProfile(ctx context.Context, doctorID string, in ProfileIn
 
 // ---------------------------------------------------------------- chambers
 
-const chamberColumns = `id, doctor_id, name, address, district, area, phone, fee_paisa, booking_enabled`
+// chamberColumns must be used against the bare table name "chambers" (no alias),
+// including in INSERT/UPDATE ... RETURNING.
+const chamberColumns = `id, doctor_id, name, address, district, area, phone, fee_paisa, booking_enabled,
+	hospital_id, (SELECT h.name FROM hospitals h WHERE h.id = chambers.hospital_id), room`
 
 func scanChamber(row pgx.Row) (Chamber, error) {
 	var c Chamber
 	err := row.Scan(&c.ID, &c.DoctorID, &c.Name, &c.Address, &c.District, &c.Area, &c.Phone,
-		&c.FeePaisa, &c.BookingEnabled)
+		&c.FeePaisa, &c.BookingEnabled, &c.HospitalID, &c.HospitalName, &c.Room)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Chamber{}, apperr.NotFound("chamber not found")
 	}
@@ -168,6 +171,8 @@ func (s *Store) CreateChamber(ctx context.Context, doctorID string, in ChamberIn
 		in.FeePaisa, *in.BookingEnabled))
 }
 
+// UpdateChamber edits one of the doctor's own chambers. Hospital chambers are
+// managed by the hospital and cannot be changed here.
 func (s *Store) UpdateChamber(ctx context.Context, doctorID, chamberID string, in ChamberInput) (Chamber, error) {
 	if err := in.normalize(); err != nil {
 		return Chamber{}, err
@@ -176,10 +181,13 @@ func (s *Store) UpdateChamber(ctx context.Context, doctorID, chamberID string, i
 		UPDATE chambers
 		SET name = $3, address = $4, district = $5, area = $6, phone = $7, fee_paisa = $8,
 		    booking_enabled = $9, updated_at = now()
-		WHERE id = $1 AND doctor_id = $2
+		WHERE id = $1 AND doctor_id = $2 AND hospital_id IS NULL
 		RETURNING `+chamberColumns,
 		chamberID, doctorID, in.Name, in.Address, in.District, nullIfEmpty(in.Area),
 		nullIfEmpty(in.Phone), in.FeePaisa, *in.BookingEnabled))
+	if apperr.Is(err, apperr.KindNotFound) {
+		return Chamber{}, apperr.NotFound("chamber not found (hospital chambers are managed by the hospital)")
+	}
 	if err != nil {
 		return Chamber{}, err
 	}
@@ -189,16 +197,44 @@ func (s *Store) UpdateChamber(ctx context.Context, doctorID, chamberID string, i
 	return c, nil
 }
 
-// ListChambers returns a doctor's chambers with their active schedules.
-// With onlyBookable, chambers that have booking switched off are left out.
+// LiveChamberSQL is a SQL condition that is true when the chamber aliased as c can
+// take bookings: booking is on and, for a hospital chamber, the hospital is verified
+// and the doctor is still on its staff.
+func LiveChamberSQL(c string) string {
+	return `(` + c + `.booking_enabled AND (` + c + `.hospital_id IS NULL OR EXISTS (
+		SELECT 1 FROM hospitals lh JOIN hospital_doctors lhd ON lhd.hospital_id = lh.id
+		WHERE lh.id = ` + c + `.hospital_id AND lh.verification_status = 'approved'
+		  AND lhd.doctor_id = ` + c + `.doctor_id AND lhd.status = 'active')))`
+}
+
+// ListChambers returns a doctor's chambers (their own and hospital ones) with active
+// schedules. With onlyBookable, chambers that cannot take bookings are left out.
 func (s *Store) ListChambers(ctx context.Context, doctorID string, onlyBookable bool) ([]Chamber, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT `+chamberColumns+` FROM chambers
-		WHERE doctor_id = $1 AND (NOT $2 OR booking_enabled)
+		WHERE doctor_id = $1 AND (NOT $2 OR `+LiveChamberSQL("chambers")+`)
 		ORDER BY created_at, id`, doctorID, onlyBookable)
 	if err != nil {
 		return nil, err
 	}
+	return s.collectChambers(ctx, rows)
+}
+
+// ListHospitalChambers returns a hospital's chambers, optionally for one doctor
+// and optionally only those taking bookings.
+func (s *Store) ListHospitalChambers(ctx context.Context, hospitalID, doctorID string, onlyBookable bool) ([]Chamber, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT `+chamberColumns+` FROM chambers
+		WHERE hospital_id = $1 AND ($2 = '' OR doctor_id::text = $2)
+		  AND (NOT $3 OR `+LiveChamberSQL("chambers")+`)
+		ORDER BY created_at, id`, hospitalID, doctorID, onlyBookable)
+	if err != nil {
+		return nil, err
+	}
+	return s.collectChambers(ctx, rows)
+}
+
+func (s *Store) collectChambers(ctx context.Context, rows pgx.Rows) ([]Chamber, error) {
 	chambers, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Chamber, error) { return scanChamber(r) })
 	if err != nil {
 		return nil, err
@@ -208,6 +244,15 @@ func (s *Store) ListChambers(ctx context.Context, doctorID string, onlyBookable 
 		ptrs[i] = &chambers[i]
 	}
 	return chambers, s.attachSchedules(ctx, ptrs)
+}
+
+// ChamberWithSchedules loads one chamber with its active schedules.
+func (s *Store) ChamberWithSchedules(ctx context.Context, chamberID string) (Chamber, error) {
+	c, err := scanChamber(s.db.QueryRow(ctx, `SELECT `+chamberColumns+` FROM chambers WHERE id = $1`, chamberID))
+	if err != nil {
+		return Chamber{}, err
+	}
+	return c, s.attachSchedules(ctx, []*Chamber{&c})
 }
 
 func (s *Store) attachSchedules(ctx context.Context, chambers []*Chamber) error {
@@ -248,9 +293,26 @@ func scanSchedule(row pgx.Row) (Schedule, error) {
 	return sc, err
 }
 
-// AddSchedule adds a weekly session to one of the doctor's chambers. Sessions of the
-// same doctor may not overlap on the same weekday, even across different chambers.
-func (s *Store) AddSchedule(ctx context.Context, doctorID, chamberID string, in ScheduleInput) (Schedule, error) {
+// Scope says who is managing a chamber's schedule: the doctor (their own chambers
+// only) or a hospital (its chambers only). Exactly one field is set.
+type Scope struct {
+	DoctorID   string
+	HospitalID string
+}
+
+func DoctorScope(doctorID string) Scope     { return Scope{DoctorID: doctorID} }
+func HospitalScope(hospitalID string) Scope { return Scope{HospitalID: hospitalID} }
+
+// scopeSQL matches chambers (aliased c) within the scope, using parameters $a and $b.
+func scopeSQL(a, b string) string {
+	return `((` + a + ` <> '' AND c.doctor_id::text = ` + a + ` AND c.hospital_id IS NULL)
+	      OR (` + b + ` <> '' AND c.hospital_id::text = ` + b + `))`
+}
+
+// AddSchedule adds a weekly session to a chamber in scope. Sessions of the same
+// doctor may not overlap on the same weekday, even across different chambers and
+// hospitals.
+func (s *Store) AddSchedule(ctx context.Context, scope Scope, chamberID string, in ScheduleInput) (Schedule, error) {
 	if err := in.normalize(); err != nil {
 		return Schedule{}, err
 	}
@@ -261,14 +323,14 @@ func (s *Store) AddSchedule(ctx context.Context, doctorID, chamberID string, in 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Lock the doctor's profile row so concurrent AddSchedule calls cannot both
-	// pass the overlap check.
-	var owner string
+	// Lock the doctor's profile row so concurrent AddSchedule calls (from the doctor
+	// or any hospital) cannot both pass the overlap check.
+	var doctorID string
 	err = tx.QueryRow(ctx, `
 		SELECT c.doctor_id FROM chambers c
 		JOIN doctor_profiles d ON d.user_id = c.doctor_id
-		WHERE c.id = $1 AND c.doctor_id = $2
-		FOR UPDATE OF d`, chamberID, doctorID).Scan(&owner)
+		WHERE c.id = $1 AND `+scopeSQL("$2", "$3")+`
+		FOR UPDATE OF d`, chamberID, scope.DoctorID, scope.HospitalID).Scan(&doctorID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Schedule{}, apperr.NotFound("chamber not found")
 	}
@@ -288,7 +350,7 @@ func (s *Store) AddSchedule(ctx context.Context, doctorID, chamberID string, in 
 		return Schedule{}, err
 	}
 	if overlaps {
-		return Schedule{}, apperr.Conflict("this time overlaps with another of your sessions on the same day")
+		return Schedule{}, apperr.Conflict("this time overlaps with another session of this doctor on the same day")
 	}
 
 	sc, err := scanSchedule(tx.QueryRow(ctx, `
@@ -302,13 +364,13 @@ func (s *Store) AddSchedule(ctx context.Context, doctorID, chamberID string, in 
 	return sc, tx.Commit(ctx)
 }
 
-// RemoveSchedule deactivates a session. Existing appointments for it stay valid.
-func (s *Store) RemoveSchedule(ctx context.Context, doctorID, scheduleID string) error {
+// RemoveSchedule deactivates a session in scope. Existing appointments for it stay valid.
+func (s *Store) RemoveSchedule(ctx context.Context, scope Scope, scheduleID string) error {
 	tag, err := s.db.Exec(ctx, `
 		UPDATE chamber_schedules s SET active = false
 		FROM chambers c
-		WHERE s.id = $1 AND c.id = s.chamber_id AND c.doctor_id = $2 AND s.active`,
-		scheduleID, doctorID)
+		WHERE s.id = $1 AND c.id = s.chamber_id AND s.active AND `+scopeSQL("$2", "$3"),
+		scheduleID, scope.DoctorID, scope.HospitalID)
 	if err != nil {
 		return err
 	}
@@ -336,14 +398,14 @@ func (s *Store) Search(ctx context.Context, p SearchParams) ([]Summary, error) {
 		       MIN(c.fee_paisa), d.consultation_enabled, d.consultation_fee_tokens
 		FROM doctor_profiles d
 		JOIN users u ON u.id = d.user_id
-		LEFT JOIN chambers c ON c.doctor_id = d.user_id AND c.booking_enabled
+		LEFT JOIN chambers c ON c.doctor_id = d.user_id AND `+LiveChamberSQL("c")+`
 		WHERE d.verification_status = 'approved' AND u.status = 'active'
 		  AND (NOT $6 OR d.consultation_enabled)
 		  AND ($1 = '' OR u.name ILIKE $1)
 		  AND ($2 = '' OR d.specialization ILIKE $2)
 		  AND ($3 = '' OR EXISTS (
 		        SELECT 1 FROM chambers c2
-		        WHERE c2.doctor_id = d.user_id AND c2.booking_enabled
+		        WHERE c2.doctor_id = d.user_id AND `+LiveChamberSQL("c2")+`
 		          AND (c2.district ILIKE $3 OR c2.area ILIKE $3)))
 		GROUP BY u.id, u.name, d.specialization, d.degrees, d.experience_years,
 		         d.consultation_enabled, d.consultation_fee_tokens

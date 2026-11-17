@@ -16,6 +16,7 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
 	"healthcare-platform/internal/platform/config"
@@ -97,6 +98,9 @@ func run() error {
 		log.Info("payments: development simulator (set SSLCOMMERZ_STORE_ID to use SSLCommerz)")
 	}
 
+	doctorStore := doctor.NewStore(pool)
+	appointmentStore := appointment.NewStore(pool)
+
 	go expireTokensPeriodically(ctx, walletStore, log)
 	go notify.NewWorker(pool, sms, log).Run(ctx)
 
@@ -106,12 +110,14 @@ func run() error {
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: server.NewRouter(server.Deps{
-			Log:           log,
-			DB:            pool,
-			Tokens:        tokens,
-			Auth:          auth.NewHandler(authSvc, otp, log),
-			Doctors:       doctor.NewHandler(doctor.NewStore(pool), log),
-			Appointments:  appointment.NewHandler(appointment.NewStore(pool), log),
+			Log:          log,
+			DB:           pool,
+			Tokens:       tokens,
+			Auth:         auth.NewHandler(authSvc, otp, log),
+			Doctors:      doctor.NewHandler(doctorStore, log),
+			Appointments: appointment.NewHandler(appointmentStore, log),
+			Hospitals: hospital.NewHandler(hospital.NewStore(pool, doctorStore, files),
+				doctorStore, appointmentStore, log),
 			Wallet:        wallet.NewHandler(walletStore, gateway, log),
 			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log),
 			Prescriptions: prescription.NewHandler(prescription.NewStore(pool), cfg.PublicBaseURL, log),

@@ -43,16 +43,20 @@ type CommissionInput struct {
 }
 
 type Chamber struct {
-	ID             string     `json:"id"`
-	DoctorID       string     `json:"doctor_id"`
-	Name           string     `json:"name"`
-	Address        string     `json:"address"`
-	District       string     `json:"district"`
-	Area           *string    `json:"area"`
-	Phone          *string    `json:"phone"`
-	FeePaisa       int64      `json:"fee_paisa"`
-	BookingEnabled bool       `json:"booking_enabled"`
-	Schedules      []Schedule `json:"schedules"`
+	ID             string  `json:"id"`
+	DoctorID       string  `json:"doctor_id"`
+	Name           string  `json:"name"`
+	Address        string  `json:"address"`
+	District       string  `json:"district"`
+	Area           *string `json:"area"`
+	Phone          *string `json:"phone"`
+	FeePaisa       int64   `json:"fee_paisa"`
+	BookingEnabled bool    `json:"booking_enabled"`
+	// Set for chambers run by a hospital; those are managed by the hospital.
+	HospitalID   *string    `json:"hospital_id"`
+	HospitalName *string    `json:"hospital_name"`
+	Room         *string    `json:"room"`
+	Schedules    []Schedule `json:"schedules"`
 }
 
 // Schedule is a weekly recurring session. Weekday: 0 = Sunday ... 6 = Saturday.

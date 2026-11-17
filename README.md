@@ -17,7 +17,8 @@ internal/
   auth/               register, login, JWT, auth + role middleware
   user/               user model and repository
   doctor/             doctor profiles, chambers, schedules, search, admin verification
-  appointment/        serial-based chamber booking (e-ticketing)
+  appointment/        serial-based chamber booking (e-ticketing), hospital cancel/reschedule
+  hospital/           hospital profiles, staff doctors, hospital chambers, photos, members
   wallet/             tokens, payments, double-entry ledger, escrow
   consultation/       online consultations, public concerns and offers, messages, uploads, WebSocket
   realtime/           in-process hub fed by PostgreSQL LISTEN/NOTIFY
@@ -200,10 +201,53 @@ Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message
 - Messages sent through REST or file uploads also appear live.
 - New messages are announced by a PostgreSQL trigger (`NOTIFY`), so this works with any number of API servers.
 
+**Hospitals: public**
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/hospitals?name=&location=&department=&facility=` | Search verified hospitals |
+| GET | `/hospitals/{id}` | Hospital page: details, map link, photos, doctors with bookable chambers and schedules |
+| GET | `/hospitals/{id}/photos/{photoID}` | Photo |
+
+**Hospitals: management** (`hospital_admin` accounts. Register with `"role": "hospital_admin"`)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/hospitals` | Create a hospital (you become its owner). It stays hidden until an admin verifies it |
+| GET | `/manage/hospitals` | Hospitals I manage |
+| GET / PUT | `/manage/hospitals/{id}` | View or edit the profile (name, registration no, address, departments, facilities, visiting hours, latitude/longitude) |
+| POST | `/manage/hospitals/{id}/photos` | Upload a photo (multipart `file`: JPEG/PNG/WebP, max 5 MB, max 10). The first one becomes the logo |
+| POST / DELETE | `/manage/hospitals/{id}/photos/{photoID}/logo`, `/photos/{photoID}` | Set logo, delete photo |
+| GET / POST | `/manage/hospitals/{id}/doctors` | List doctors. Invite one: `{"bmdc_reg_no", "department", "designation"}` |
+| PUT / DELETE | `/manage/hospitals/{id}/doctors/{doctorID}` | Change department/designation. Remove the doctor (returns upcoming bookings to handle) |
+| POST | `/manage/hospitals/{id}/doctors/{doctorID}/chambers` | Open a chamber for a doctor on staff: `{"fee_paisa", "room"}` |
+| GET / PUT | `/manage/hospitals/{id}/chambers`, `/chambers/{chamberID}` | List or update (fee, room, `booking_enabled`) |
+| POST / DELETE | `/manage/hospitals/{id}/chambers/{chamberID}/schedules`, `/schedules/{scheduleID}` | Weekly sessions |
+| GET | `/manage/hospitals/{id}/appointments?date=&doctor_id=` | Bookings for a day |
+| POST | `/manage/hospitals/{id}/appointments/{aid}/cancel` | `{"reason"}`. The patient gets an SMS |
+| POST | `/manage/hospitals/{id}/appointments/{aid}/reschedule` | `{"schedule_id", "date"}`: same doctor, this hospital. The patient gets a new serial and ticket by SMS |
+| GET / POST / DELETE | `/manage/hospitals/{id}/members[/{userID}]` | Staff accounts (owner only adds or removes). Add by `{"phone"}` of a `hospital_admin` account |
+
+**Hospitals: doctor side**
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/doctor/hospitals` | Invitations and hospitals I work at |
+| POST | `/doctor/hospitals/{id}/accept`, `/decline`, `/leave` | Respond to an invitation, or leave |
+
+### How hospitals fit in
+
+- A hospital chamber is an ordinary chamber run by the hospital. Bookings, serials, tickets and prescriptions work exactly as for private chambers, and a doctor's sessions never overlap across their own chambers and any hospitals.
+- Hospitals can only add verified doctors, and only after the doctor accepts. Hospitals set the department and designation, but never the doctor's professional profile.
+- Doctors cannot edit hospital chambers or schedules. Hospitals cannot touch a doctor's private chambers.
+- A hospital chamber takes bookings only while the hospital is verified, the doctor is on staff and booking is on. Removing a doctor turns booking off but keeps existing bookings, so the hospital can cancel or reschedule them.
+
 **Admin**
 
 | Method | Path | Description |
 |---|---|---|
+| GET | `/admin/hospitals?status=pending` | Hospitals awaiting verification |
+| POST | `/admin/hospitals/{id}/verification` | `{"status": "approved"}` or `{"status": "rejected", "note": "..."}` |
 | GET | `/admin/doctors?status=pending` | Doctors awaiting verification |
 | POST | `/admin/doctors/{id}/verification` | `{"status": "approved"}` or `{"status": "rejected", "note": "..."}` |
 | PUT | `/admin/doctors/{id}/commission` | `{"commission_bps": 3333}`: platform share in basis points (5000 = 50%) |
@@ -258,5 +302,6 @@ Doctors start with `verification_status = pending` until an admin approves them.
 - [x] Phase 2B: public medical concerns and doctor offers, doctor withdrawals, live chat over WebSocket
 - [x] Phase 2C: digital prescriptions, notifications and SMS outbox, OTP registration and password reset, SSLCommerz integration
 - [ ] Before launch: SMS provider account, SSLCommerz merchant account (test in sandbox), S3 storage, video calls
-- [ ] Phase 3: hospitals
+- [x] Phase 3: hospitals (profiles, verification, doctor invitations, hospital chambers, booking management, photos, staff accounts)
+- [ ] Billing: subscription packages for doctors and hospitals
 - [ ] Phase 4: pharmacy and delivery

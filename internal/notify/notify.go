@@ -22,6 +22,11 @@ import (
 // Notification kinds.
 const (
 	KindAppointmentBooked      = "appointment_booked"
+	KindAppointmentCancelled   = "appointment_cancelled"
+	KindAppointmentRescheduled = "appointment_rescheduled"
+	KindHospitalVerification   = "hospital_verification"
+	KindHospitalInvitation     = "hospital_invitation"
+	KindHospitalStaffChange    = "hospital_staff_change"
 	KindConsultationRequested  = "consultation_requested"
 	KindConsultationAccepted   = "consultation_accepted"
 	KindConsultationRejected   = "consultation_rejected"
