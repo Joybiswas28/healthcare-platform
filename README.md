@@ -223,6 +223,7 @@ Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message
 | POST | `/hospitals` | Create a hospital (you become its owner). It stays hidden until an admin verifies it |
 | GET | `/manage/hospitals` | Hospitals I manage |
 | GET / PUT | `/manage/hospitals/{id}` | View or edit the profile (name, registration no, address, departments, facilities, visiting hours, latitude/longitude) |
+| GET | `/manage/hospitals/{id}/photos` | List photos (also while verification is pending) |
 | POST | `/manage/hospitals/{id}/photos` | Upload a photo (multipart `file`: JPEG/PNG/WebP, max 5 MB, max 10). The first one becomes the logo |
 | POST / DELETE | `/manage/hospitals/{id}/photos/{photoID}/logo`, `/photos/{photoID}` | Set logo, delete photo |
 | GET / POST | `/manage/hospitals/{id}/doctors` | List doctors. Invite one: `{"bmdc_reg_no", "department", "designation"}` |

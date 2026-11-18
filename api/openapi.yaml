@@ -1023,6 +1023,20 @@ paths:
         "200": { $ref: "#/components/responses/Hospital" }
         default: { $ref: "#/components/responses/Error" }
   /api/v1/manage/hospitals/{hospitalID}/photos:
+    get:
+      tags: [Hospital management]
+      summary: Photos, including while verification is pending
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }]
+      responses:
+        "200":
+          description: Photos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photos: { type: array, items: { $ref: "#/components/schemas/Photo" } }
+        default: { $ref: "#/components/responses/Error" }
     post:
       tags: [Hospital management]
       summary: Upload a photo (JPEG/PNG/WebP, max 5 MB, max 10; the first becomes the logo)

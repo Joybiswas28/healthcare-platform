@@ -315,6 +315,7 @@ func TestResponsesMatchSpec(t *testing.T) {
 	c.call("GET", api+"/manage/hospitals/"+hid+"/doctors", ht, nil, 200)
 	c.call("GET", api+"/manage/hospitals/"+hid+"/appointments?date="+date, ht, nil, 200)
 	c.call("GET", api+"/manage/hospitals/"+hid+"/members", ht, nil, 200)
+	c.call("GET", api+"/manage/hospitals/"+hid+"/photos", ht, nil, 200)
 	c.call("GET", api+"/hospitals/"+hid, "", nil, 200)
 	c.call("GET", api+"/hospitals?department=medicine", "", nil, 200)
 

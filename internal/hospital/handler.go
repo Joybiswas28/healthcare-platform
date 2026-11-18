@@ -250,6 +250,18 @@ func (l *limitReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// GET /manage/hospitals/{hospitalID}/photos
+// The public page only shows verified hospitals; managers need their photos
+// while verification is still pending too.
+func (h *Handler) ListPhotos(w http.ResponseWriter, r *http.Request) {
+	photos, err := h.store.ListPhotos(r.Context(), hid(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"photos": photos})
+}
+
 // DELETE /manage/hospitals/{hospitalID}/photos/{photoID}
 func (h *Handler) DeletePhoto(w http.ResponseWriter, r *http.Request) {
 	pid, err := httpx.PathUUID(r, "photoID")

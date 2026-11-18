@@ -277,6 +277,7 @@ func NewRouter(d Deps) http.Handler {
 					r.Use(hs.Member)
 					r.Get("/", hs.Get)
 					r.Put("/", hs.Update)
+					r.Get("/photos", hs.ListPhotos)
 					r.Post("/photos", hs.UploadPhoto)
 					r.Delete("/photos/{photoID}", hs.DeletePhoto)
 					r.Post("/photos/{photoID}/logo", hs.SetLogo)
