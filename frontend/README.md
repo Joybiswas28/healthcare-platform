@@ -78,7 +78,7 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 
 Without SSLCommerz credentials the backend runs a development gateway: "Buy" asks for confirmation and marks the payment paid without taking money.
 
-Chat messages are fetched every 3 seconds through the proxy. The backend's WebSocket needs the access token in its URL, and this app deliberately never gives the token to the browser.
+Chat is live: the page opens an `EventSource` on `/api/v1/consultations/{id}/events`, which the proxy relays from the backend's Server-Sent Events stream (the token stays in the cookie; the backend's WebSocket would need it in the URL). EventSource reconnects by itself and resumes from the last message id. If the stream is refused, the page falls back to checking every 3 seconds. Messages are sent with a normal POST.
 
 ## Scripts
 

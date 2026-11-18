@@ -5,10 +5,11 @@ import { Alert, Button } from "@/components/ui";
 import { api, errorMessage, type ChatMessage, type Consultation, type User } from "@/lib/api/client";
 import { dateTime, fileSize } from "@/lib/format";
 
-// New messages are fetched every few seconds through the same-origin proxy.
-// (The backend also has a WebSocket, but it needs the token in the URL and the
-// browser deliberately never holds the token.)
-const POLL_MS = 3000;
+// While the consultation is active, new messages arrive live over a Server-Sent
+// Events stream relayed by this app's /api/v1 proxy, so the token stays in the
+// httpOnly cookie. EventSource reconnects by itself and resumes from the last
+// message id. If the stream is refused outright, fall back to polling.
+const FALLBACK_POLL_MS = 3000;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export function Chat({ consultation, me }: { consultation: Consultation; me: User }) {
@@ -18,6 +19,8 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
+  const [live, setLive] = useState(false);
+  const [polling, setPolling] = useState(false);
   const lastID = useRef(0);
   const bottom = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -34,6 +37,9 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
 
   useEffect(() => {
     let stopped = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let source: EventSource | undefined;
+
     async function poll() {
       const { data } = await api.GET("/api/v1/consultations/{consultationID}/messages", {
         params: { path: { consultationID: id }, query: { after: lastID.current, limit: 100 } },
@@ -41,11 +47,36 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
       if (stopped || !data) return;
       add(data.messages ?? []);
     }
-    poll();
-    const t = open ? setInterval(poll, POLL_MS) : undefined;
+
+    if (!open || typeof EventSource === "undefined") {
+      // A closed consultation's history, or a browser without EventSource.
+      poll();
+      if (open) timer = setInterval(poll, FALLBACK_POLL_MS);
+    } else {
+      source = new EventSource(`/api/v1/consultations/${id}/events?after=${lastID.current}`);
+      source.addEventListener("open", () => setLive(true));
+      source.addEventListener("message", (e) => {
+        try {
+          add([JSON.parse((e as MessageEvent<string>).data) as ChatMessage]);
+        } catch {
+          // ignore a malformed event; the next one or a reconnect catches up
+        }
+      });
+      source.addEventListener("error", () => {
+        setLive(false);
+        // CONNECTING means EventSource is retrying by itself. CLOSED means the server
+        // refused the stream (e.g. logged out); keep the chat working by polling.
+        if (source?.readyState === EventSource.CLOSED && !timer) {
+          setPolling(true);
+          poll();
+          timer = setInterval(poll, FALLBACK_POLL_MS);
+        }
+      });
+    }
     return () => {
       stopped = true;
-      clearInterval(t);
+      source?.close();
+      clearInterval(timer);
     };
   }, [id, open]);
 
@@ -89,6 +120,12 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      {open && (
+        <p className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-500" aria-live="polite">
+          <span className={`h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-amber-400"}`} aria-hidden />
+          {live ? "Live — new messages appear instantly" : polling ? "Checking for new messages every few seconds" : "Connecting…"}
+        </p>
+      )}
       <div className="max-h-[28rem] min-h-48 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <p className="py-8 text-center text-sm text-slate-500">

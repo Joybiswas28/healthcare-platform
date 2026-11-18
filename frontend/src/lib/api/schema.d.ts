@@ -2089,6 +2089,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consultations/{consultationID}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live chat as Server-Sent Events
+         * @description Authenticated with the normal Authorization header, so a website can relay it through its own server
+         *     instead of giving the token to the browser. Sends the backlog after `after`, then each new message as
+         *     `event: message` whose `id` is the message id and whose `data` is a ChatMessage as JSON. A reconnecting
+         *     client sends `Last-Event-ID` and the stream resumes after it. Comment lines (`: ping`) keep the
+         *     connection open. Post messages with `POST /consultations/{id}/messages`.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Last message id you have */
+                    after?: number;
+                };
+                header?: {
+                    /** @description Sent by EventSource when it reconnects */
+                    "Last-Event-ID"?: string;
+                };
+                path: {
+                    consultationID: components["parameters"]["consultationID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Event stream */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attachments/{attachmentID}": {
         parameters: {
             query?: never;

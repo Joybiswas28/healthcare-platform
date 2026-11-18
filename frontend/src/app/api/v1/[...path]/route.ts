@@ -11,7 +11,7 @@ const TOKEN_ROUTES = new Set(["auth/login", "auth/register"]);
 
 // Request headers worth passing on. Everything else (cookies, the browser's own
 // Authorization header, hop-by-hop headers) is dropped.
-const FORWARD_REQUEST = ["accept", "content-type", "accept-language", "if-none-match"];
+const FORWARD_REQUEST = ["accept", "content-type", "accept-language", "if-none-match", "last-event-id"];
 // content-security-policy and x-content-type-options matter for shared files:
 // the backend serves them sandboxed so an uploaded HTML/SVG can't run script.
 const FORWARD_RESPONSE = [
@@ -23,6 +23,7 @@ const FORWARD_RESPONSE = [
   "retry-after",
   "cache-control",
   "etag",
+  "x-accel-buffering", // event streams: tell any proxy in front not to buffer
 ];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -51,6 +52,8 @@ async function handle(req: NextRequest, ctx: RouteContext<"/api/v1/[...path]">) 
       body: SAFE_METHODS.has(req.method) ? undefined : await req.arrayBuffer(),
       redirect: "manual",
       cache: "no-store",
+      // When the browser goes away, stop the upstream request too (matters for event streams).
+      signal: req.signal,
     });
   } catch {
     return NextResponse.json({ error: "the server is unreachable, try again shortly" }, { status: 502 });
