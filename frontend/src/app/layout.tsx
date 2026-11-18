@@ -29,10 +29,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AuthProvider>
           <SiteHeader />
           <main className="flex-1">{children}</main>
-          <footer className="border-t border-slate-200 bg-surface py-6 text-sm text-slate-500">
+          <footer className="border-t border-chrome-line bg-chrome py-6 text-sm text-white/70">
             <Container className="flex flex-wrap justify-between gap-2">
               <span>Digital Healthcare Platform · Bangladesh</span>
-              <Link href="/verify" className="hover:text-teal-800">
+              <Link href="/verify" className="hover:text-white hover:underline">
                 Verify a prescription
               </Link>
             </Container>

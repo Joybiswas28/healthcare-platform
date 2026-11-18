@@ -11,6 +11,9 @@
   /* Card, input and header background: white in light mode. */
   --color-surface: #ffffff;
   --color-page: #f8fafc;
+  /* Header and footer: navy in both themes. */
+  --color-chrome: #13294b;
+  --color-chrome-line: #13294b;
 }
 
 :root {
@@ -28,6 +31,9 @@
   color-scheme: dark;
   --color-page: #0b1220;
   --color-surface: #111c2e;
+  /* A shade deeper than the page, with a hairline so it still reads as a bar. */
+  --color-chrome: #0a1730;
+  --color-chrome-line: #22355a;
 
   --color-slate-50: #18233a;
   --color-slate-100: #1f2b42;

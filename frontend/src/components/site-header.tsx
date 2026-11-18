@@ -6,6 +6,10 @@ import { useAuth } from "./auth-provider";
 import { ThemeToggle } from "./theme-toggle";
 import { Container } from "./ui";
 
+// Header and footer sit on the fixed navy "chrome" colour in both themes,
+// so their text uses white shades rather than the theme-aware greys.
+const navLink = "rounded-md px-2 py-1 text-white/80 hover:bg-white/10 hover:text-white";
+
 export function SiteHeader() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -16,10 +20,10 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="border-b border-slate-200 bg-surface">
+    <header className="border-b border-chrome-line bg-chrome">
       <Container className="flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-700 text-white" aria-hidden>
+        <Link href="/" className="flex items-center gap-2 font-semibold text-white">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-600 text-white" aria-hidden>
             +
           </span>
           {/* The full name is long; phones get the short form. */}
@@ -27,45 +31,42 @@ export function SiteHeader() {
           <span className="sm:hidden">DHP</span>
         </Link>
 
-        <nav className="flex items-center gap-1 text-sm sm:gap-4">
+        <nav className="flex items-center gap-1 text-sm sm:gap-2">
           <ThemeToggle />
-          <Link href="/doctors" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
+          <Link href="/doctors" className={navLink}>
             Doctors
           </Link>
-          <Link href="/hospitals" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
+          <Link href="/hospitals" className={navLink}>
             Hospitals
           </Link>
-          <Link href="/pharmacies" className="hidden rounded-md px-2 py-1 text-slate-700 hover:text-teal-800 sm:inline">
+          <Link href="/pharmacies" className={`${navLink} hidden sm:inline`}>
             Pharmacies
           </Link>
           {loading ? null : user ? (
             <>
               {user.role === "admin" && (
-                <Link href="/admin" className="rounded-md px-2 py-1 font-medium text-teal-800 hover:underline">
+                <Link href="/admin" className="rounded-md px-2 py-1 font-medium text-teal-400 hover:bg-white/10">
                   Admin
                 </Link>
               )}
               {(user.role === "patient" || user.role === "doctor") && (
-                <Link href="/consultations" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
+                <Link href="/consultations" className={navLink}>
                   Consult
                 </Link>
               )}
-              <Link href="/dashboard" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
+              <Link href="/dashboard" className={navLink}>
                 {user.name?.split(" ")[0] ?? "Account"}
               </Link>
-              <button onClick={onLogout} className="rounded-md px-2 py-1 text-slate-500 hover:text-red-700">
+              <button onClick={onLogout} className="rounded-md px-2 py-1 text-white/60 hover:bg-white/10 hover:text-white">
                 Log out
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
+              <Link href="/login" className={navLink}>
                 Log in
               </Link>
-              <Link
-                href="/register"
-                className="rounded-lg bg-teal-700 px-3 py-1.5 font-medium text-white hover:bg-teal-800 dark:hover:bg-teal-600"
-              >
+              <Link href="/register" className="rounded-lg bg-teal-700 px-3 py-1.5 font-medium text-white hover:bg-teal-600">
                 Sign up
               </Link>
             </>
