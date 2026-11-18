@@ -57,7 +57,7 @@ export function MyMedicines() {
           <Link
             key={o.id}
             href={`/medicines/orders/${o.id}`}
-            className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+            className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -93,7 +93,7 @@ function RequestRow({ request: r }: { request: MedicineRequest }) {
   return (
     <Link
       href={`/medicines/requests/${r.id}`}
-      className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+      className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

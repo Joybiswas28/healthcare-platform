@@ -252,7 +252,7 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
 
 function OrderRow({ order: o }: { order: Order }) {
   return (
-    <Link href={`/rider/orders/${o.id}`} className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600">
+    <Link href={`/rider/orders/${o.id}`} className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-slate-900">{o.pharmacy_name} → {o.patient_name}</p>

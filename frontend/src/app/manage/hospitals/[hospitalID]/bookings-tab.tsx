@@ -91,7 +91,7 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
             setDoctorID(e.target.value);
           }}
           aria-label="Doctor"
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm"
         >
           <option value="">All doctors</option>
           {doctors.map((d) => (
@@ -276,7 +276,7 @@ function RescheduleForm({
             setScheduleID(e.target.value);
             setDate("");
           }}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+          className="rounded-lg border border-slate-300 bg-surface px-3 py-2"
         >
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
@@ -287,7 +287,7 @@ function RescheduleForm({
       </label>
       <label className="text-sm">
         <span className="mb-1 block font-medium text-slate-700">Date</span>
-        <select value={date || dates[0] || ""} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-slate-300 bg-white px-3 py-2">
+        <select value={date || dates[0] || ""} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-slate-300 bg-surface px-3 py-2">
           {dates.map((d) => (
             <option key={d} value={d}>
               {prettyDate(d)}

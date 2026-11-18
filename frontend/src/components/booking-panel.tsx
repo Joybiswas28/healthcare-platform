@@ -83,7 +83,7 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
                     setAvailability(null);
                   }}
                   className={`rounded-lg border px-3 py-1.5 text-sm ${
-                    d === date ? "border-teal-700 bg-teal-700 text-white" : "border-slate-300 bg-white hover:border-teal-600"
+                    d === date ? "border-teal-700 bg-teal-700 text-white" : "border-slate-300 bg-surface hover:border-teal-600"
                   }`}
                   aria-pressed={d === date}
                 >

@@ -62,7 +62,7 @@ export function MyPharmacies() {
             <li key={p.id}>
               <Link
                 href={`/manage/pharmacies/${p.id}`}
-                className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+                className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-semibold text-slate-900">{p.name}</h2>

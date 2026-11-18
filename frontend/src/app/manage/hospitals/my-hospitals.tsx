@@ -73,7 +73,7 @@ export function MyHospitals() {
             <li key={h.id}>
               <Link
                 href={`/manage/hospitals/${h.id}`}
-                className="flex gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+                className="flex gap-4 rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
               >
                 <HospitalLogo hospital={h} />
                 <div className="min-w-0 flex-1">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./auth-provider";
+import { ThemeToggle } from "./theme-toggle";
 import { Container } from "./ui";
 
 export function SiteHeader() {
@@ -15,16 +16,19 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="border-b border-slate-200 bg-surface">
       <Container className="flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-700 text-white" aria-hidden>
             +
           </span>
-          <span>Shasthya Seba</span>
+          {/* The full name is long; phones get the short form. */}
+          <span className="hidden sm:inline">Digital Healthcare Platform</span>
+          <span className="sm:hidden">DHP</span>
         </Link>
 
         <nav className="flex items-center gap-1 text-sm sm:gap-4">
+          <ThemeToggle />
           <Link href="/doctors" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
             Doctors
           </Link>
@@ -60,7 +64,7 @@ export function SiteHeader() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-lg bg-teal-700 px-3 py-1.5 font-medium text-white hover:bg-teal-800"
+                className="rounded-lg bg-teal-700 px-3 py-1.5 font-medium text-white hover:bg-teal-800 dark:hover:bg-teal-600"
               >
                 Sign up
               </Link>

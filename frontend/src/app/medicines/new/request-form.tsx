@@ -15,7 +15,7 @@ type Source = "prescription" | "paper";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const input =
-  "w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
+  "w-full rounded-lg border border-slate-300 bg-surface px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
 export function RequestForm() {
   return (
@@ -125,7 +125,7 @@ function Form() {
               aria-selected={source === t.id}
               onClick={() => setSource(t.id)}
               className={`rounded-full px-3 py-1 text-sm ${
-                source === t.id ? "bg-teal-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
+                source === t.id ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
               }`}
             >
               {t.label}

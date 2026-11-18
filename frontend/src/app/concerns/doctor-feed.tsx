@@ -39,7 +39,7 @@ export function DoctorFeed() {
           defaultValue={specialization}
           placeholder="Filter by specialty"
           aria-label="Filter by specialty"
-          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+          className="flex-1 rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
         />
         <Button type="submit" variant="secondary">
           Filter

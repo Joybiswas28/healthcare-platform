@@ -1,10 +1,75 @@
 @import "tailwindcss";
 
+/* `dark:` utilities follow the data-theme attribute the theme script sets on <html>. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme inline {
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+@theme {
+  /* Card, input and header background: white in light mode. */
+  --color-surface: #ffffff;
+  --color-page: #f8fafc;
+}
+
+:root {
+  color-scheme: light;
+}
+
+/*
+ * Dark mode. Tailwind reads every colour from a CSS variable, so instead of a
+ * `dark:` class on every element the palette itself is swapped: greys run the
+ * other way, pale tints become deep ones, and dark text shades become light.
+ * The strong shades used for buttons (teal-600/700, red-600, amber-400/500,
+ * emerald-500) stay as they are, so white text on them still works.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-page: #0b1220;
+  --color-surface: #111c2e;
+
+  --color-slate-50: #18233a;
+  --color-slate-100: #1f2b42;
+  --color-slate-200: #2a3851;
+  --color-slate-300: #3a4a66;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #a8b4c6;
+  --color-slate-700: #c3ccd9;
+  --color-slate-800: #dbe2ec;
+  --color-slate-900: #f1f5f9;
+
+  --color-teal-50: #0f2e2c;
+  --color-teal-100: #12403c;
+  --color-teal-200: #155e56;
+  --color-teal-300: #1b7a70;
+  --color-teal-800: #5eead4;
+  --color-teal-900: #99f6e4;
+
+  --color-emerald-50: #0f2a1f;
+  --color-emerald-200: #14532d;
+  --color-emerald-700: #4ade80;
+  --color-emerald-800: #86efac;
+  --color-emerald-900: #bbf7d0;
+
+  --color-amber-50: #2d230b;
+  --color-amber-200: #5b4512;
+  --color-amber-800: #fcd34d;
+  --color-amber-900: #fde68a;
+
+  --color-red-50: #2f1416;
+  --color-red-200: #5c1f24;
+  --color-red-300: #7f2a31;
+  --color-red-700: #f87171;
+  --color-red-800: #fca5a5;
+
+  --color-sky-50: #0c2533;
+  --color-sky-200: #164e63;
+  --color-sky-800: #7dd3fc;
+}
+
 body {
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--color-page);
+  color: var(--color-slate-900);
 }

@@ -57,7 +57,7 @@ export function PrescriptionList({ asDoctor, filter, compact }: { asDoctor: bool
           <li key={p.id}>
             <Link
               href={`/prescriptions/${p.id}`}
-              className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+              className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

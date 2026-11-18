@@ -12,7 +12,7 @@ import { km } from "@/lib/geo";
 type Row = { name: string; strength: string; quantity: string; available: boolean; price: string };
 
 const input =
-  "w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
+  "w-full rounded-lg border border-slate-300 bg-surface px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
 export function QuoteRequest() {
   return (

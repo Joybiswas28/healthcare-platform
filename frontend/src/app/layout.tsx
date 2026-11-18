@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteHeader } from "@/components/site-header";
 import { Container } from "@/components/ui";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,21 +13,25 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Shasthya Seba — Digital healthcare for Bangladesh", template: "%s · Shasthya Seba" },
+  title: { default: "Digital Healthcare Platform — Bangladesh", template: "%s · Digital Healthcare Platform" },
   description:
     "Find verified doctors, book a serial at their chamber, consult online, and order medicine from nearby pharmacies.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
+    // suppressHydrationWarning: the head script sets data-theme before React hydrates.
+    <html lang="en" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <AuthProvider>
           <SiteHeader />
           <main className="flex-1">{children}</main>
-          <footer className="border-t border-slate-200 bg-white py-6 text-sm text-slate-500">
+          <footer className="border-t border-slate-200 bg-surface py-6 text-sm text-slate-500">
             <Container className="flex flex-wrap justify-between gap-2">
-              <span>Shasthya Seba · Digital healthcare platform for Bangladesh</span>
+              <span>Digital Healthcare Platform · Bangladesh</span>
               <Link href="/verify" className="hover:text-teal-800">
                 Verify a prescription
               </Link>

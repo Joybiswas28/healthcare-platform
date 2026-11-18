@@ -55,7 +55,7 @@ export function HospitalResults() {
 
   return (
     <>
-      <form key={key} onSubmit={onSubmit} className="mb-6 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <form key={key} onSubmit={onSubmit} className="mb-6 rounded-xl border border-slate-200 bg-surface p-3 shadow-sm">
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           {FILTERS.map((k) => (
             <input
@@ -79,7 +79,7 @@ export function HospitalResults() {
           <li key={h.id}>
             <Link
               href={`/hospitals/${h.id}`}
-              className="flex h-full gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+              className="flex h-full gap-4 rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
             >
               <HospitalLogo hospital={h} />
               <div className="min-w-0">

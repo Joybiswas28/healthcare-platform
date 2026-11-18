@@ -14,7 +14,7 @@ export function ConcernCard({ concern: c, showOffers }: { concern: Concern; show
   return (
     <Link
       href={`/concerns/${c.id}`}
-      className="block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-600"
+      className="block rounded-xl border border-slate-200 bg-surface p-5 shadow-sm transition hover:border-teal-600"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="font-semibold text-slate-900">{c.title}</p>

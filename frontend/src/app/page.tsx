@@ -34,7 +34,8 @@ export default function Home() {
     <>
       <section className="bg-gradient-to-b from-teal-50 to-transparent">
         <Container className="py-14 sm:py-20">
-          <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+          <p className="text-sm font-semibold uppercase tracking-wider text-teal-800">Digital Healthcare Platform</p>
+          <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
             Healthcare across Bangladesh, a few taps away
           </h1>
           <p className="mt-4 max-w-xl text-slate-600">
@@ -45,6 +46,21 @@ export default function Home() {
           </div>
         </Container>
       </section>
+
+      <Container>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+          <p className="text-sm text-red-800">
+            <span className="font-semibold">Emergency?</span> Call{" "}
+            <a href="tel:999" className="font-bold underline">
+              999
+            </a>{" "}
+            for an ambulance, anywhere in Bangladesh.
+          </p>
+          <Link href="/hospitals/sylhet" className="text-sm font-medium text-red-800 underline">
+            Sylhet hospital and ambulance numbers →
+          </Link>
+        </div>
+      </Container>
 
       <Container className="grid gap-4 py-12 sm:grid-cols-2">
         {SERVICES.map((s) => {
@@ -63,12 +79,12 @@ export default function Home() {
             <Link
               key={s.title}
               href={s.href}
-              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-600"
+              className="rounded-xl border border-slate-200 bg-surface p-5 shadow-sm transition hover:border-teal-600"
             >
               {body}
             </Link>
           ) : (
-            <div key={s.title} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div key={s.title} className="rounded-xl border border-slate-200 bg-surface p-5 shadow-sm">
               {body}
             </div>
           );

@@ -26,10 +26,10 @@ export function DoctorSearchForm({ initial = {} }: Props) {
   }
 
   const input =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
+    "w-full rounded-lg border border-slate-300 bg-surface px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
   return (
-    <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-surface p-3 shadow-sm">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
         <input name="name" placeholder="Doctor's name" aria-label="Doctor's name" defaultValue={initial.name} className={input} />
         <input
@@ -46,7 +46,7 @@ export function DoctorSearchForm({ initial = {} }: Props) {
           defaultValue={initial.location}
           className={input}
         />
-        <button className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-800 dark:hover:bg-teal-600">
           Search
         </button>
       </div>

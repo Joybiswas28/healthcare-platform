@@ -113,7 +113,7 @@ function Detail({ user }: { user: User }) {
             href={`/api/v1/prescriptions/${rx.id}/print`}
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 dark:hover:bg-teal-600"
           >
             Print / save as PDF
           </a>
@@ -121,7 +121,7 @@ function Detail({ user }: { user: User }) {
         {!isDoctor && !revoked && (rx.medicines ?? []).length > 0 && (
           <Link
             href={`/medicines/new?prescription_id=${rx.id}`}
-            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
           >
             Order these medicines
           </Link>
@@ -129,7 +129,7 @@ function Detail({ user }: { user: User }) {
         {rx.consultation_id && (
           <Link
             href={`/consultations/${rx.consultation_id}`}
-            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
           >
             Open consultation
           </Link>

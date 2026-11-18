@@ -39,7 +39,7 @@ export function WithdrawalsTab() {
               setStatus(s);
             }}
             className={`rounded-full px-3 py-1 text-sm capitalize ${
-              status === s ? "bg-teal-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
+              status === s ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
             }`}
           >
             {s === "requested" ? "To pay" : s}

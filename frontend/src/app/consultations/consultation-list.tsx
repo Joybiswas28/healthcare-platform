@@ -55,7 +55,7 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
             aria-selected={status === f.value}
             onClick={() => setStatus(f.value)}
             className={`rounded-full px-3 py-1 text-sm ${
-              status === f.value ? "bg-teal-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
+              status === f.value ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
             }`}
           >
             {f.label}
@@ -79,7 +79,7 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
           <li key={c.id}>
             <Link
               href={`/consultations/${c.id}`}
-              className="block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-600"
+              className="block rounded-xl border border-slate-200 bg-surface p-5 shadow-sm transition hover:border-teal-600"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

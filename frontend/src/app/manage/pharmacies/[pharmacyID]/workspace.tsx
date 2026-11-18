@@ -137,7 +137,7 @@ function RequestsTab({ pharmacyID }: { pharmacyID: string }) {
         <li key={r.id}>
           <Link
             href={`/manage/pharmacies/${pharmacyID}/requests/${r.id}`}
-            className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+            className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -203,7 +203,7 @@ function OrdersTab({ pharmacyID }: { pharmacyID: string }) {
               setItems(null);
               setStatus(f.id);
             }}
-            className={`rounded-full px-3 py-1 text-sm ${status === f.id ? "bg-teal-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
+            className={`rounded-full px-3 py-1 text-sm ${status === f.id ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200"}`}
           >
             {f.label}
           </button>
@@ -220,7 +220,7 @@ function OrdersTab({ pharmacyID }: { pharmacyID: string }) {
             <li key={o.id}>
               <Link
                 href={`/manage/pharmacies/${pharmacyID}/orders/${o.id}`}
-                className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+                className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>

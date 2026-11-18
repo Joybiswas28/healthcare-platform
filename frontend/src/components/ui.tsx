@@ -9,14 +9,14 @@ export function Container({ children, className = "" }: { children: ReactNode; c
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>
+    <div className={`rounded-xl border border-slate-200 bg-surface p-5 shadow-sm ${className}`}>{children}</div>
   );
 }
 
 const buttonStyles = {
-  primary: "bg-teal-700 text-white hover:bg-teal-800 disabled:bg-teal-700/50",
-  secondary: "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50",
-  danger: "border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:opacity-50",
+  primary: "bg-teal-700 text-white hover:bg-teal-800 dark:hover:bg-teal-600 disabled:bg-teal-700/50",
+  secondary: "border border-slate-300 bg-surface text-slate-800 hover:bg-slate-50 disabled:opacity-50",
+  danger: "border border-red-300 bg-surface text-red-700 hover:bg-red-50 disabled:opacity-50",
 };
 
 type Variant = keyof typeof buttonStyles;
@@ -56,7 +56,7 @@ export function Field({
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <input
-        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+        className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
         {...props}
       />
       {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
@@ -73,7 +73,7 @@ export function Select({
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <select
-        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+        className="w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
         {...props}
       >
         {children}

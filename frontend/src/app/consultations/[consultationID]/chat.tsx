@@ -119,7 +119,7 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <section className="rounded-xl border border-slate-200 bg-surface shadow-sm">
       {open && (
         <p className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-500" aria-live="polite">
           <span className={`h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-amber-400"}`} aria-hidden />
@@ -151,7 +151,7 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
                     📎 {m.attachment.file_name} ({fileSize(m.attachment.size_bytes)})
                   </a>
                 )}
-                <p className={`mt-1 text-[11px] ${mine ? "text-teal-100" : "text-slate-500"}`}>{dateTime(m.created_at)}</p>
+                <p className={`mt-1 text-[11px] ${mine ? "text-white/70" : "text-slate-500"}`}>{dateTime(m.created_at)}</p>
               </div>
             </div>
           );

@@ -97,7 +97,7 @@ export function HospitalProfile() {
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               aria-label="Department"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm"
             >
               <option value="">All departments</option>
               {departments.map((d) => (

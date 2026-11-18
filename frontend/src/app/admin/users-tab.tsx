@@ -64,9 +64,9 @@ export function UsersTab() {
           name="q"
           placeholder="Name or phone number"
           aria-label="Name or phone number"
-          className="min-w-60 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+          className="min-w-60 flex-1 rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
         />
-        <select name="role" aria-label="Role" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+        <select name="role" aria-label="Role" className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm">
           <option value="">All roles</option>
           {Object.entries(ROLE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>

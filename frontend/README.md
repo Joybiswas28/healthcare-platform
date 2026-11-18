@@ -1,4 +1,4 @@
-# Shasthya Seba — web frontend
+# Digital Healthcare Platform — web frontend
 
 Next.js (App Router, TypeScript, Tailwind) website for the Digital Healthcare Platform. It talks to the Go API in the repository root.
 

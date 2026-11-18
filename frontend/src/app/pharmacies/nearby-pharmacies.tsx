@@ -61,7 +61,7 @@ export function NearbyPharmacies() {
           <li key={p.id}>
             <Link
               href={`/pharmacies/${p.id}`}
-              className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-600"
+              className="block rounded-xl border border-slate-200 bg-surface p-4 shadow-sm transition hover:border-teal-600"
             >
               <PharmacySummary pharmacy={p} />
             </Link>

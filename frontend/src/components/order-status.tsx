@@ -32,7 +32,7 @@ export function OrderTimeline({ order }: { order: Order }) {
     <ol className="relative space-y-3 border-l border-slate-200 pl-4">
       {events.map((e, i) => (
         <li key={i} className="text-sm">
-          <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-teal-700" aria-hidden />
+          <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-surface bg-teal-700" aria-hidden />
           <p className="font-medium text-slate-900">{orderStatusLabel(e.status, order.fulfilment)}</p>
           {e.note && <p className="text-slate-600">{e.note}</p>}
           <p className="text-xs text-slate-500">{dateTime(e.created_at)}</p>

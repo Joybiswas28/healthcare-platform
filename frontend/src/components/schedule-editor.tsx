@@ -8,7 +8,7 @@ import { Alert, Button, Field, Select } from "./ui";
 export type ScheduleBody = { weekday: number; start_time: string; end_time: string; max_patients: number };
 
 const timeInput =
-  "rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
+  "rounded-lg border border-slate-300 bg-surface px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
 // Weekly sessions of one chamber with add and remove. The callbacks return an error message or "".
 export function ScheduleEditor({

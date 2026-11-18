@@ -5,7 +5,7 @@ import { currentPosition, type Coords } from "@/lib/geo";
 import { Alert, Button } from "./ui";
 
 const input =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
+  "w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
 // Latitude/longitude with a "use my location" button. Controlled by the parent.
 export function LocationPicker({

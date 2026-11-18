@@ -124,7 +124,7 @@ function Form({ source }: { source: Source }) {
   if (context === null && !error) return <Spinner />;
 
   const input =
-    "w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
+    "w-full rounded-lg border border-slate-300 bg-surface px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
