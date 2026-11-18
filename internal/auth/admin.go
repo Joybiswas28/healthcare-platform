@@ -21,6 +21,28 @@ func NewAdminHandler(users *user.Repository, sessions *SessionChecker, log *slog
 	return &AdminHandler{users: users, sessions: sessions, log: log}
 }
 
+var userRoles = map[string]bool{
+	"": true, "patient": true, "doctor": true, "hospital_admin": true, "pharmacy": true, "rider": true, "admin": true,
+}
+
+// GET /admin/users?q=&role=
+// q matches part of the name or phone number.
+func (h *AdminHandler) Search(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	role := q.Get("role")
+	if !userRoles[role] {
+		httpx.WriteError(w, r, h.log, apperr.Validation("unknown role"))
+		return
+	}
+	limit, offset := httpx.Page(r)
+	list, err := h.users.Search(r.Context(), q.Get("q"), role, limit, offset)
+	if err != nil {
+		httpx.WriteError(w, r, h.log, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"users": list, "limit": limit, "offset": offset})
+}
+
 type statusInput struct {
 	Status string `json:"status"` // active | suspended
 }

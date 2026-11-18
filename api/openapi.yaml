@@ -1937,6 +1937,27 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Rider" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/admin/users:
+    get:
+      tags: [Admin]
+      summary: Find accounts by part of the name or phone number, newest first
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Part of the name or phone; empty lists everyone }
+        - { name: role, in: query, schema: { $ref: "#/components/schemas/Role" } }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users: { type: array, items: { $ref: "#/components/schemas/User" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/admin/users/{userID}/status:
     post:
       tags: [Admin]

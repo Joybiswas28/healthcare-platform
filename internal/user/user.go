@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -128,6 +129,34 @@ func (r *Repository) SetStatus(ctx context.Context, id, status string) (User, er
 		WHERE id = $1 AND role <> 'admin'
 		RETURNING `+userColumns, id, status))
 	return u, err
+}
+
+// Search finds accounts for admins by part of the name or phone number,
+// optionally of one role, newest first. An empty query lists everyone.
+func (r *Repository) Search(ctx context.Context, query, role string, limit, offset int) ([]User, error) {
+	pattern := "%" + escapeLike(strings.TrimSpace(query)) + "%"
+	rows, err := r.db.Query(ctx, `SELECT `+userColumns+` FROM users
+		WHERE (name ILIKE $1 OR phone LIKE $1) AND ($2 = '' OR role = $2)
+		ORDER BY created_at DESC, id
+		LIMIT $3 OFFSET $4`, pattern, role, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	list := []User{}
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, u)
+	}
+	return list, rows.Err()
+}
+
+// escapeLike makes % and _ in user input match literally.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 func (r *Repository) GetByID(ctx context.Context, id string) (User, error) {

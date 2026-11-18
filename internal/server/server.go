@@ -314,6 +314,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/pharmacies", d.Pharmacies.AdminPharmacies)
 				r.Post("/pharmacies/{pharmacyID}/verification", d.Pharmacies.AdminVerifyPharmacy)
 				r.Get("/riders", d.Pharmacies.AdminRiders)
+				r.Get("/users", d.AdminUsers.Search)
 				r.Post("/users/{userID}/status", d.AdminUsers.SetStatus)
 				r.Post("/riders/{userID}/verification", d.Pharmacies.AdminVerifyRider)
 				r.Get("/withdrawals", d.Wallet.AdminWithdrawals)

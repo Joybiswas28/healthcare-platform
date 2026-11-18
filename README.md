@@ -313,6 +313,7 @@ request (open 24 h) ──quotes──> patient accepts one ──> order: confi
 |---|---|---|
 | GET / POST | `/admin/pharmacies[/{id}/verification]` | List, approve or reject pharmacies |
 | GET / POST | `/admin/riders[/{userID}/verification]` | List, approve or reject riders |
+| GET | `/admin/users?q=&role=` | Find accounts by part of the name or phone number |
 | POST | `/admin/users/{id}/status` | `{"status": "suspended"}` or `active`. Suspending signs the user out everywhere |
 | GET | `/admin/hospitals?status=pending` | Hospitals awaiting verification |
 | POST | `/admin/hospitals/{id}/verification` | `{"status": "approved"}` or `{"status": "rejected", "note": "..."}` |

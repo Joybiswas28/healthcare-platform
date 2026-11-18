@@ -361,7 +361,8 @@ func TestResponsesMatchSpec(t *testing.T) {
 	c.call("GET", api+"/pharmacies?latitude=23.7461&longitude=90.3742", "", nil, 200)
 	c.call("GET", api+"/pharmacies/"+phid, "", nil, 200)
 
-	// Account suspension.
+	// Account search and suspension.
+	c.call("GET", api+"/admin/users?q=017&role=patient", at, nil, 200)
 	c.call("POST", api+"/admin/users/"+patientID+"/status", at, map[string]any{"status": "suspended"}, 200)
 	c.call("GET", api+"/me", pt, nil, 401)
 
