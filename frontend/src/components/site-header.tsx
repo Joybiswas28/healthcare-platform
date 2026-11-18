@@ -36,6 +36,11 @@ export function SiteHeader() {
           </Link>
           {loading ? null : user ? (
             <>
+              {user.role === "admin" && (
+                <Link href="/admin" className="rounded-md px-2 py-1 font-medium text-teal-800 hover:underline">
+                  Admin
+                </Link>
+              )}
               {(user.role === "patient" || user.role === "doctor") && (
                 <Link href="/consultations" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
                   Consult

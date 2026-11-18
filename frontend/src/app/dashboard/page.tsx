@@ -91,13 +91,15 @@ function Dashboard({ user }: { user: User }) {
       )}
 
       {user.role === "admin" && (
-        <Card>
-          <h2 className="font-semibold text-slate-900">Your workspace is on its way</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Tools for {ROLE_LABELS[user.role ?? ""]?.toLowerCase() ?? "your"} accounts are being built. Your account
-            is ready and you will see them here as soon as they launch.
-          </p>
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Tile
+            title="Admin panel"
+            body="Verify doctors, hospitals, pharmacies and riders; pay doctor withdrawals; suspend accounts."
+            href="/admin"
+            cta="Open"
+            primary
+          />
+        </div>
       )}
     </div>
   );

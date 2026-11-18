@@ -69,6 +69,7 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 | `/manage/pharmacies`, `/manage/pharmacies/[id]` | Pharmacy owner: register, new requests (no patient identity), orders, profile, commission statement |
 | `/manage/pharmacies/[id]/requests/[id]`, `.../orders/[id]` | Send or revise a quote; prepare, ready, dispatch (own staff or platform rider), hand over with the patient's code |
 | `/rider`, `/rider/orders/[id]` | Rider profile, on/off duty, jobs within 5 km, pickup and delivery with the code, earnings |
+| `/admin` | Platform admins: verify doctors (and set their commission), hospitals, pharmacies and riders; pay or reject doctor withdrawals; find, suspend and reactivate accounts |
 | `/wallet` | Token balance, lots and expiry, buying packages, history |
 | `/payments/result` | Where SSLCommerz returns after paying (`FRONTEND_URL/payments/result`) |
 

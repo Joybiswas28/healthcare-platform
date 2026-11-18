@@ -5226,6 +5226,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find accounts by part of the name or phone number, newest first */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Part of the name or phone; empty lists everyone */
+                    q?: string;
+                    role?: components["schemas"]["Role"];
+                    limit?: components["parameters"]["limit"];
+                    offset?: components["parameters"]["offset"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Users */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            users?: components["schemas"]["User"][];
+                            limit?: number;
+                            offset?: number;
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users/{userID}/status": {
         parameters: {
             query?: never;
