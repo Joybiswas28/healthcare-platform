@@ -40,6 +40,7 @@ function Dashboard({ user }: { user: User }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <Tile title="My appointments" body="Your serials and e-tickets. Cancel a booking if plans change." href="/appointments" cta="Open" primary />
           <Tile title="Online consultations" body="Chat with a doctor and share reports from home." href="/consultations" cta="Open" primary />
+          <Tile title="Prescriptions" body="Every prescription doctors wrote for you. Print or save as PDF." href="/prescriptions" cta="Open" />
           <Tile title="Ask doctors" body="Post a concern anonymously and choose from doctors' offers." href="/concerns" cta="My concerns" />
           <Tile title="Tokens" body="Online consultations are paid with tokens. See your balance or buy more." href="/wallet" cta="Wallet" />
           <Tile title="Book a doctor" body="Search by name, specialty or district." href="/doctors" cta="Find a doctor" />
@@ -49,7 +50,9 @@ function Dashboard({ user }: { user: User }) {
       {user.role === "doctor" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <ConsultationSettings />
+          <Tile title="My patients" body="Today's chamber list in serial order. Look up a ticket, mark patients seen, prescribe." href="/patients" cta="Open" primary />
           <Tile title="Consultations" body="New requests, active chats and completed consultations." href="/consultations" cta="Open" primary />
+          <Tile title="Prescriptions" body="Prescriptions you issued. Print or revoke them." href="/prescriptions" cta="Open" />
           <Tile title="Patient concerns" body="Anonymous questions from patients. Offer to help at your fee." href="/concerns" cta="Browse" />
         </div>
       )}

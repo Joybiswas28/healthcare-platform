@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteHeader } from "@/components/site-header";
 import { Container } from "@/components/ui";
@@ -24,7 +25,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <footer className="border-t border-slate-200 bg-white py-6 text-sm text-slate-500">
-            <Container>Shasthya Seba · Digital healthcare platform for Bangladesh</Container>
+            <Container className="flex flex-wrap justify-between gap-2">
+              <span>Shasthya Seba · Digital healthcare platform for Bangladesh</span>
+              <Link href="/verify" className="hover:text-teal-800">
+                Verify a prescription
+              </Link>
+            </Container>
           </footer>
         </AuthProvider>
       </body>

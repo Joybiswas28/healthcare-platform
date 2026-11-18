@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConsultationBadge } from "@/components/consultation-status";
 import { RequireAuth } from "@/components/require-auth";
-import { Alert, Card, Spinner } from "@/components/ui";
+import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
+import { PrescriptionList } from "@/app/prescriptions/prescription-list";
 import { api, errorMessage, type Consultation, type User } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
 import { Actions } from "./actions";
@@ -75,6 +76,21 @@ function Room({ user }: { user: User }) {
       </Card>
 
       {showChat && <Chat consultation={c} me={user} />}
+
+      {(c.status === "active" || c.status === "completed") && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">Prescriptions</h2>
+            {asDoctor && (
+              <ButtonLink href={`/prescriptions/new?consultation_id=${c.id}`}>Write prescription</ButtonLink>
+            )}
+          </div>
+          <PrescriptionList asDoctor={asDoctor} filter={{ consultation_id: c.id }} compact />
+          {!asDoctor && (
+            <p className="text-xs text-slate-500">Prescriptions the doctor writes for this consultation appear here.</p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

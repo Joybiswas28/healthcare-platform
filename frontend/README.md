@@ -56,6 +56,10 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 | `/consultations/new?doctor=…` | Patient requests a consultation (linked from the doctor's profile) |
 | `/consultations/[id]` | Accept / decline / pay / complete / cancel, plus chat and report sharing |
 | `/concerns`, `/concerns/[id]` | Patients post anonymous concerns and accept doctors' offers; doctors browse and offer |
+| `/patients` | Doctor's chamber list for a day: look up a ticket, mark seen / no-show, prescribe |
+| `/prescriptions`, `/prescriptions/[id]` | Patient's and doctor's prescriptions; print / save as PDF; doctor revokes |
+| `/prescriptions/new?consultation_id=…` or `?appointment_id=…&date=…` | Doctor writes a prescription |
+| `/verify`, `/verify/[code]` | Public check for pharmacies (patient name masked) |
 | `/wallet` | Token balance, lots and expiry, buying packages, history |
 | `/payments/result` | Where SSLCommerz returns after paying (`FRONTEND_URL/payments/result`) |
 

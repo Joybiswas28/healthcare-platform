@@ -23,6 +23,10 @@ export type Wallet = Schemas["Wallet"];
 export type TokenPackage = Schemas["TokenPackage"];
 export type Payment = Schemas["Payment"];
 export type LedgerEntry = Schemas["LedgerEntry"];
+export type Prescription = Schemas["Prescription"];
+export type PrescriptionInput = Schemas["PrescriptionInput"];
+export type Medicine = Schemas["Medicine"];
+export type PrescriptionVerification = Schemas["PrescriptionVerification"];
 
 // Turns whatever the API or the network returned into one readable sentence.
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {
