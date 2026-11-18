@@ -63,6 +63,12 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 | `/hospitals`, `/hospitals/[id]` | Hospital directory (name, district, department, facility); hospital page with photos, doctors by department and bookable sessions |
 | `/manage/hospitals` | Hospital admin: hospitals I manage; register a new one for verification |
 | `/manage/hospitals/[id]` | Tabs: doctors & sessions (invite by BMDC, chambers, weekly sessions), bookings (cancel, reschedule), profile & photos, team |
+| `/pharmacies`, `/pharmacies/[id]` | Verified pharmacies near the browser's location, with ratings and reviews |
+| `/medicines/new` | Patient sends a platform prescription or a photo/PDF of a paper one to nearby pharmacies (delivery or pickup) |
+| `/medicines`, `/medicines/requests/[id]`, `/medicines/orders/[id]` | Quotes (cheapest first), order, delivery code, rider location, timeline, cancel, rating |
+| `/manage/pharmacies`, `/manage/pharmacies/[id]` | Pharmacy owner: register, new requests (no patient identity), orders, profile, commission statement |
+| `/manage/pharmacies/[id]/requests/[id]`, `.../orders/[id]` | Send or revise a quote; prepare, ready, dispatch (own staff or platform rider), hand over with the patient's code |
+| `/rider`, `/rider/orders/[id]` | Rider profile, on/off duty, jobs within 5 km, pickup and delivery with the code, earnings |
 | `/wallet` | Token balance, lots and expiry, buying packages, history |
 | `/payments/result` | Where SSLCommerz returns after paying (`FRONTEND_URL/payments/result`) |
 

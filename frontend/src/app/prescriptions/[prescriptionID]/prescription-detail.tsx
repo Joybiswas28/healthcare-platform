@@ -118,6 +118,14 @@ function Detail({ user }: { user: User }) {
             Print / save as PDF
           </a>
         )}
+        {!isDoctor && !revoked && (rx.medicines ?? []).length > 0 && (
+          <Link
+            href={`/medicines/new?prescription_id=${rx.id}`}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            Order these medicines
+          </Link>
+        )}
         {rx.consultation_id && (
           <Link
             href={`/consultations/${rx.consultation_id}`}

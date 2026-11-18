@@ -34,6 +34,18 @@ export type StaffDoctor = Schemas["StaffDoctor"];
 export type Photo = Schemas["Photo"];
 export type Member = Schemas["Member"];
 export type Invitation = Schemas["Invitation"];
+export type Pharmacy = Schemas["Pharmacy"];
+export type PharmacyInput = Schemas["PharmacyInput"];
+export type Review = Schemas["Review"];
+export type MedicineRequest = Schemas["MedicineRequest"];
+export type MedicineRequestInput = Schemas["MedicineRequestInput"];
+export type RequestItem = Schemas["Item"];
+export type Quote = Schemas["Quote"];
+export type QuotedItem = Schemas["QuotedItem"];
+export type Order = Schemas["Order"];
+export type OrderStatus = Schemas["OrderStatus"];
+export type Rider = Schemas["Rider"];
+export type Job = Schemas["Job"];
 
 // Turns whatever the API or the network returned into one readable sentence.
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {

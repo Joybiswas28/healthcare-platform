@@ -42,6 +42,7 @@ function Dashboard({ user }: { user: User }) {
           <Tile title="My appointments" body="Your serials and e-tickets. Cancel a booking if plans change." href="/appointments" cta="Open" primary />
           <Tile title="Online consultations" body="Chat with a doctor and share reports from home." href="/consultations" cta="Open" primary />
           <Tile title="Prescriptions" body="Every prescription doctors wrote for you. Print or save as PDF." href="/prescriptions" cta="Open" />
+          <Tile title="Medicines" body="Send a prescription to nearby pharmacies, compare prices, get it delivered." href="/medicines" cta="Open" primary />
           <Tile title="Ask doctors" body="Post a concern anonymously and choose from doctors' offers." href="/concerns" cta="My concerns" />
           <Tile title="Tokens" body="Online consultations are paid with tokens. See your balance or buy more." href="/wallet" cta="Wallet" />
           <Tile title="Book a doctor" body="Search by name, specialty or district." href="/doctors" cta="Find a doctor" />
@@ -71,7 +72,25 @@ function Dashboard({ user }: { user: User }) {
         </div>
       )}
 
-      {user.role !== "patient" && user.role !== "doctor" && user.role !== "hospital_admin" && (
+      {user.role === "pharmacy" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Tile
+            title="My pharmacies"
+            body="Register your pharmacy, quote on nearby requests, prepare and dispatch orders."
+            href="/manage/pharmacies"
+            cta="Open"
+            primary
+          />
+        </div>
+      )}
+
+      {user.role === "rider" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Tile title="Deliveries" body="Go on duty, take deliveries near you, and track your earnings." href="/rider" cta="Open" primary />
+        </div>
+      )}
+
+      {user.role === "admin" && (
         <Card>
           <h2 className="font-semibold text-slate-900">Your workspace is on its way</h2>
           <p className="mt-1 text-sm text-slate-600">

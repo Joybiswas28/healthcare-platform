@@ -31,6 +31,9 @@ export function SiteHeader() {
           <Link href="/hospitals" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
             Hospitals
           </Link>
+          <Link href="/pharmacies" className="hidden rounded-md px-2 py-1 text-slate-700 hover:text-teal-800 sm:inline">
+            Pharmacies
+          </Link>
           {loading ? null : user ? (
             <>
               {(user.role === "patient" || user.role === "doctor") && (

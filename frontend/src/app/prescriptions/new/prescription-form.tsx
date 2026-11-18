@@ -85,6 +85,10 @@ function Form({ source }: { source: Source }) {
     const meds = medicines
       .map((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, (v ?? "").trim()])) as Medicine)
       .filter((m) => m.name);
+    if (!text("chief_complaints") && !text("diagnosis")) {
+      setError("Write the chief complaints or the diagnosis (or both).");
+      return;
+    }
     const incomplete = meds.find((m) => !m.dosage || !m.duration);
     if (incomplete) {
       setError(`Add the dosage and duration for ${incomplete.name}.`);

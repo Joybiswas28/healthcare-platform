@@ -24,7 +24,8 @@ const SERVICES = [
   {
     title: "Medicine delivery",
     body: "Send your prescription to nearby pharmacies, compare quotes and get medicine delivered.",
-    live: false,
+    href: "/medicines/new",
+    live: true,
   },
 ];
 
