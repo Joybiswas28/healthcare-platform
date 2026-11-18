@@ -12,7 +12,8 @@ const SERVICES = [
   {
     title: "Consult online",
     body: "Chat with a doctor from home using consultation tokens, or post a concern and receive offers.",
-    live: false,
+    href: "/consultations",
+    live: true,
   },
   {
     title: "Hospitals",

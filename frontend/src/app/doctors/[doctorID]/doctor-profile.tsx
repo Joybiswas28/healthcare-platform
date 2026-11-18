@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, Badge, Card, Spinner } from "@/components/ui";
+import { Alert, Badge, ButtonLink, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type PublicDoctor } from "@/lib/api/client";
 import { clock, taka, WEEKDAYS } from "@/lib/format";
 import { BookingPanel } from "./booking-panel";
@@ -64,6 +64,9 @@ export function DoctorProfile() {
               )}
             </div>
           </div>
+          {doctor.consultation_enabled && (
+            <ButtonLink href={`/consultations/new?doctor=${doctor.user_id}`}>Consult online</ButtonLink>
+          )}
         </div>
         {doctor.bio && <p className="mt-4 whitespace-pre-line text-sm text-slate-700">{doctor.bio}</p>}
       </Card>

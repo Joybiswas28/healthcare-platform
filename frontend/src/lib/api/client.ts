@@ -14,6 +14,15 @@ export type Chamber = Schemas["Chamber"];
 export type Schedule = Schemas["Schedule"];
 export type DoctorSummary = Schemas["DoctorSummary"];
 export type PublicDoctor = Schemas["PublicDoctor"];
+export type Consultation = Schemas["Consultation"];
+export type ConsultationStatus = Schemas["ConsultationStatus"];
+export type ChatMessage = Schemas["ChatMessage"];
+export type Concern = Schemas["Concern"];
+export type Offer = Schemas["Offer"];
+export type Wallet = Schemas["Wallet"];
+export type TokenPackage = Schemas["TokenPackage"];
+export type Payment = Schemas["Payment"];
+export type LedgerEntry = Schemas["LedgerEntry"];
 
 // Turns whatever the API or the network returned into one readable sentence.
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {

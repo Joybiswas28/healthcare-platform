@@ -30,6 +30,11 @@ export function SiteHeader() {
           </Link>
           {loading ? null : user ? (
             <>
+              {(user.role === "patient" || user.role === "doctor") && (
+                <Link href="/consultations" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
+                  Consult
+                </Link>
+              )}
               <Link href="/dashboard" className="rounded-md px-2 py-1 text-slate-700 hover:text-teal-800">
                 {user.name?.split(" ")[0] ?? "Account"}
               </Link>

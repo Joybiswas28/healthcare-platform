@@ -50,8 +50,18 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 | `/doctors/[id]` | Profile, chambers and sessions; pick a date and book a serial |
 | `/register` | Sign up with SMS code (patient, doctor, hospital admin, pharmacy, rider) |
 | `/login`, `/forgot-password` | Log in; reset password with SMS code |
-| `/dashboard` | Role-based home |
+| `/dashboard` | Role-based home; doctors turn online consultations on and set their token fee |
 | `/appointments` | Patient's serials and e-tickets; cancel upcoming ones |
+| `/consultations` | Patient and doctor consultation lists, filtered by status |
+| `/consultations/new?doctor=…` | Patient requests a consultation (linked from the doctor's profile) |
+| `/consultations/[id]` | Accept / decline / pay / complete / cancel, plus chat and report sharing |
+| `/concerns`, `/concerns/[id]` | Patients post anonymous concerns and accept doctors' offers; doctors browse and offer |
+| `/wallet` | Token balance, lots and expiry, buying packages, history |
+| `/payments/result` | Where SSLCommerz returns after paying (`FRONTEND_URL/payments/result`) |
+
+Without SSLCommerz credentials the backend runs a development gateway: "Buy" asks for confirmation and marks the payment paid without taking money.
+
+Chat messages are fetched every 3 seconds through the proxy. The backend's WebSocket needs the access token in its URL, and this app deliberately never gives the token to the browser.
 
 ## Scripts
 

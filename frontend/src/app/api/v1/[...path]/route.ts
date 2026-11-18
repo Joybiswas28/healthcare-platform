@@ -12,7 +12,18 @@ const TOKEN_ROUTES = new Set(["auth/login", "auth/register"]);
 // Request headers worth passing on. Everything else (cookies, the browser's own
 // Authorization header, hop-by-hop headers) is dropped.
 const FORWARD_REQUEST = ["accept", "content-type", "accept-language", "if-none-match"];
-const FORWARD_RESPONSE = ["content-type", "content-disposition", "retry-after", "cache-control", "etag"];
+// content-security-policy and x-content-type-options matter for shared files:
+// the backend serves them sandboxed so an uploaded HTML/SVG can't run script.
+const FORWARD_RESPONSE = [
+  "content-type",
+  "content-length",
+  "content-disposition",
+  "content-security-policy",
+  "x-content-type-options",
+  "retry-after",
+  "cache-control",
+  "etag",
+];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 

@@ -4,12 +4,25 @@ import { RequireAuth } from "@/components/require-auth";
 import { ButtonLink, Card, Container } from "@/components/ui";
 import type { User } from "@/lib/api/client";
 import { ROLE_LABELS } from "@/lib/format";
+import { ConsultationSettings } from "./consultation-settings";
 
 export default function DashboardPage() {
   return (
     <Container className="py-8">
       <RequireAuth>{(user) => <Dashboard user={user} />}</RequireAuth>
     </Container>
+  );
+}
+
+function Tile({ title, body, href, cta, primary }: { title: string; body: string; href: string; cta: string; primary?: boolean }) {
+  return (
+    <Card>
+      <h2 className="font-semibold text-slate-900">{title}</h2>
+      <p className="mt-1 text-sm text-slate-600">{body}</p>
+      <ButtonLink href={href} variant={primary ? "primary" : "secondary"} className="mt-4">
+        {cta}
+      </ButtonLink>
+    </Card>
   );
 }
 
@@ -23,24 +36,25 @@ function Dashboard({ user }: { user: User }) {
         </p>
       </div>
 
-      {user.role === "patient" ? (
+      {user.role === "patient" && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Card>
-            <h2 className="font-semibold text-slate-900">My appointments</h2>
-            <p className="mt-1 text-sm text-slate-600">See your serials and e-tickets, or cancel a booking.</p>
-            <ButtonLink href="/appointments" className="mt-4">
-              Open
-            </ButtonLink>
-          </Card>
-          <Card>
-            <h2 className="font-semibold text-slate-900">Book a doctor</h2>
-            <p className="mt-1 text-sm text-slate-600">Search by name, specialty or district.</p>
-            <ButtonLink href="/doctors" variant="secondary" className="mt-4">
-              Find a doctor
-            </ButtonLink>
-          </Card>
+          <Tile title="My appointments" body="Your serials and e-tickets. Cancel a booking if plans change." href="/appointments" cta="Open" primary />
+          <Tile title="Online consultations" body="Chat with a doctor and share reports from home." href="/consultations" cta="Open" primary />
+          <Tile title="Ask doctors" body="Post a concern anonymously and choose from doctors' offers." href="/concerns" cta="My concerns" />
+          <Tile title="Tokens" body="Online consultations are paid with tokens. See your balance or buy more." href="/wallet" cta="Wallet" />
+          <Tile title="Book a doctor" body="Search by name, specialty or district." href="/doctors" cta="Find a doctor" />
         </div>
-      ) : (
+      )}
+
+      {user.role === "doctor" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ConsultationSettings />
+          <Tile title="Consultations" body="New requests, active chats and completed consultations." href="/consultations" cta="Open" primary />
+          <Tile title="Patient concerns" body="Anonymous questions from patients. Offer to help at your fee." href="/concerns" cta="Browse" />
+        </div>
+      )}
+
+      {user.role !== "patient" && user.role !== "doctor" && (
         <Card>
           <h2 className="font-semibold text-slate-900">Your workspace is on its way</h2>
           <p className="mt-1 text-sm text-slate-600">
