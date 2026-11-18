@@ -6,6 +6,7 @@ import type { User } from "@/lib/api/client";
 import { ROLE_LABELS } from "@/lib/format";
 import { ConsultationSettings } from "./consultation-settings";
 import { DoctorHospitals } from "./doctor-hospitals";
+import { DoctorProfileNudge } from "./doctor-profile-nudge";
 
 export default function DashboardPage() {
   return (
@@ -51,7 +52,11 @@ function Dashboard({ user }: { user: User }) {
 
       {user.role === "doctor" && (
         <div className="grid gap-4 sm:grid-cols-2">
+          <DoctorProfileNudge />
+          <Tile title="My chambers" body="Your private chambers and weekly sessions that patients book." href="/doctor/chambers" cta="Manage" primary />
           <ConsultationSettings />
+          <Tile title="Earnings" body="Online consultation earnings and withdrawals to bKash, Nagad or bank." href="/doctor/earnings" cta="Open" />
+          <Tile title="Professional profile" body="BMDC number, specialty, degrees and the bio patients see." href="/doctor/profile" cta="Edit" />
           <Tile title="My patients" body="Today's chamber list in serial order. Look up a ticket, mark patients seen, prescribe." href="/patients" cta="Open" primary />
           <Tile title="Consultations" body="New requests, active chats and completed consultations." href="/consultations" cta="Open" primary />
           <Tile title="Prescriptions" body="Prescriptions you issued. Print or revoke them." href="/prescriptions" cta="Open" />

@@ -56,6 +56,9 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 | `/consultations/new?doctor=…` | Patient requests a consultation (linked from the doctor's profile) |
 | `/consultations/[id]` | Accept / decline / pay / complete / cancel, plus chat and report sharing |
 | `/concerns`, `/concerns/[id]` | Patients post anonymous concerns and accept doctors' offers; doctors browse and offer |
+| `/doctor/profile` | BMDC number, specialty, degrees, experience, bio; verification status (the dashboard nudges new doctors here) |
+| `/doctor/chambers` | Private chambers (add, edit fee and booking switch) with weekly sessions; hospital chambers shown read-only |
+| `/doctor/earnings` | Online consultation balance, history, withdrawal requests to bKash, Nagad or bank |
 | `/patients` | Doctor's chamber list for a day: look up a ticket, mark seen / no-show, prescribe |
 | `/prescriptions`, `/prescriptions/[id]` | Patient's and doctor's prescriptions; print / save as PDF; doctor revokes |
 | `/prescriptions/new?consultation_id=…` or `?appointment_id=…&date=…` | Doctor writes a prescription |

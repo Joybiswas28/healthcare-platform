@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, Field, Select, Spinner } from "@/components/ui";
+import { ScheduleEditor, type ScheduleBody } from "@/components/schedule-editor";
+import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type Chamber, type Hospital, type StaffDoctor } from "@/lib/api/client";
-import { clock, taka, WEEKDAYS } from "@/lib/format";
+import { taka } from "@/lib/format";
 
 const STATUS = {
   invited: { label: "Invitation sent", tone: "amber" },
@@ -12,9 +13,6 @@ const STATUS = {
   removed: { label: "Removed", tone: "slate" },
   left: { label: "Left", tone: "slate" },
 } as const;
-
-const input =
-  "rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
 
 export function DoctorsTab({ hospital }: { hospital: Hospital }) {
   const hospitalID = hospital.id ?? "";
@@ -253,7 +251,6 @@ function ChamberEditor({
 }) {
   const chamberID = c.id ?? "";
   const [editing, setEditing] = useState(false);
-  const [adding, setAdding] = useState(false);
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -273,32 +270,23 @@ function ChamberEditor({
     }
   }
 
-  async function addSession(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
+  async function addSession(body: ScheduleBody) {
     const { error } = await api.POST("/api/v1/manage/hospitals/{hospitalID}/chambers/{chamberID}/schedules", {
       params: { path: { hospitalID, chamberID } },
-      body: {
-        weekday: Number(f.get("weekday")),
-        start_time: String(f.get("start")),
-        end_time: String(f.get("end")),
-        max_patients: Number(f.get("max")),
-      },
+      body,
     });
-    if (error) onError(errorMessage(error));
-    else {
-      setAdding(false);
-      onChange();
-    }
+    if (error) return errorMessage(error);
+    onChange();
+    return "";
   }
 
   async function removeSession(scheduleID: string) {
-    if (!confirm("Remove this weekly session?")) return;
     const { error } = await api.DELETE("/api/v1/manage/hospitals/{hospitalID}/schedules/{scheduleID}", {
       params: { path: { hospitalID, scheduleID } },
     });
-    if (error) onError(errorMessage(error));
-    else onChange();
+    if (error) return errorMessage(error);
+    onChange();
+    return "";
   }
 
   return (
@@ -330,47 +318,9 @@ function ChamberEditor({
         </form>
       )}
 
-      <ul className="mt-3 space-y-1 text-sm">
-        {(c.schedules ?? []).map((s) => (
-          <li key={s.id} className="flex items-center justify-between gap-2 rounded bg-slate-50 px-2 py-1">
-            <span>
-              {WEEKDAYS[s.weekday ?? 0]} · {clock(s.start_time)} – {clock(s.end_time)} · up to {s.max_patients}
-            </span>
-            <button onClick={() => s.id && removeSession(s.id)} className="text-xs text-red-700 hover:underline">
-              Remove
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      {adding ? (
-        <form onSubmit={addSession} className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto_6rem_auto_auto] sm:items-end">
-          <Select label="Day" name="weekday" defaultValue="0">
-            {WEEKDAYS.map((w, i) => (
-              <option key={w} value={i}>
-                {w}
-              </option>
-            ))}
-          </Select>
-          <label className="text-sm">
-            <span className="mb-1 block font-medium text-slate-700">From</span>
-            <input type="time" name="start" required defaultValue="17:00" className={input} />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-medium text-slate-700">To</span>
-            <input type="time" name="end" required defaultValue="21:00" className={input} />
-          </label>
-          <Field label="Patients" name="max" type="number" min={1} max={500} defaultValue={20} required />
-          <Button type="submit">Add</Button>
-          <Button type="button" variant="secondary" onClick={() => setAdding(false)}>
-            Cancel
-          </Button>
-        </form>
-      ) : (
-        <button onClick={() => setAdding(true)} className="mt-2 text-sm text-teal-800 hover:underline">
-          + Add weekly session
-        </button>
-      )}
+      <div className="mt-3">
+        <ScheduleEditor schedules={c.schedules ?? []} onAdd={addSession} onRemove={removeSession} />
+      </div>
     </div>
   );
 }
