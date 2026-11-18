@@ -162,6 +162,7 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | POST | `/consultations/{id}/attachments` | both | Multipart field `file`: PDF, JPEG or PNG, max 10 MB |
 | GET | `/attachments/{id}` | both | Download a shared file |
 | GET (WebSocket) | `/consultations/{id}/ws?access_token=<jwt>&after=<last id>` | both | Live chat (see below) |
+| GET (event stream) | `/consultations/{id}/events?after=<last id>` | both | Live chat as Server-Sent Events, with the normal Authorization header (see below) |
 
 **Public medical concerns**
 
@@ -207,6 +208,15 @@ Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message
 - Send `{"body": "..."}` to post a message. If it is rejected, you get `{"type": "error", "error": "..."}`.
 - Messages sent through REST or file uploads also appear live.
 - New messages are announced by a PostgreSQL trigger (`NOTIFY`), so this works with any number of API servers.
+
+### Live chat (Server-Sent Events)
+
+`GET /api/v1/consultations/{id}/events?after=<last message id>` uses the normal `Authorization` header, so a website can relay it through its own server and keep the token out of the browser. The website in `frontend/` does this.
+
+- Each message is `event: message` with `id: <message id>` and the message JSON as `data`.
+- A reconnecting `EventSource` sends `Last-Event-ID`, and the stream resumes after it. The server suggests a 3-second retry.
+- `: ping` comments every 25 seconds keep proxies from closing the connection.
+- Post messages with `POST /consultations/{id}/messages`; they arrive on every open stream and WebSocket.
 
 **Hospitals: public**
 

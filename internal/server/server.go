@@ -78,7 +78,7 @@ func NewRouter(d Deps) http.Handler {
 	r.Use(requestLogger(d.Log))
 	r.Use(middleware.Recoverer)
 	r.Use(rateLimit(600, time.Minute)) // generous per-IP ceiling for everything
-	r.Use(exceptWebSocket(middleware.Timeout(30 * time.Second)))
+	r.Use(exceptStreaming(middleware.Timeout(30 * time.Second)))
 
 	// Tight per-IP limits where guessing is the attack: passwords, OTPs, prescription codes.
 	strict := rateLimit(20, time.Minute)
@@ -230,6 +230,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/consultations/{consultationID}/messages", c.PostMessage)
 				r.Post("/consultations/{consultationID}/attachments", c.Upload)
 				r.Get("/consultations/{consultationID}/ws", c.Stream)
+				r.Get("/consultations/{consultationID}/events", c.Events)
 				r.Get("/attachments/{attachmentID}", c.Download)
 
 				// Public medical concerns
@@ -358,12 +359,14 @@ func rateLimit(n int, window time.Duration) func(http.Handler) http.Handler {
 	)
 }
 
-// exceptWebSocket applies mw to every request except WebSocket upgrades, which are long-lived.
-func exceptWebSocket(mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+// exceptStreaming applies mw to every request except long-lived ones: WebSocket
+// upgrades and Server-Sent Event streams.
+func exceptStreaming(mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		wrapped := mw(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") ||
+				strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
 				next.ServeHTTP(w, r)
 				return
 			}

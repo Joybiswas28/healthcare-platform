@@ -767,6 +767,23 @@ paths:
       responses:
         "101": { description: Switching to WebSocket }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/events:
+    get:
+      tags: [Consultations]
+      summary: Live chat as Server-Sent Events
+      description: |
+        Authenticated with the normal Authorization header, so a website can relay it through its own server
+        instead of giving the token to the browser. Sends the backlog after `after`, then each new message as
+        `event: message` whose `id` is the message id and whose `data` is a ChatMessage as JSON. A reconnecting
+        client sends `Last-Event-ID` and the stream resumes after it. Comment lines (`: ping`) keep the
+        connection open. Post messages with `POST /consultations/{id}/messages`.
+      parameters:
+        - $ref: "#/components/parameters/consultationID"
+        - { name: after, in: query, schema: { type: integer, format: int64 }, description: Last message id you have }
+        - { name: Last-Event-ID, in: header, schema: { type: string }, description: Sent by EventSource when it reconnects }
+      responses:
+        "200": { description: Event stream, content: { text/event-stream: { schema: { type: string } } } }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/attachments/{attachmentID}:
     get:
       tags: [Consultations]
