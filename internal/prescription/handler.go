@@ -3,6 +3,7 @@ package prescription
 import (
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -16,12 +17,13 @@ import (
 type Handler struct {
 	store *Store
 	log   *slog.Logger
-	// publicBaseURL is where this API is reachable from outside, used in the QR code.
-	publicBaseURL string
+	// frontendURL is the website; the QR code on a printed prescription opens its
+	// /verify/{code} page, which pharmacies can read (the API answer is raw JSON).
+	frontendURL string
 }
 
-func NewHandler(store *Store, publicBaseURL string, log *slog.Logger) *Handler {
-	return &Handler{store: store, publicBaseURL: strings.TrimRight(publicBaseURL, "/"), log: log}
+func NewHandler(store *Store, frontendURL string, log *slog.Logger) *Handler {
+	return &Handler{store: store, frontendURL: strings.TrimRight(frontendURL, "/"), log: log}
 }
 
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
@@ -29,7 +31,7 @@ func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func (h *Handler) verifyURL(code string) string {
-	return h.publicBaseURL + "/api/v1/prescriptions/verify/" + code
+	return h.frontendURL + "/verify/" + url.PathEscape(code)
 }
 
 // POST /prescriptions (doctor)

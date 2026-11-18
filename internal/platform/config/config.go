@@ -18,9 +18,10 @@ type Config struct {
 	JWTTTL      time.Duration
 	UploadDir   string
 
-	// PublicBaseURL is where this API is reachable from outside (QR codes, payment callbacks).
+	// PublicBaseURL is where this API is reachable from outside (payment callbacks).
 	PublicBaseURL string
-	// FrontendURL is where patients are sent back to after paying.
+	// FrontendURL is the website: patients return there after paying, and
+	// prescription QR codes open its /verify/{code} page.
 	FrontendURL string
 
 	// SSLCommerz is enabled when a store id is set; otherwise payments are simulated.
@@ -78,6 +79,9 @@ func Load() (Config, error) {
 		}
 		if !strings.HasPrefix(cfg.PublicBaseURL, "https://") {
 			return Config{}, errors.New("PUBLIC_BASE_URL must use https:// in production")
+		}
+		if !strings.HasPrefix(cfg.FrontendURL, "https://") {
+			return Config{}, errors.New("FRONTEND_URL must use https:// in production (it is printed in prescription QR codes)")
 		}
 		if strings.Contains(cfg.DatabaseURL, "sslmode=disable") && !strings.Contains(cfg.DatabaseURL, "@db:") &&
 			!strings.Contains(cfg.DatabaseURL, "@localhost") && !strings.Contains(cfg.DatabaseURL, "@127.0.0.1") {

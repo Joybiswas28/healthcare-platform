@@ -909,6 +909,7 @@ paths:
     get:
       tags: [Prescriptions]
       summary: Printable HTML page with a QR code (use the browser's "Save as PDF")
+      description: The QR code opens the website's verification page, `FRONTEND_URL/verify/{code}`.
       parameters: [{ $ref: "#/components/parameters/prescriptionID" }]
       responses:
         "200": { description: HTML page, content: { text/html: { schema: { type: string } } } }

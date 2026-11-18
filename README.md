@@ -106,7 +106,7 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | POST | `/prescriptions` | doctor | Issue for a `consultation_id` (active or completed) or an `appointment_id` (today or earlier). Includes `medicines` (`name`, `strength`, `form`, `dosage`, `duration`, `instructions`), `investigations`, `advice`, `follow_up_date` |
 | GET | `/prescriptions?consultation_id=&appointment_id=` | both | Patient: issued to me. Doctor: issued by me |
 | GET | `/prescriptions/{id}` | both | One prescription |
-| GET | `/prescriptions/{id}/print` | both | Printable HTML page with a QR code. Use the browser's "Save as PDF" |
+| GET | `/prescriptions/{id}/print` | both | Printable HTML page with a QR code that opens `FRONTEND_URL/verify/{code}`. Use the browser's "Save as PDF" |
 | POST | `/prescriptions/{id}/revoke` | doctor | `{"reason": "..."}`. Prescriptions are never edited: revoke and issue a new one |
 
 **Patient**

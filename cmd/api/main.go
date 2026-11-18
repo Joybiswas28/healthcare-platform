@@ -124,7 +124,7 @@ func run() error {
 			Pharmacies:    pharmacy.NewHandler(pharmacy.NewStore(pool, files, cfg.PharmacyCommissionBps), log),
 			Wallet:        wallet.NewHandler(walletStore, gateway, log),
 			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log),
-			Prescriptions: prescription.NewHandler(prescription.NewStore(pool), cfg.PublicBaseURL, log),
+			Prescriptions: prescription.NewHandler(prescription.NewStore(pool), cfg.FrontendURL, log),
 			Notifications: notify.NewHandler(notify.NewStore(pool), log),
 			SSLCommerz:    sslCallbacks,
 			DevRoutes:     !cfg.IsProduction() && gateway.Name() == wallet.ProviderDev,
