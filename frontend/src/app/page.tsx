@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { DoctorSearchForm } from "@/components/doctor-search-form";
+import heroImage from "@/assets/hero-doctor.jpg";
 import { Container } from "@/components/ui";
 
 const SERVICES = [
@@ -33,15 +35,25 @@ export default function Home() {
   return (
     <>
       <section className="bg-gradient-to-b from-teal-50 to-transparent">
-        <Container className="py-14 sm:py-20">
-          <p className="text-sm font-semibold uppercase tracking-wider text-teal-800">Digital Healthcare Platform</p>
-          <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-            Healthcare across Bangladesh, a few taps away
-          </h1>
-          <p className="mt-4 max-w-xl text-slate-600">
-            Search verified doctors by name, specialty or district and book your serial without waiting in line.
-          </p>
-          <div className="mt-8 max-w-3xl">
+        <Container className="grid items-center gap-8 py-12 sm:py-16 lg:grid-cols-2 lg:gap-12">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-teal-800">Digital Healthcare Platform</p>
+            <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              Healthcare across Bangladesh, a few taps away
+            </h1>
+            <p className="mt-4 max-w-xl text-slate-600">
+              Search verified doctors by name, specialty or district and book your serial without waiting in line.
+            </p>
+          </div>
+          <Image
+            src={heroImage}
+            alt="A doctor in a white coat holding a phone, with healthcare icons rising from the screen"
+            preload
+            placeholder="blur"
+            sizes="(min-width: 1024px) 480px, 100vw"
+            className="w-full rounded-2xl object-cover shadow-lg ring-1 ring-slate-200"
+          />
+          <div className="lg:col-span-2">
             <DoctorSearchForm />
           </div>
         </Container>
