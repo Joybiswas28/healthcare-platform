@@ -60,6 +60,9 @@ const { data, error } = await api.GET("/api/v1/doctors/{doctorID}", { params: { 
 | `/prescriptions`, `/prescriptions/[id]` | Patient's and doctor's prescriptions; print / save as PDF; doctor revokes |
 | `/prescriptions/new?consultation_id=…` or `?appointment_id=…&date=…` | Doctor writes a prescription |
 | `/verify`, `/verify/[code]` | Public check for pharmacies (patient name masked) |
+| `/hospitals`, `/hospitals/[id]` | Hospital directory (name, district, department, facility); hospital page with photos, doctors by department and bookable sessions |
+| `/manage/hospitals` | Hospital admin: hospitals I manage; register a new one for verification |
+| `/manage/hospitals/[id]` | Tabs: doctors & sessions (invite by BMDC, chambers, weekly sessions), bookings (cancel, reschedule), profile & photos, team |
 | `/wallet` | Token balance, lots and expiry, buying packages, history |
 | `/payments/result` | Where SSLCommerz returns after paying (`FRONTEND_URL/payments/result`) |
 

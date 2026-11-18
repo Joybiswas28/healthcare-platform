@@ -18,7 +18,8 @@ const SERVICES = [
   {
     title: "Hospitals",
     body: "Browse hospitals, their doctors and chambers, and book through the hospital directly.",
-    live: false,
+    href: "/hospitals",
+    live: true,
   },
   {
     title: "Medicine delivery",

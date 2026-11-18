@@ -27,6 +27,13 @@ export type Prescription = Schemas["Prescription"];
 export type PrescriptionInput = Schemas["PrescriptionInput"];
 export type Medicine = Schemas["Medicine"];
 export type PrescriptionVerification = Schemas["PrescriptionVerification"];
+export type Hospital = Schemas["Hospital"];
+export type HospitalInput = Schemas["HospitalInput"];
+export type PublicHospital = Schemas["PublicHospital"];
+export type StaffDoctor = Schemas["StaffDoctor"];
+export type Photo = Schemas["Photo"];
+export type Member = Schemas["Member"];
+export type Invitation = Schemas["Invitation"];
 
 // Turns whatever the API or the network returned into one readable sentence.
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {

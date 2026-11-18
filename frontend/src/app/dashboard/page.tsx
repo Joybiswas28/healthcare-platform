@@ -5,6 +5,7 @@ import { ButtonLink, Card, Container } from "@/components/ui";
 import type { User } from "@/lib/api/client";
 import { ROLE_LABELS } from "@/lib/format";
 import { ConsultationSettings } from "./consultation-settings";
+import { DoctorHospitals } from "./doctor-hospitals";
 
 export default function DashboardPage() {
   return (
@@ -54,10 +55,23 @@ function Dashboard({ user }: { user: User }) {
           <Tile title="Consultations" body="New requests, active chats and completed consultations." href="/consultations" cta="Open" primary />
           <Tile title="Prescriptions" body="Prescriptions you issued. Print or revoke them." href="/prescriptions" cta="Open" />
           <Tile title="Patient concerns" body="Anonymous questions from patients. Offer to help at your fee." href="/concerns" cta="Browse" />
+          <DoctorHospitals />
         </div>
       )}
 
-      {user.role !== "patient" && user.role !== "doctor" && (
+      {user.role === "hospital_admin" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Tile
+            title="My hospitals"
+            body="Register your hospital, invite doctors, set up chambers and sessions, and manage bookings."
+            href="/manage/hospitals"
+            cta="Open"
+            primary
+          />
+        </div>
+      )}
+
+      {user.role !== "patient" && user.role !== "doctor" && user.role !== "hospital_admin" && (
         <Card>
           <h2 className="font-semibold text-slate-900">Your workspace is on its way</h2>
           <p className="mt-1 text-sm text-slate-600">

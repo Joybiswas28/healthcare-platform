@@ -2452,7 +2452,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Printable HTML page with a QR code (use the browser's "Save as PDF") */
+        /**
+         * Printable HTML page with a QR code (use the browser's "Save as PDF")
+         * @description The QR code opens the website's verification page, `FRONTEND_URL/verify/{code}`.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -2795,7 +2798,32 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Photos, including while verification is pending */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    hospitalID: components["parameters"]["hospitalID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Photos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            photos?: components["schemas"]["Photo"][];
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
         put?: never;
         /** Upload a photo (JPEG/PNG/WebP, max 5 MB, max 10; the first becomes the logo) */
         post: {
