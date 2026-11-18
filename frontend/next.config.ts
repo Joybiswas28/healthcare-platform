@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    // The Sylhet directory used to be its own page; it now lives on /hospitals.
+    return [{ source: "/hospitals/sylhet", destination: "/hospitals#sylhet", permanent: true }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

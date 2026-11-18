@@ -56,7 +56,7 @@ export default function Home() {
             </a>{" "}
             for an ambulance, anywhere in Bangladesh.
           </p>
-          <Link href="/hospitals/sylhet" className="text-sm font-medium text-red-800 underline">
+          <Link href="/hospitals#sylhet" className="text-sm font-medium text-red-800 underline">
             Sylhet hospital and ambulance numbers →
           </Link>
         </div>
