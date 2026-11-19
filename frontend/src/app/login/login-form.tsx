@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Alert, Button, Card, Field } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
+import { DEMO_ACCOUNTS, SHOW_DEMO_ACCOUNTS } from "@/lib/demo-accounts";
 import { safeNext } from "@/lib/safe-next";
 
 export function LoginForm() {
@@ -13,17 +14,13 @@ export function LoginForm() {
   const params = useSearchParams();
   const { setUser } = useAuth();
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setBusy(true);
+  async function login(phone: string, password: string, who: string) {
+    setBusy(who);
     setError("");
-    const { data, error } = await api.POST("/api/v1/auth/login", {
-      body: { phone: String(form.get("phone")), password: String(form.get("password")) },
-    });
-    setBusy(false);
+    const { data, error } = await api.POST("/api/v1/auth/login", { body: { phone, password } });
+    setBusy(null);
     if (!data?.user) {
       setError(errorMessage(error, "Could not log in."));
       return;
@@ -32,25 +29,63 @@ export function LoginForm() {
     router.push(safeNext(params.get("next")));
   }
 
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    login(String(form.get("phone")), String(form.get("password")), "form");
+  }
+
   return (
-    <Card>
-      <form onSubmit={onSubmit} className="space-y-4">
-        {params.get("reset") === "1" && <Alert kind="success">Password changed. Log in with your new password.</Alert>}
-        <Field label="Mobile number" name="phone" type="tel" placeholder="01XXXXXXXXX" autoComplete="tel" required />
-        <Field label="Password" name="password" type="password" autoComplete="current-password" required />
-        {error && <Alert>{error}</Alert>}
-        <Button type="submit" disabled={busy} className="w-full">
-          {busy ? "Logging in…" : "Log in"}
-        </Button>
-        <div className="flex justify-between text-sm">
-          <Link href="/forgot-password" className="text-teal-800 hover:underline">
-            Forgot password?
-          </Link>
-          <Link href="/register" className="text-teal-800 hover:underline">
-            Create an account
-          </Link>
-        </div>
-      </form>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <form onSubmit={onSubmit} className="space-y-4">
+          {params.get("reset") === "1" && <Alert kind="success">Password changed. Log in with your new password.</Alert>}
+          <Field label="Mobile number" name="phone" type="tel" placeholder="01XXXXXXXXX" autoComplete="tel" required />
+          <Field label="Password" name="password" type="password" autoComplete="current-password" required />
+          {error && <Alert>{error}</Alert>}
+          <Button type="submit" disabled={busy !== null} className="w-full">
+            {busy === "form" ? "Logging in…" : "Log in"}
+          </Button>
+          <div className="flex justify-between text-sm">
+            <Link href="/forgot-password" className="text-teal-800 hover:underline">
+              Forgot password?
+            </Link>
+            <Link href="/register" className="text-teal-800 hover:underline">
+              Create an account
+            </Link>
+          </div>
+        </form>
+      </Card>
+
+      {SHOW_DEMO_ACCOUNTS && (
+        <Card className="border-dashed">
+          <h2 className="font-semibold text-slate-900">Demo accounts</h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Test data on this computer only; this box is hidden on a real deployment. Click to log in as:
+          </p>
+          <ul className="divide-y divide-slate-100">
+            {DEMO_ACCOUNTS.map((a) => (
+              <li key={a.phone} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span>
+                  <span className="font-medium text-slate-900">{a.role}</span>
+                  <span className="text-slate-600"> · {a.name}</span>
+                  <span className="block font-mono text-xs text-slate-500">
+                    {a.phone} / {a.password}
+                  </span>
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy !== null}
+                  onClick={() => login(a.phone, a.password, a.phone)}
+                >
+                  {busy === a.phone ? "…" : "Log in"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
   );
 }

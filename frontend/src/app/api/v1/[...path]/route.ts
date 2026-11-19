@@ -56,7 +56,12 @@ async function handle(req: NextRequest, ctx: RouteContext<"/api/v1/[...path]">) 
       signal: req.signal,
     });
   } catch {
-    return NextResponse.json({ error: "the server is unreachable, try again shortly" }, { status: 502 });
+    // In development the usual cause is that the Go API isn't running; say how to fix it.
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "the server is unreachable, try again shortly"
+        : `the backend at ${API_URL} isn't running. Start it with start-dev.cmd, or "go run ./cmd/api" in the project folder.`;
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 
   const outHeaders = new Headers();
