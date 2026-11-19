@@ -178,8 +178,9 @@ function Form() {
               Medicines <span className="font-normal text-slate-500">(optional, helps pharmacies read the prescription)</span>
             </p>
             {items.map((it, i) => (
-              <div key={i} className="grid grid-cols-[1fr_6rem_7rem_auto] gap-2">
-                <input aria-label="Name" placeholder="Name, e.g. Napa" value={it.name} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className={input} />
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 sm:grid-cols-[1fr_6rem_7rem_auto]">
+                {/* Phones: the name takes a full row, strength and quantity share the next. */}
+                <input aria-label="Name" placeholder="Name, e.g. Napa" value={it.name} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className={`${input} col-span-3 sm:col-span-1`} />
                 <input aria-label="Strength" placeholder="500 mg" value={it.strength ?? ""} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, strength: e.target.value } : x)))} className={input} />
                 <input aria-label="Quantity" placeholder="10 tablets" value={it.quantity ?? ""} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)))} className={input} />
                 <button type="button" onClick={() => setItems((p) => p.filter((_, j) => j !== i))} className="px-2 text-sm text-red-700" aria-label="Remove">

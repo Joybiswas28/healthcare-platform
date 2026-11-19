@@ -78,7 +78,7 @@ function Inner() {
         </Alert>
       )}
 
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
+      <div className="flex gap-1 overflow-x-auto border-b border-slate-200 [mask-image:linear-gradient(to_left,transparent,black_2.5rem)] md:[mask-image:none]" role="tablist">
         {TABS.map((t) => (
           <button
             key={t.id}
