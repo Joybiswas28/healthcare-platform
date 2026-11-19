@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./auth-provider";
+import { NotificationBell } from "./notification-bell";
 import { ThemeToggle } from "./theme-toggle";
 import { Container } from "./ui";
 
@@ -54,6 +55,7 @@ export function SiteHeader() {
                   Consult
                 </Link>
               )}
+              <NotificationBell role={user.role} />
               <Link href="/dashboard" className={navLink}>
                 {user.name?.split(" ")[0] ?? "Account"}
               </Link>
