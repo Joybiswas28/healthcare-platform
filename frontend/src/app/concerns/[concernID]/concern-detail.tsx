@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Concern, type Offer, type User } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
@@ -23,7 +24,7 @@ function Detail({ user }: { user: User }) {
       params: { path: { concernID } },
     });
     if (data) setConcern(data);
-    else setError(response.status === 404 ? "This concern could not be found." : errorMessage(error));
+    else setError(loadFailure(response.status, error, "concern"));
   }, [concernID]);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ function Detail({ user }: { user: User }) {
     reload();
   }, [reload]);
 
-  if (error && !concern) return <Alert>{error}</Alert>;
+  if (error && !concern) return <LoadFailure failure={error} backHref="/concerns" backLabel="Back to concerns" />;
   if (!concern) return <Spinner />;
 
   const isPatient = user.role === "patient";

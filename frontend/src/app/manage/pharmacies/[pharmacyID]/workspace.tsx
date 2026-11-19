@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OrderBadge } from "@/components/order-status";
 import { RequireAuth } from "@/components/require-auth";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type MedicineRequest, type Order, type Pharmacy } from "@/lib/api/client";
 import { dateTime, taka, todayInDhaka } from "@/lib/format";
@@ -41,11 +42,11 @@ function Inner() {
   useEffect(() => {
     api.GET("/api/v1/manage/pharmacies/{pharmacyID}", { params: { path: { pharmacyID } } }).then(({ data, error, response }) => {
       if (data) setPharmacy(data);
-      else setError(response.status === 404 ? "This pharmacy could not be found, or it isn't yours." : errorMessage(error));
+      else setError(loadFailure(response.status, error, "pharmacy"));
     });
   }, [pharmacyID]);
 
-  if (error) return <Alert>{error}</Alert>;
+  if (error) return <LoadFailure failure={error} backHref="/manage/pharmacies" backLabel="My pharmacies" />;
   if (!pharmacy) return <Spinner />;
   const v = VERIFICATION[pharmacy.verification_status ?? "pending"];
 

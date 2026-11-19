@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { isActiveOrder, OrderBadge, OrderTimeline } from "@/components/order-status";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Order } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
@@ -29,7 +30,7 @@ function Detail() {
   const reload = useCallback(async () => {
     const { data, error, response } = await api.GET("/api/v1/medicine-orders/{orderID}", { params: { path: { orderID } } });
     if (data) setOrder(data);
-    else setError(response.status === 404 ? "This order could not be found." : errorMessage(error));
+    else setError(loadFailure(response.status, error, "order"));
   }, [orderID]);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ function Detail() {
     else setError(errorMessage(error));
   }
 
-  if (!order) return error ? <Alert>{error}</Alert> : <Spinner />;
+  if (!order) return error ? <LoadFailure failure={error} backHref="/medicines" backLabel="Back to medicines" /> : <Spinner />;
 
   const riderMap = mapLink(order.rider_location?.latitude, order.rider_location?.longitude);
   const showCode = !!order.delivery_code && active;

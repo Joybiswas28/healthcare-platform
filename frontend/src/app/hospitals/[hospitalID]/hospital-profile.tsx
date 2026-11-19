@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChamberCard } from "@/components/chamber-card";
-import { Alert, Badge, Card, Spinner } from "@/components/ui";
-import { api, errorMessage, type PublicHospital } from "@/lib/api/client";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { Badge, Card, Spinner } from "@/components/ui";
+import { api, type PublicHospital } from "@/lib/api/client";
 import { safeExternalUrl } from "@/lib/safe-next";
 import { HospitalLogo } from "../hospital-results";
 
@@ -18,11 +19,11 @@ export function HospitalProfile() {
   useEffect(() => {
     api.GET("/api/v1/hospitals/{hospitalID}", { params: { path: { hospitalID } } }).then(({ data, error, response }) => {
       if (data) setH(data);
-      else setError(response.status === 404 ? "This hospital could not be found." : errorMessage(error));
+      else setError(loadFailure(response.status, error, "hospital"));
     });
   }, [hospitalID]);
 
-  if (error) return <Alert>{error}</Alert>;
+  if (error) return <LoadFailure failure={error} backHref="/hospitals" backLabel="Back to hospitals" />;
   if (!h) return <Spinner />;
 
   const doctors = (h.doctors ?? []).filter((d) => !department || d.department === department);

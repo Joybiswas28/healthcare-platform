@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChamberCard } from "@/components/chamber-card";
-import { Alert, Badge, ButtonLink, Card, Spinner } from "@/components/ui";
-import { api, errorMessage, type PublicDoctor } from "@/lib/api/client";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { Badge, ButtonLink, Card, Spinner } from "@/components/ui";
+import { api, type PublicDoctor } from "@/lib/api/client";
 
 export function DoctorProfile() {
   const { doctorID } = useParams<{ doctorID: string }>();
@@ -19,23 +20,14 @@ export function DoctorProfile() {
       .then(({ data, error, response }) => {
         if (cancelled) return;
         if (data) setDoctor(data);
-        else setError(response.status === 404 ? "This doctor could not be found." : errorMessage(error));
+        else setError(loadFailure(response.status, error, "doctor"));
       });
     return () => {
       cancelled = true;
     };
   }, [doctorID]);
 
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <Alert>{error}</Alert>
-        <Link href="/doctors" className="text-sm text-teal-800 hover:underline">
-          ← Back to search
-        </Link>
-      </div>
-    );
-  }
+  if (error) return <LoadFailure failure={error} backHref="/doctors" backLabel="Find a doctor" />;
   if (!doctor) return <Spinner />;
 
   const chambers = (doctor.chambers ?? []).filter((c) => c.booking_enabled !== false);

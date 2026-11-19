@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type PublicDoctor } from "@/lib/api/client";
 import { tokens } from "@/lib/format";
@@ -32,9 +33,9 @@ function Form({ doctorID }: { doctorID: string }) {
 
   useEffect(() => {
     if (!doctorID) return;
-    api.GET("/api/v1/doctors/{doctorID}", { params: { path: { doctorID } } }).then(({ data, error }) => {
+    api.GET("/api/v1/doctors/{doctorID}", { params: { path: { doctorID } } }).then(({ data, error, response }) => {
       if (data) setDoctor(data);
-      else setError(errorMessage(error, "This doctor could not be found."));
+      else setError(loadFailure(response.status, error, "doctor"));
     });
   }, [doctorID]);
 
@@ -68,7 +69,8 @@ function Form({ doctorID }: { doctorID: string }) {
       </Alert>
     );
   }
-  if (!doctor) return error ? <Alert>{error}</Alert> : <Spinner />;
+  if (!doctor)
+    return error ? <LoadFailure failure={error} backHref="/doctors?online=true" backLabel="Find a doctor" /> : <Spinner />;
   if (!doctor.consultation_enabled) {
     return <Alert>{doctor.name} is not taking online consultations right now.</Alert>;
   }

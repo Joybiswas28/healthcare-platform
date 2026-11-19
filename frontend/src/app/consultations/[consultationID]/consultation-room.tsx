@@ -5,9 +5,10 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConsultationBadge } from "@/components/consultation-status";
 import { RequireAuth } from "@/components/require-auth";
-import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { ButtonLink, Card, Spinner } from "@/components/ui";
 import { PrescriptionList } from "@/app/prescriptions/prescription-list";
-import { api, errorMessage, type Consultation, type User } from "@/lib/api/client";
+import { api, type Consultation, type User } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
 import { Actions } from "./actions";
 import { Chat } from "./chat";
@@ -29,7 +30,7 @@ function Room({ user }: { user: User }) {
       params: { path: { consultationID } },
     });
     if (data) setC(data);
-    else setError(response.status === 404 ? "This consultation could not be found." : errorMessage(error));
+    else setError(loadFailure(response.status, error, "consultation"));
   }, [consultationID]);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ function Room({ user }: { user: User }) {
     return () => clearInterval(t);
   }, [waiting, reload]);
 
-  if (error) return <Alert>{error}</Alert>;
+  if (error) return <LoadFailure failure={error} backHref="/consultations" backLabel="Back to consultations" />;
   if (!c) return <Spinner />;
 
   const asDoctor = user.id === c.doctor_id;

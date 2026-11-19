@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { MedicineList } from "@/components/prescription-view";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Prescription, type User } from "@/lib/api/client";
 import { dateTime, prettyDate } from "@/lib/format";
@@ -26,7 +27,7 @@ function Detail({ user }: { user: User }) {
       .GET("/api/v1/prescriptions/{prescriptionID}", { params: { path: { prescriptionID } } })
       .then(({ data, error, response }) => {
         if (data) setRx(data);
-        else setError(response.status === 404 ? "This prescription could not be found." : errorMessage(error));
+        else setError(loadFailure(response.status, error, "prescription"));
       });
   }, [prescriptionID]);
 
@@ -46,7 +47,7 @@ function Detail({ user }: { user: User }) {
     } else setError(errorMessage(error));
   }
 
-  if (!rx) return error ? <Alert>{error}</Alert> : <Spinner />;
+  if (!rx) return error ? <LoadFailure failure={error} backHref="/prescriptions" backLabel="Back to prescriptions" /> : <Spinner />;
 
   const isDoctor = user.id === rx.doctor_id;
   const revoked = rx.status === "revoked";

@@ -7,6 +7,7 @@ import { DeliveryCodeForm } from "@/components/delivery-code-form";
 import { isActiveOrder, OrderBadge, OrderTimeline } from "@/components/order-status";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Order } from "@/lib/api/client";
 import { taka } from "@/lib/format";
@@ -35,7 +36,7 @@ function Inner() {
       params: { path: { pharmacyID, orderID } },
     });
     if (data) setOrder(data);
-    else setError(response.status === 404 ? "This order could not be found." : errorMessage(error));
+    else setError(loadFailure(response.status, error, "order"));
   }, [pharmacyID, orderID]);
 
   useEffect(() => {
@@ -104,7 +105,7 @@ function Inner() {
     } else setError(errorMessage(error));
   }
 
-  if (!order) return error ? <Alert>{error}</Alert> : <Spinner />;
+  if (!order) return error ? <LoadFailure failure={error} backHref={`/manage/pharmacies/${pharmacyID}?tab=orders`} backLabel="Back to orders" /> : <Spinner />;
 
   const s = order.status;
   const delivery = order.fulfilment === "delivery";

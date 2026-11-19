@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { RequireAuth } from "@/components/require-auth";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type MedicineRequest, type QuotedItem } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
@@ -55,7 +56,7 @@ function Inner() {
     if (data) {
       setReq(data);
       setRows(initialRows(data));
-    } else setError(response.status === 404 ? "This request is no longer available." : errorMessage(error));
+    } else setError(loadFailure(response.status, error, "request"));
   }, [pharmacyID, requestID]);
 
   useEffect(() => {
@@ -120,7 +121,7 @@ function Inner() {
     else reload();
   }
 
-  if (!req) return error ? <Alert>{error}</Alert> : <Spinner />;
+  if (!req) return error ? <LoadFailure failure={error} backHref={`/manage/pharmacies/${pharmacyID}`} backLabel="Back to requests" /> : <Spinner />;
   const mine = req.my_quote;
   const canQuote = req.status === "open" && (!mine || mine.status === "pending" || mine.status === "withdrawn");
 

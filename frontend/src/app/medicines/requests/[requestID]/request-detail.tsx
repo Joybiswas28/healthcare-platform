@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type MedicineRequest, type Quote } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
@@ -26,7 +27,7 @@ function Detail() {
   const reload = useCallback(async () => {
     const { data, error, response } = await api.GET("/api/v1/medicine-requests/{requestID}", { params: { path: { requestID } } });
     if (data) setReq(data);
-    else setError(response.status === 404 ? "This request could not be found." : errorMessage(error));
+    else setError(loadFailure(response.status, error, "request"));
   }, [requestID]);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ function Detail() {
     else setError(errorMessage(error));
   }
 
-  if (!req) return error ? <Alert>{error}</Alert> : <Spinner />;
+  if (!req) return error ? <LoadFailure failure={error} backHref="/medicines" backLabel="Back to medicines" /> : <Spinner />;
   const quotes = req.quotes ?? [];
 
   return (

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Spinner } from "@/components/ui";
-import { api, errorMessage, type Hospital } from "@/lib/api/client";
+import { api, type Hospital } from "@/lib/api/client";
 import { VERIFICATION } from "../my-hospitals";
 import { BookingsTab } from "./bookings-tab";
 import { DoctorsTab } from "./doctors-tab";
@@ -42,11 +43,11 @@ function Inner() {
   useEffect(() => {
     api.GET("/api/v1/manage/hospitals/{hospitalID}", { params: { path: { hospitalID } } }).then(({ data, error, response }) => {
       if (data) setHospital(data);
-      else setError(response.status === 404 ? "This hospital could not be found, or you don't manage it." : errorMessage(error));
+      else setError(loadFailure(response.status, error, "hospital"));
     });
   }, [hospitalID]);
 
-  if (error) return <Alert>{error}</Alert>;
+  if (error) return <LoadFailure failure={error} backHref="/manage/hospitals" backLabel="My hospitals" />;
   if (!hospital) return <Spinner />;
 
   const v = VERIFICATION[hospital.verification_status ?? "pending"];

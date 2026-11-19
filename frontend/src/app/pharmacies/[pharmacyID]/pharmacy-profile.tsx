@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
-import { api, errorMessage, type Pharmacy, type Review } from "@/lib/api/client";
+import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { ButtonLink, Card, Spinner } from "@/components/ui";
+import { api, type Pharmacy, type Review } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
 import { mapLink } from "@/lib/geo";
 import { PharmacySummary } from "../nearby-pharmacies";
@@ -20,11 +21,11 @@ export function PharmacyProfile() {
       if (data?.pharmacy) {
         setPharmacy(data.pharmacy);
         setReviews(data.reviews ?? []);
-      } else setError(response.status === 404 ? "This pharmacy could not be found." : errorMessage(error));
+      } else setError(loadFailure(response.status, error, "pharmacy"));
     });
   }, [pharmacyID]);
 
-  if (error) return <Alert>{error}</Alert>;
+  if (error) return <LoadFailure failure={error} backHref="/pharmacies" backLabel="Back to pharmacies" />;
   if (!pharmacy) return <Spinner />;
   const map = mapLink(pharmacy.latitude, pharmacy.longitude);
 
