@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { OrderBadge } from "@/components/order-status";
 import { Alert, Badge, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type MedicineRequest, type Order } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
+import { T } from "@/components/t";
 
 const REQUEST_STATUS = {
   open: { label: "Waiting for quotes", tone: "amber" },
@@ -39,18 +41,18 @@ export function MyMedicines() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Waiting for quotes</h2>
-        {open.length === 0 && <p className="text-sm text-slate-600">No open requests.</p>}
+        <h2 className="text-lg font-semibold text-slate-900"><T>Waiting for quotes</T></h2>
+        {open.length === 0 && <p className="text-sm text-slate-600"><T>No open requests.</T></p>}
         {open.map((r) => (
           <RequestRow key={r.id} request={r} />
         ))}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Orders</h2>
+        <h2 className="text-lg font-semibold text-slate-900"><T>Orders</T></h2>
         {orders.length === 0 && (
           <Card>
-            <p className="text-slate-600">No orders yet.</p>
+            <p className="text-slate-600"><T>No orders yet.</T></p>
           </Card>
         )}
         {orders.map((o) => (
@@ -63,8 +65,9 @@ export function MyMedicines() {
               <div>
                 <p className="font-semibold text-slate-900">{o.pharmacy_name}</p>
                 <p className="text-sm text-slate-600">
-                  {(o.items ?? []).filter((i) => i.available).length} items · {taka(o.total_paisa)} cash on{" "}
-                  {o.fulfilment === "pickup" ? "pickup" : "delivery"}
+                  <T vars={{ n: (o.items ?? []).filter((i) => i.available).length, total: taka(o.total_paisa) }}>
+                    {o.fulfilment === "pickup" ? "{n} items · {total} cash on pickup" : "{n} items · {total} cash on delivery"}
+                  </T>
                 </p>
               </div>
               <OrderBadge order={o} />
@@ -76,7 +79,7 @@ export function MyMedicines() {
 
       {past.length > 0 && (
         <details>
-          <summary className="cursor-pointer text-sm text-slate-600">Cancelled and expired requests ({past.length})</summary>
+          <summary className="cursor-pointer text-sm text-slate-600"><T vars={{ n: past.length }}>{"Cancelled and expired requests ({n})"}</T></summary>
           <div className="mt-3 space-y-3">
             {past.map((r) => (
               <RequestRow key={r.id} request={r} />
@@ -89,6 +92,7 @@ export function MyMedicines() {
 }
 
 function RequestRow({ request: r }: { request: MedicineRequest }) {
+  const t = useT();
   const s = REQUEST_STATUS[r.status ?? "open"];
   return (
     <Link
@@ -98,10 +102,10 @@ function RequestRow({ request: r }: { request: MedicineRequest }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-slate-900">
-            {r.prescription ? `Prescription by ${r.prescription.doctor_name}` : r.has_attachment ? "Paper prescription" : "Medicine list"}
+            {r.prescription ? t("Prescription by {doctor}", { doctor: r.prescription.doctor_name }) : t(r.has_attachment ? "Paper prescription" : "Medicine list")}
           </p>
           <p className="text-sm text-slate-600">
-            {r.fulfilment === "pickup" ? "Pickup" : "Delivery"} · {r.quote_count ?? 0} quote{r.quote_count === 1 ? "" : "s"}
+            {t(r.fulfilment === "pickup" ? "Pickup" : "Delivery")} · {t(r.quote_count === 1 ? "{n} quote" : "{n} quotes", { n: r.quote_count ?? 0 })}
           </p>
         </div>
         <Badge tone={s.tone}>{s.label}</Badge>

@@ -3,13 +3,16 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, type Payment } from "@/lib/api/client";
 import { tokens } from "@/lib/format";
+import { T } from "@/components/t";
 
 // The status in the URL only says how the browser came back. The payment's real
 // state comes from the backend, which re-checks it with the provider; a payment
 // can stay "pending" for a little while, so keep asking for up to a minute.
 export function PaymentResult() {
+  const t = useT();
   const params = useSearchParams();
   const paymentID = params.get("payment_id");
   const urlStatus = params.get("status");
@@ -43,18 +46,18 @@ export function PaymentResult() {
   return (
     <Card className="space-y-4">
       {payment.status === "paid" && (
-        <Alert kind="success">Payment received. {tokens(payment.tokens)} added to your wallet.</Alert>
+        <Alert kind="success">{t("Payment received. {tokens} added to your wallet.", { tokens: tokens(payment.tokens) })}</Alert>
       )}
       {payment.status === "failed" && (
         <Alert>
-          {urlStatus === "cancelled" ? "You cancelled the payment." : "The payment did not go through."} No money was
-          taken for tokens.
+          {t(urlStatus === "cancelled" ? "You cancelled the payment." : "The payment did not go through.")}{" "}
+          {t("No money was taken for tokens.")}
         </Alert>
       )}
       {payment.status === "pending" &&
         (gaveUp ? (
           <Alert kind="info">
-            The payment is still being confirmed. Your tokens will appear in your wallet as soon as it is.
+            <T>The payment is still being confirmed. Your tokens will appear in your wallet as soon as it is.</T>
           </Alert>
         ) : (
           <Spinner label="Waiting for the payment provider to confirm…" />
@@ -62,7 +65,7 @@ export function PaymentResult() {
       <div className="flex gap-2">
         <ButtonLink href="/wallet">Go to wallet</ButtonLink>
         <ButtonLink href="/consultations" variant="secondary">
-          My consultations
+          <T>My consultations</T>
         </ButtonLink>
       </div>
     </Card>

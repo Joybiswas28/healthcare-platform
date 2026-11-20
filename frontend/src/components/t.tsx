@@ -6,14 +6,17 @@ import { interpolate, type Vars } from "@/lib/i18n";
 // <html data-lang>, which the head script sets before the first paint.
 // Use it for visible text; for attributes (placeholder, aria-label) and
 // strings in code, use useT() instead.
-export function T({ children, vars }: { children: string; vars?: Vars }) {
+//
+// bnVars overrides values for the Bangla text, e.g. a date already formatted
+// in Bangla by a server component.
+export function T({ children, vars, bnVars }: { children: string; vars?: Vars; bnVars?: Vars }) {
   const en = interpolate(children, vars);
   const bn = BN[children];
   if (bn === undefined) return <>{en}</>;
   return (
     <>
       <span data-l="en">{en}</span>
-      <span data-l="bn">{interpolate(bn, vars)}</span>
+      <span data-l="bn">{interpolate(bn, bnVars ? { ...vars, ...bnVars } : vars)}</span>
     </>
   );
 }

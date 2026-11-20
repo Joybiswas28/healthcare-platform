@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Alert, Button } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type ChatMessage, type Consultation, type User } from "@/lib/api/client";
 import { dateTime, fileSize } from "@/lib/format";
+import { T } from "@/components/t";
 
 // While the consultation is active, new messages arrive live over a Server-Sent
 // Events stream relayed by this app's /api/v1 proxy, so the token stays in the
@@ -13,6 +15,7 @@ const FALLBACK_POLL_MS = 3000;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export function Chat({ consultation, me }: { consultation: Consultation; me: User }) {
+  const t = useT();
   const id = consultation.id ?? "";
   const open = consultation.status === "active";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -103,7 +106,7 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
 
   async function upload(file: File) {
     if (file.size > MAX_FILE_BYTES) {
-      setError("Files can be at most 10 MB.");
+      setError(t("Files can be at most 10 MB."));
       return;
     }
     setSending(true);
@@ -114,7 +117,7 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
     setSending(false);
     const data = await res.json().catch(() => null);
     if (res.ok && data) add([data as ChatMessage]);
-    else setError(errorMessage(data, "Could not share the file."));
+    else setError(errorMessage(data, t("Could not share the file.")));
     if (fileInput.current) fileInput.current.value = "";
   }
 
@@ -123,13 +126,13 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
       {open && (
         <p className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-500" aria-live="polite">
           <span className={`h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-amber-400"}`} aria-hidden />
-          {live ? "Live — new messages appear instantly" : polling ? "Checking for new messages every few seconds" : "Connecting…"}
+          {t(live ? "Live — new messages appear instantly" : polling ? "Checking for new messages every few seconds" : "Connecting…")}
         </p>
       )}
       <div className="max-h-[28rem] min-h-48 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <p className="py-8 text-center text-sm text-slate-500">
-            {open ? "No messages yet. Say hello." : "No messages were exchanged."}
+            {t(open ? "No messages yet. Say hello." : "No messages were exchanged.")}
           </p>
         )}
         {messages.map((m) => {
@@ -174,16 +177,16 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
               }}
               rows={2}
               maxLength={4000}
-              placeholder="Write a message…"
-              aria-label="Message"
+              placeholder={t("Write a message…")}
+              aria-label={t("Message")}
               className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
             />
             <div className="flex flex-col gap-2">
               <Button type="submit" disabled={sending || !text.trim()}>
-                Send
+                <T>Send</T>
               </Button>
               <Button type="button" variant="secondary" disabled={sending} onClick={() => fileInput.current?.click()}>
-                Attach
+                <T>Attach</T>
               </Button>
             </div>
           </div>
@@ -197,7 +200,7 @@ export function Chat({ consultation, me }: { consultation: Consultation; me: Use
               if (f) upload(f);
             }}
           />
-          <p className="text-xs text-slate-500">Share reports as PDF, JPEG or PNG, up to 10 MB.</p>
+          <p className="text-xs text-slate-500"><T>Share reports as PDF, JPEG or PNG, up to 10 MB.</T></p>
         </form>
       )}
     </section>

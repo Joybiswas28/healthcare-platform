@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/t";
 import { Badge } from "@/components/ui";
 import type { Concern } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
@@ -24,7 +25,12 @@ export function ConcernCard({ concern: c, showOffers }: { concern: Concern; show
       <p className="mt-2 text-xs text-slate-500">
         {c.specialization ? `${c.specialization} · ` : ""}
         {dateTime(c.created_at)}
-        {showOffers ? ` · ${c.offer_count ?? 0} offer${c.offer_count === 1 ? "" : "s"}` : ""}
+        {showOffers && (
+          <>
+            {" · "}
+            <T vars={{ n: c.offer_count ?? 0 }}>{c.offer_count === 1 ? "{n} offer" : "{n} offers"}</T>
+          </>
+        )}
       </p>
     </Link>
   );

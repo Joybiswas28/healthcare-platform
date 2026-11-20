@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { TextArea } from "@/components/textarea";
 import { Alert, Button, Card, Field, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Concern } from "@/lib/api/client";
 import { ConcernCard } from "./concern-card";
+import { T } from "@/components/t";
 
 export function PatientConcerns() {
+  const t = useT();
   const router = useRouter();
   const [items, setItems] = useState<Concern[] | null>(null);
   const [error, setError] = useState("");
@@ -43,9 +46,9 @@ export function PatientConcerns() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">My concerns</h1>
+          <h1 className="text-2xl font-semibold text-slate-900"><T>My concerns</T></h1>
           <p className="text-sm text-slate-600">
-            Describe a health problem. Doctors see it without your name and offer to help; you choose one.
+            <T>Describe a health problem. Doctors see it without your name and offer to help; you choose one.</T>
           </p>
         </div>
         {!writing && <Button onClick={() => setWriting(true)}>Post a concern</Button>}
@@ -54,7 +57,7 @@ export function PatientConcerns() {
       {writing && (
         <Card>
           <form onSubmit={onSubmit} className="space-y-4">
-            <Field label="Title" name="title" minLength={5} maxLength={150} required placeholder="e.g. Back pain after long sitting" />
+            <Field label="Title" name="title" minLength={5} maxLength={150} required placeholder={t("e.g. Back pain after long sitting")} />
             <TextArea
               label="Details"
               name="description"
@@ -67,7 +70,7 @@ export function PatientConcerns() {
               label="Specialty (optional)"
               name="specialization"
               maxLength={100}
-              placeholder="e.g. Orthopedics"
+              placeholder={t("e.g. Orthopedics")}
               hint="Helps the right doctors find it."
             />
             {error && <Alert>{error}</Alert>}
@@ -76,7 +79,7 @@ export function PatientConcerns() {
                 {busy ? "Posting…" : "Post"}
               </Button>
               <Button type="button" variant="secondary" onClick={() => setWriting(false)}>
-                Cancel
+                <T>Cancel</T>
               </Button>
             </div>
           </form>
@@ -87,7 +90,7 @@ export function PatientConcerns() {
       {items === null ? (
         !error && <Spinner />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">You haven&apos;t posted any concerns yet.</p>
+        <p className="text-sm text-slate-600"><T>You haven&apos;t posted any concerns yet.</T></p>
       ) : (
         <ul className="space-y-3">
           {items.map((c) => (

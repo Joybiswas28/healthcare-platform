@@ -8,14 +8,17 @@ import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Prescription, type User } from "@/lib/api/client";
 import { dateTime, prettyDate } from "@/lib/format";
+import { T } from "@/components/t";
 
 export function PrescriptionDetail() {
   return <RequireAuth>{(user) => <Detail user={user} />}</RequireAuth>;
 }
 
 function Detail({ user }: { user: User }) {
+  const t = useT();
   const { prescriptionID } = useParams<{ prescriptionID: string }>();
   const [rx, setRx] = useState<Prescription | null>(null);
   const [error, setError] = useState("");
@@ -55,13 +58,13 @@ function Detail({ user }: { user: User }) {
   return (
     <div className="space-y-4">
       <Link href="/prescriptions" className="text-sm text-teal-800 hover:underline">
-        ← All prescriptions
+        ← <T>All prescriptions</T>
       </Link>
 
       {revoked && (
         <Alert>
-          The doctor revoked this prescription on {dateTime(rx.revoked_at)}
-          {rx.revoked_reason ? `: ${rx.revoked_reason}` : "."} Do not use it to buy medicine.
+          {t("The doctor revoked this prescription on {date}", { date: dateTime(rx.revoked_at) })}
+          {rx.revoked_reason ? `: ${rx.revoked_reason}` : "."} {t("Do not use it to buy medicine.")}
         </Alert>
       )}
 
@@ -89,7 +92,7 @@ function Detail({ user }: { user: User }) {
         {rx.diagnosis && <Section title="Diagnosis">{rx.diagnosis}</Section>}
 
         <div>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Rx</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500"><T>Rx</T></h2>
           <MedicineList medicines={rx.medicines ?? []} />
         </div>
 
@@ -116,7 +119,7 @@ function Detail({ user }: { user: User }) {
             rel="noopener"
             className="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 dark:hover:bg-teal-600"
           >
-            Print / save as PDF
+            <T>Print / save as PDF</T>
           </a>
         )}
         {!isDoctor && !revoked && (rx.medicines ?? []).length > 0 && (
@@ -124,7 +127,7 @@ function Detail({ user }: { user: User }) {
             href={`/medicines/new?prescription_id=${rx.id}`}
             className="inline-flex items-center rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
           >
-            Order these medicines
+            <T>Order these medicines</T>
           </Link>
         )}
         {rx.consultation_id && (
@@ -132,12 +135,12 @@ function Detail({ user }: { user: User }) {
             href={`/consultations/${rx.consultation_id}`}
             className="inline-flex items-center rounded-lg border border-slate-300 bg-surface px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
           >
-            Open consultation
+            <T>Open consultation</T>
           </Link>
         )}
         {isDoctor && !revoked && !revoking && (
           <Button variant="danger" onClick={() => setRevoking(true)}>
-            Revoke
+            <T>Revoke</T>
           </Button>
         )}
       </div>
@@ -146,7 +149,7 @@ function Detail({ user }: { user: User }) {
         <Card>
           <form onSubmit={revoke} className="space-y-3">
             <p className="text-sm text-slate-600">
-              Prescriptions are never edited. Revoke this one and write a new one if something needs to change.
+              <T>Prescriptions are never edited. Revoke this one and write a new one if something needs to change.</T>
             </p>
             <TextArea label="Reason" name="reason" rows={2} minLength={5} required autoFocus />
             <div className="flex gap-2">
@@ -154,7 +157,7 @@ function Detail({ user }: { user: User }) {
                 {busy ? "Revoking…" : "Revoke prescription"}
               </Button>
               <Button type="button" variant="secondary" onClick={() => setRevoking(false)}>
-                Back
+                <T>Back</T>
               </Button>
             </div>
           </form>

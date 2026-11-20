@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Role, type Schemas } from "@/lib/api/client";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 import { notificationHref, notificationIcon, timeAgo } from "@/lib/notification-links";
 
 type Notification = Schemas["Notification"];
@@ -13,6 +15,7 @@ const SHOWN = 10;
 
 // Bell with the unread count; opens a panel with the latest notifications.
 export function NotificationBell({ role }: { role?: Role }) {
+  const t = useT();
   const router = useRouter();
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -84,7 +87,7 @@ export function NotificationBell({ role }: { role?: Role }) {
         type="button"
         onClick={toggle}
         className="relative grid h-8 w-8 place-items-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
-        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={unread ? t("Notifications, {n} unread", { n: unread }) : t("Notifications")}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
@@ -102,20 +105,20 @@ export function NotificationBell({ role }: { role?: Role }) {
       {open && (
         <div
           role="dialog"
-          aria-label="Notifications"
+          aria-label={t("Notifications")}
           className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-surface text-sm shadow-xl"
         >
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
-            <span className="font-semibold text-slate-900">Notifications</span>
+            <span className="font-semibold text-slate-900"><T>Notifications</T></span>
             {unread > 0 && (
               <button onClick={markAll} className="text-xs text-teal-800 hover:underline">
-                Mark all as read
+                <T>Mark all as read</T>
               </button>
             )}
           </div>
           <ul className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
-            {items === null && <li className="px-4 py-6 text-center text-slate-500">Loading…</li>}
-            {items?.length === 0 && <li className="px-4 py-8 text-center text-slate-500">No notifications yet.</li>}
+            {items === null && <li className="px-4 py-6 text-center text-slate-500"><T>Loading…</T></li>}
+            {items?.length === 0 && <li className="px-4 py-8 text-center text-slate-500"><T>No notifications yet.</T></li>}
             {items?.map((n) => (
               <li key={n.id}>
                 <button
@@ -127,7 +130,10 @@ export function NotificationBell({ role }: { role?: Role }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-2">
-                      <span className={`text-slate-900 ${n.read_at ? "" : "font-semibold"}`}>{n.title}</span>
+                      <span className={`text-slate-900 ${n.read_at ? "" : "font-semibold"}`}>
+                      {/* Titles are fixed per kind, so they translate; bodies come from the server in English. */}
+                      <T>{n.title ?? ""}</T>
+                    </span>
                       {!n.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-teal-600" aria-label="unread" />}
                     </span>
                     <span className="mt-0.5 line-clamp-2 block text-slate-600">{n.body}</span>
@@ -142,7 +148,7 @@ export function NotificationBell({ role }: { role?: Role }) {
             onClick={() => setOpen(false)}
             className="block border-t border-slate-100 px-4 py-2.5 text-center text-xs font-medium text-teal-800 hover:bg-slate-50"
           >
-            See all notifications
+            <T>See all notifications</T>
           </Link>
         </div>
       )}

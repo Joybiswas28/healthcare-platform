@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { TextArea } from "@/components/textarea";
 import { Alert, Button } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Consultation } from "@/lib/api/client";
 import { tokens } from "@/lib/format";
+import { T } from "@/components/t";
 
 type Props = { consultation: Consultation; asDoctor: boolean; onChange: (c: Consultation) => void };
 
@@ -20,6 +22,7 @@ const PATHS = {
 
 // The buttons each side gets in each state. The backend enforces the same rules.
 export function Actions({ consultation: c, asDoctor, onChange }: Props) {
+  const t = useT();
   const [busy, setBusy] = useState<Action | null>(null);
   const [error, setError] = useState("");
   const [needsTokens, setNeedsTokens] = useState(false);
@@ -27,7 +30,7 @@ export function Actions({ consultation: c, asDoctor, onChange }: Props) {
   const id = c.id ?? "";
 
   async function run(action: Exclude<Action, "reject">, question?: string) {
-    if (question && !confirm(question)) return;
+    if (question && !confirm(t(question))) return;
     setBusy(action);
     setError("");
     setNeedsTokens(false);
@@ -64,19 +67,19 @@ export function Actions({ consultation: c, asDoctor, onChange }: Props) {
 
   if (asDoctor) {
     if (c.status === "requested") {
-      note = "Accept if you can help. The patient then pays and the chat opens.";
+      note = t("Accept if you can help. The patient then pays and the chat opens.");
       buttons.push(
         <Button key="accept" onClick={() => run("accept")} disabled={busy !== null}>
           {busy === "accept" ? "Accepting…" : "Accept"}
         </Button>,
         <Button key="reject" variant="secondary" onClick={() => setRejecting(true)} disabled={busy !== null}>
-          Decline
+          <T>Decline</T>
         </Button>,
       );
     } else if (c.status === "accepted") {
-      note = "Waiting for the patient to pay.";
+      note = t("Waiting for the patient to pay.");
     } else if (c.status === "active") {
-      note = `When you're done, complete the consultation to receive ${tokens(c.fee_tokens)}.`;
+      note = t("When you're done, complete the consultation to receive {fee}.", { fee: tokens(c.fee_tokens) });
       buttons.push(
         <Button key="complete" onClick={() => run("complete", "Mark this consultation as complete?")} disabled={busy !== null}>
           {busy === "complete" ? "Completing…" : "Complete"}
@@ -87,34 +90,34 @@ export function Actions({ consultation: c, asDoctor, onChange }: Props) {
           onClick={() => run("cancel", "Cancel and refund the patient in full?")}
           disabled={busy !== null}
         >
-          Cancel with refund
+          <T>Cancel with refund</T>
         </Button>,
       );
     }
   } else {
     if (c.status === "requested") {
-      note = "The doctor will reply soon. You pay only after they accept.";
+      note = t("The doctor will reply soon. You pay only after they accept.");
       buttons.push(
         <Button key="cancel" variant="danger" onClick={() => run("cancel", "Withdraw this request?")} disabled={busy !== null}>
-          Withdraw request
+          <T>Withdraw request</T>
         </Button>,
       );
     } else if (c.status === "accepted") {
-      note = `The doctor accepted. Pay ${tokens(c.fee_tokens)} to start the chat.`;
+      note = t("The doctor accepted. Pay {fee} to start the chat.", { fee: tokens(c.fee_tokens) });
       buttons.push(
         <Button
           key="confirm"
-          onClick={() => run("confirm", `Pay ${tokens(c.fee_tokens)} and start the consultation?`)}
+          onClick={() => run("confirm", t("Pay {fee} and start the consultation?", { fee: tokens(c.fee_tokens) }))}
           disabled={busy !== null}
         >
-          {busy === "confirm" ? "Paying…" : `Pay ${tokens(c.fee_tokens)} and start`}
+          {busy === "confirm" ? "Paying…" : t("Pay {fee} and start", { fee: tokens(c.fee_tokens) })}
         </Button>,
         <Button key="cancel" variant="secondary" onClick={() => run("cancel", "Cancel this consultation?")} disabled={busy !== null}>
-          Cancel
+          <T>Cancel</T>
         </Button>,
       );
     } else if (c.status === "active") {
-      note = "The chat is open. The doctor will complete the consultation when you're done.";
+      note = t("The chat is open. The doctor will complete the consultation when you're done.");
     }
   }
 
@@ -130,7 +133,7 @@ export function Actions({ consultation: c, asDoctor, onChange }: Props) {
             <>
               {" "}
               <Link href="/wallet" className="font-medium underline">
-                Buy tokens
+                <T>Buy tokens</T>
               </Link>
             </>
           )}
@@ -144,7 +147,7 @@ export function Actions({ consultation: c, asDoctor, onChange }: Props) {
               {busy === "reject" ? "Declining…" : "Decline request"}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setRejecting(false)}>
-              Back
+              <T>Back</T>
             </Button>
           </div>
         </form>

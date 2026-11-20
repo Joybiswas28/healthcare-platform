@@ -7,14 +7,17 @@ import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Concern, type Offer, type User } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
+import { T } from "@/components/t";
 
 export function ConcernDetail() {
   return <RequireAuth>{(user) => <Detail user={user} />}</RequireAuth>;
 }
 
 function Detail({ user }: { user: User }) {
+  const t = useT();
   const { concernID } = useParams<{ concernID: string }>();
   const [concern, setConcern] = useState<Concern | null>(null);
   const [error, setError] = useState("");
@@ -40,7 +43,7 @@ function Detail({ user }: { user: User }) {
   return (
     <div className="space-y-4">
       <Link href="/concerns" className="text-sm text-teal-800 hover:underline">
-        ← {isPatient ? "My concerns" : "All concerns"}
+        ← {t(isPatient ? "My concerns" : "All concerns")}
       </Link>
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -61,6 +64,7 @@ function Detail({ user }: { user: User }) {
 }
 
 function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: Concern) => void }) {
+  const t = useT();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -68,7 +72,7 @@ function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: 
   const offers = concern.offers ?? [];
 
   async function accept(o: Offer) {
-    if (!o.id || !confirm(`Accept ${o.doctor_name}'s offer and pay ${tokens(o.fee_tokens)}? The chat starts right away.`)) return;
+    if (!o.id || !confirm(t("Accept {doctor}'s offer and pay {fee}? The chat starts right away.", { doctor: o.doctor_name, fee: tokens(o.fee_tokens) }))) return;
     setBusy(o.id);
     setError("");
     setNeedsTokens(false);
@@ -85,7 +89,7 @@ function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: 
   }
 
   async function close() {
-    if (!concern.id || !confirm("Close this concern? Pending offers will be declined.")) return;
+    if (!concern.id || !confirm(t("Close this concern? Pending offers will be declined."))) return;
     setBusy("close");
     const { data, error } = await api.POST("/api/v1/concerns/{concernID}/close", {
       params: { path: { concernID: concern.id } },
@@ -97,12 +101,12 @@ function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: 
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-slate-900">Offers from doctors</h2>
+      <h2 className="text-lg font-semibold text-slate-900"><T>Offers from doctors</T></h2>
       {concern.status === "converted" && concern.consultation_id && (
         <Alert kind="success">
-          You accepted an offer.{" "}
+          <T>You accepted an offer.</T>{" "}
           <Link href={`/consultations/${concern.consultation_id}`} className="font-medium underline">
-            Open the consultation
+            <T>Open the consultation</T>
           </Link>
         </Alert>
       )}
@@ -114,14 +118,14 @@ function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: 
             <>
               {" "}
               <Link href="/wallet" className="font-medium underline">
-                Buy tokens
+                <T>Buy tokens</T>
               </Link>
             </>
           )}
         </Alert>
       )}
       {offers.length === 0 && concern.status === "open" && (
-        <p className="text-sm text-slate-600">No offers yet. Doctors will see your concern and respond here.</p>
+        <p className="text-sm text-slate-600"><T>No offers yet. Doctors will see your concern and respond here.</T></p>
       )}
       {offers.map((o) => (
         <Card key={o.id}>
@@ -152,7 +156,7 @@ function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: 
       ))}
       {concern.status === "open" && (
         <Button variant="secondary" onClick={close} disabled={busy !== null}>
-          Close concern
+          <T>Close concern</T>
         </Button>
       )}
     </section>
@@ -160,6 +164,7 @@ function PatientOffers({ concern, onChange }: { concern: Concern; onChange: (c: 
 }
 
 function DoctorOffer({ concern, onChange }: { concern: Concern; onChange: () => void }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const mine = concern.my_offer;
@@ -179,7 +184,7 @@ function DoctorOffer({ concern, onChange }: { concern: Concern; onChange: () => 
   }
 
   async function withdraw() {
-    if (!mine?.id || !confirm("Withdraw your offer?")) return;
+    if (!mine?.id || !confirm(t("Withdraw your offer?"))) return;
     setBusy(true);
     const { error } = await api.POST("/api/v1/offers/{offerID}/withdraw", { params: { path: { offerID: mine.id } } });
     setBusy(false);
@@ -190,7 +195,7 @@ function DoctorOffer({ concern, onChange }: { concern: Concern; onChange: () => 
   if (mine && mine.status !== "withdrawn") {
     return (
       <Card>
-        <h2 className="font-semibold text-slate-900">Your offer</h2>
+        <h2 className="font-semibold text-slate-900"><T>Your offer</T></h2>
         <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{mine.message}</p>
         <p className="mt-2 text-sm text-slate-600">
           {tokens(mine.fee_tokens)} · <Badge tone={mine.status === "accepted" ? "teal" : "slate"}>{mine.status}</Badge>
@@ -198,12 +203,12 @@ function DoctorOffer({ concern, onChange }: { concern: Concern; onChange: () => 
         {error && <div className="mt-3"><Alert>{error}</Alert></div>}
         {mine.status === "pending" && (
           <Button variant="secondary" className="mt-3" onClick={withdraw} disabled={busy}>
-            Withdraw offer
+            <T>Withdraw offer</T>
           </Button>
         )}
         {mine.status === "accepted" && (
           <ButtonLink href="/consultations" className="mt-3">
-            Go to consultations
+            <T>Go to consultations</T>
           </ButtonLink>
         )}
       </Card>
@@ -217,7 +222,7 @@ function DoctorOffer({ concern, onChange }: { concern: Concern; onChange: () => 
   return (
     <Card>
       <form onSubmit={send} className="space-y-3">
-        <h2 className="font-semibold text-slate-900">Offer to help</h2>
+        <h2 className="font-semibold text-slate-900"><T>Offer to help</T></h2>
         <TextArea
           label="Message to the patient"
           name="message"

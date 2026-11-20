@@ -6,10 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import { RequireAuth } from "@/components/require-auth";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type MedicineRequest, type Quote } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
 import { km } from "@/lib/geo";
 import { Stars } from "@/app/pharmacies/nearby-pharmacies";
+import { T } from "@/components/t";
 
 const POLL_MS = 15000;
 
@@ -18,6 +20,7 @@ export function RequestDetail() {
 }
 
 function Detail() {
+  const t = useT();
   const { requestID } = useParams<{ requestID: string }>();
   const router = useRouter();
   const [req, setReq] = useState<MedicineRequest | null>(null);
@@ -44,7 +47,7 @@ function Detail() {
   }, [open, reload]);
 
   async function accept(q: Quote) {
-    if (!q.id || !confirm(`Order from ${q.pharmacy_name} for ${taka(q.total_paisa)}, cash on ${req?.fulfilment === "pickup" ? "pickup" : "delivery"}?`)) return;
+    if (!q.id || !confirm(t(req?.fulfilment === "pickup" ? "Order from {pharmacy} for {total}, cash on pickup?" : "Order from {pharmacy} for {total}, cash on delivery?", { pharmacy: q.pharmacy_name, total: taka(q.total_paisa) }))) return;
     setBusy(q.id);
     setError("");
     const { data, error } = await api.POST("/api/v1/quotes/{quoteID}/accept", { params: { path: { quoteID: q.id } } });
@@ -54,7 +57,7 @@ function Detail() {
   }
 
   async function cancel() {
-    if (!confirm("Cancel this request? Pharmacies' quotes will be dropped.")) return;
+    if (!confirm(t("Cancel this request? Pharmacies' quotes will be dropped."))) return;
     setBusy("cancel");
     const { data, error } = await api.POST("/api/v1/medicine-requests/{requestID}/cancel", { params: { path: { requestID } } });
     setBusy(null);
@@ -68,17 +71,17 @@ function Detail() {
   return (
     <div className="space-y-4">
       <Link href="/medicines" className="text-sm text-teal-800 hover:underline">
-        ← Medicines
+        ← <T>Medicines</T>
       </Link>
 
       <Card className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">Medicine request</h1>
+          <h1 className="text-xl font-semibold text-slate-900"><T>Medicine request</T></h1>
           <Badge tone={req.status === "open" ? "amber" : req.status === "ordered" ? "teal" : "slate"}>{req.status}</Badge>
         </div>
         {req.prescription && (
           <p className="text-sm text-slate-700">
-            Prescription by {req.prescription.doctor_name} ({dateTime(req.prescription.issued_at)}):{" "}
+            {t("Prescription by {doctor} ({date}):", { doctor: req.prescription.doctor_name, date: dateTime(req.prescription.issued_at) })}{" "}
             {(req.prescription.medicines ?? []).map((m) => `${m.name}${m.strength ? ` ${m.strength}` : ""}`).join(", ")}
           </p>
         )}
@@ -95,14 +98,14 @@ function Detail() {
           </ul>
         )}
         <p className="text-sm text-slate-600">
-          {req.fulfilment === "pickup" ? "Pickup from the pharmacy" : `Delivery to ${req.address}`} · {req.contact_phone}
+          {req.fulfilment === "pickup" ? t("Pickup from the pharmacy") : t("Delivery to {address}", { address: req.address })} · {req.contact_phone}
         </p>
-        {req.status === "open" && <p className="text-xs text-slate-500">Open until {dateTime(req.expires_at)}. New quotes appear here automatically.</p>}
+        {req.status === "open" && <p className="text-xs text-slate-500">{t("Open until {date}. New quotes appear here automatically.", { date: dateTime(req.expires_at) })}</p>}
         {req.status === "ordered" && req.order_id && (
           <Alert kind="success">
-            You ordered.{" "}
+            <T>You ordered.</T>{" "}
             <Link href={`/medicines/orders/${req.order_id}`} className="font-medium underline">
-              Track the order
+              <T>Track the order</T>
             </Link>
           </Alert>
         )}
@@ -113,7 +116,7 @@ function Detail() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900">Quotes ({quotes.length})</h2>
         {quotes.length === 0 && req.status === "open" && (
-          <p className="text-sm text-slate-600">No quotes yet. Nearby pharmacies have been notified.</p>
+          <p className="text-sm text-slate-600"><T>No quotes yet. Nearby pharmacies have been notified.</T></p>
         )}
         {quotes.map((q) => (
           <Card key={q.id}>
@@ -123,15 +126,15 @@ function Detail() {
                   {q.pharmacy_name}
                 </Link>
                 <p className="text-sm text-slate-600">
-                  {[q.pharmacy_area, km(q.distance_km)].filter(Boolean).join(" · ")} · ready in about {q.eta_minutes} min
+                  {[q.pharmacy_area, km(q.distance_km)].filter(Boolean).join(" · ")} · {t("ready in about {n} min", { n: q.eta_minutes })}
                 </p>
                 <Stars rating={q.pharmacy_rating} count={q.pharmacy_review_count} />
               </div>
               <div className="text-right">
                 <p className="text-xl font-semibold text-slate-900">{taka(q.total_paisa)}</p>
                 <p className="text-xs text-slate-500">
-                  medicines {taka(q.medicines_total_paisa)}
-                  {(q.delivery_charge_paisa ?? 0) > 0 ? ` + delivery ${taka(q.delivery_charge_paisa)}` : ""}
+                  {t("medicines {amount}", { amount: taka(q.medicines_total_paisa) })}
+                  {(q.delivery_charge_paisa ?? 0) > 0 ? ` + ${t("delivery {amount}", { amount: taka(q.delivery_charge_paisa) })}` : ""}
                 </p>
               </div>
             </div>
@@ -162,7 +165,7 @@ function Detail() {
 
       {req.status === "open" && (
         <Button variant="danger" onClick={cancel} disabled={busy !== null}>
-          Cancel request
+          <T>Cancel request</T>
         </Button>
       )}
     </div>

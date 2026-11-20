@@ -20,7 +20,7 @@ export function SylhetDirectory() {
           <T>Sylhet: hospitals and ambulances</T>
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          <T vars={{ date: prettyDate(CHECKED_ON) }}>
+          <T vars={{ date: prettyDate(CHECKED_ON, "en") }} bnVars={{ date: prettyDate(CHECKED_ON, "bn") }}>
             {"Phone numbers collected from public sources on {date}. Online booking is only for the hospitals listed above."}
           </T>
         </p>
@@ -62,7 +62,7 @@ export function SylhetDirectory() {
             <Card key={h.name} className="space-y-2">
               <EntryHeader entry={h} />
               <PhoneList phones={h.phones} />
-              {h.note && <p className="text-xs text-slate-500">{h.note}</p>}
+              {h.note && <p className="text-xs text-slate-500"><T>{h.note}</T></p>}
               <Sources entry={h} />
             </Card>
           ))}
@@ -85,7 +85,7 @@ export function SylhetDirectory() {
             <Card key={a.name} className="space-y-2">
               <EntryHeader entry={a} />
               <PhoneList phones={a.phones} />
-              {a.note && <p className="text-xs text-slate-500">{a.note}</p>}
+              {a.note && <p className="text-xs text-slate-500"><T>{a.note}</T></p>}
               <Sources entry={a} />
             </Card>
           ))}
@@ -93,7 +93,7 @@ export function SylhetDirectory() {
       </div>
 
       <p className="text-xs text-slate-500">
-        <T vars={{ date: prettyDate(CHECKED_ON) }}>
+        <T vars={{ date: prettyDate(CHECKED_ON, "en") }} bnVars={{ date: prettyDate(CHECKED_ON, "bn") }}>
           {"Found a wrong or outdated number? Tell the platform team so it can be corrected. Last checked {date}."}
         </T>
       </p>

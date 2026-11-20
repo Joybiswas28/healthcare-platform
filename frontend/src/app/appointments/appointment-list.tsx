@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
 import { clock, prettyDate, taka, todayInDhaka } from "@/lib/format";
+import { T } from "@/components/t";
 
 const PAGE_SIZE = 20;
 
@@ -17,6 +19,7 @@ const STATUS: Record<string, { label: string; tone: "slate" | "teal" | "amber" |
 };
 
 export function AppointmentList() {
+  const t = useT();
   const [items, setItems] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -44,7 +47,7 @@ export function AppointmentList() {
   }, []);
 
   async function cancel(a: Appointment) {
-    if (!a.id || !confirm(`Cancel your serial with ${a.doctor_name} on ${prettyDate(a.date)}?`)) return;
+    if (!a.id || !confirm(t("Cancel your serial with {doctor} on {date}?", { doctor: a.doctor_name, date: prettyDate(a.date) }))) return;
     setCancelling(a.id);
     setError("");
     const { data, error } = await api.POST("/api/v1/appointments/{appointmentID}/cancel", {
@@ -63,9 +66,9 @@ export function AppointmentList() {
   if (!loading && items.length === 0 && !error) {
     return (
       <Card>
-        <p className="text-slate-700">You have no appointments yet.</p>
+        <p className="text-slate-700"><T>You have no appointments yet.</T></p>
         <ButtonLink href="/doctors" className="mt-4">
-          Find a doctor
+          <T>Find a doctor</T>
         </ButtonLink>
       </Card>
     );
@@ -93,24 +96,24 @@ export function AppointmentList() {
                 <p className="text-sm text-slate-600">
                   {a.hospital_name ? `${a.hospital_name} · ` : ""}
                   {a.chamber_name}
-                  {a.room ? ` · Room ${a.room}` : ""}, {a.chamber_district}
+                  {a.room ? ` · ${a.room}` : ""}, {a.chamber_district}
                 </p>
                 {a.status === "cancelled" && a.cancelled_by && a.cancelled_by !== "patient" && (
                   <p className="mt-1 text-xs text-red-700">
-                    Cancelled by the {a.cancelled_by}
+                    {t("Cancelled by the {who}", { who: t(a.cancelled_by ?? "") })}
                     {a.cancel_reason ? `: ${a.cancel_reason}` : ""}
                   </p>
                 )}
               </div>
               <div className="text-right">
-                <p className="text-sm text-slate-600">Serial</p>
+                <p className="text-sm text-slate-600"><T>Serial</T></p>
                 <p className="text-2xl font-semibold text-slate-900">{a.serial_no}</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm">
               <span className="text-slate-600">
-                Ticket <span className="font-mono font-semibold tracking-wider text-slate-900">{a.ticket_code}</span> ·
-                Fee {taka(a.fee_paisa)} (pay at the chamber)
+                {t("Ticket")} <span className="font-mono font-semibold tracking-wider text-slate-900">{a.ticket_code}</span> ·{" "}
+                {t("Fee {fee} (pay at the chamber)", { fee: taka(a.fee_paisa) })}
               </span>
               {upcoming && (
                 <Button variant="danger" onClick={() => cancel(a)} disabled={cancelling === a.id}>
@@ -125,7 +128,7 @@ export function AppointmentList() {
       {!loading && hasMore && (
         <div className="text-center">
           <Button variant="secondary" onClick={() => load(items.length)}>
-            Show more
+            <T>Show more</T>
           </Button>
         </div>
       )}

@@ -7,8 +7,10 @@ import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Button, Card, Field, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type PublicDoctor } from "@/lib/api/client";
 import { tokens } from "@/lib/format";
+import { T } from "@/components/t";
 
 export function RequestForm() {
   const doctorID = useSearchParams().get("doctor") ?? "";
@@ -18,7 +20,7 @@ export function RequestForm() {
         user.role === "patient" ? (
           <Form doctorID={doctorID} />
         ) : (
-          <p className="text-sm text-slate-600">Only patient accounts can request a consultation.</p>
+          <p className="text-sm text-slate-600"><T>Only patient accounts can request a consultation.</T></p>
         )
       }
     </RequireAuth>
@@ -26,6 +28,7 @@ export function RequestForm() {
 }
 
 function Form({ doctorID }: { doctorID: string }) {
+  const t = useT();
   const router = useRouter();
   const [doctor, setDoctor] = useState<PublicDoctor | null>(null);
   const [error, setError] = useState("");
@@ -53,7 +56,7 @@ function Form({ doctorID }: { doctorID: string }) {
     });
     setBusy(false);
     if (!data?.id) {
-      setError(errorMessage(error, "Could not send the request."));
+      setError(errorMessage(error, t("Could not send the request.")));
       return;
     }
     router.push(`/consultations/${data.id}`);
@@ -62,9 +65,9 @@ function Form({ doctorID }: { doctorID: string }) {
   if (!doctorID) {
     return (
       <Alert kind="info">
-        Choose a doctor first.{" "}
+        <T>Choose a doctor first.</T>{" "}
         <Link href="/doctors?online=true" className="font-medium underline">
-          Find doctors who consult online
+          <T>Find doctors who consult online</T>
         </Link>
       </Alert>
     );
@@ -72,7 +75,7 @@ function Form({ doctorID }: { doctorID: string }) {
   if (!doctor)
     return error ? <LoadFailure failure={error} backHref="/doctors?online=true" backLabel="Find a doctor" /> : <Spinner />;
   if (!doctor.consultation_enabled) {
-    return <Alert>{doctor.name} is not taking online consultations right now.</Alert>;
+    return <Alert>{t("{name} is not taking online consultations right now.", { name: doctor.name })}</Alert>;
   }
 
   return (
@@ -81,10 +84,10 @@ function Form({ doctorID }: { doctorID: string }) {
         <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
           <p className="font-medium text-slate-900">{doctor.name}</p>
           <p>
-            Fee: {tokens(doctor.consultation_fee_tokens)}. Nothing is charged until the doctor accepts and you confirm.
+            {t("Fee: {fee}. Nothing is charged until the doctor accepts and you confirm.", { fee: tokens(doctor.consultation_fee_tokens) })}
           </p>
         </div>
-        <Field label="Subject" name="subject" minLength={5} maxLength={150} required placeholder="e.g. Fever for three days" />
+        <Field label="Subject" name="subject" minLength={5} maxLength={150} required placeholder={t("e.g. Fever for three days")} />
         <TextArea
           label="Describe the problem"
           name="description"

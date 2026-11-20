@@ -3,14 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Role, type Schemas } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
 import { notificationHref, notificationIcon, timeAgo } from "@/lib/notification-links";
+import { T } from "@/components/t";
 
 type Notification = Schemas["Notification"];
 const PAGE_SIZE = 30;
 
 export function NotificationList({ role }: { role?: Role }) {
+  const t = useT();
   const router = useRouter();
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [items, setItems] = useState<Notification[] | null>(null);
@@ -58,10 +61,10 @@ export function NotificationList({ role }: { role?: Role }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Notifications</h1>
+        <h1 className="text-2xl font-semibold text-slate-900"><T>Notifications</T></h1>
         {unread > 0 && (
           <Button variant="secondary" onClick={markAll}>
-            Mark all as read ({unread})
+            {t("Mark all as read ({n})", { n: unread })}
           </Button>
         )}
       </div>
@@ -81,7 +84,7 @@ export function NotificationList({ role }: { role?: Role }) {
               onlyUnread === f.v ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
             }`}
           >
-            {f.label}
+            {t(f.label)}
           </button>
         ))}
       </div>
@@ -107,7 +110,10 @@ export function NotificationList({ role }: { role?: Role }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
-                      <span className={`text-slate-900 ${n.read_at ? "" : "font-semibold"}`}>{n.title}</span>
+                      <span className={`text-slate-900 ${n.read_at ? "" : "font-semibold"}`}>
+                      {/* Titles are fixed per kind, so they translate; bodies come from the server in English. */}
+                      <T>{n.title ?? ""}</T>
+                    </span>
                       <span className="shrink-0 text-xs text-slate-500" title={dateTime(n.created_at)}>
                         {timeAgo(n.created_at)}
                       </span>
@@ -123,7 +129,7 @@ export function NotificationList({ role }: { role?: Role }) {
       {items && hasMore && (
         <div className="text-center">
           <Button variant="secondary" onClick={() => load(items.length, onlyUnread)}>
-            Show more
+            <T>Show more</T>
           </Button>
         </div>
       )}

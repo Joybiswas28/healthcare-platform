@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { Fragment, useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { LANG_STORAGE_KEY, translate, type Lang, type Vars } from "@/lib/i18n";
 
 const listeners = new Set<() => void>();
@@ -37,6 +37,20 @@ export function useLang(): Lang {
 export function useT() {
   const lang = useLang();
   return useCallback((text: string, vars?: Vars) => translate(lang, text, vars), [lang]);
+}
+
+// Numbers, dates and money are formatted as plain text (lib/format.ts), so a
+// language switch has to redraw the page content. This remounts its children
+// when the language button is pressed, never on load, so data isn't fetched twice.
+export function LangRemount({ children }: { children: ReactNode }) {
+  const [switches, setSwitches] = useState(0);
+  useEffect(() => {
+    const unsubscribe = subscribe(() => setSwitches((n) => n + 1));
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+  return <Fragment key={switches}>{children}</Fragment>;
 }
 
 export function LangToggle() {

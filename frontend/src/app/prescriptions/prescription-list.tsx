@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Prescription } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
+import { T } from "@/components/t";
 
 const PAGE_SIZE = 20;
 
@@ -45,7 +46,7 @@ export function PrescriptionList({ asDoctor, filter, compact }: { asDoctor: bool
   if (items.length === 0) {
     return compact ? null : (
       <Card>
-        <p className="text-slate-600">No prescriptions yet.</p>
+        <p className="text-slate-600"><T>No prescriptions yet.</T></p>
       </Card>
     );
   }
@@ -69,7 +70,7 @@ export function PrescriptionList({ asDoctor, filter, compact }: { asDoctor: bool
                 {p.status === "revoked" ? <Badge tone="red">Revoked</Badge> : <Badge tone="teal">Valid</Badge>}
               </div>
               <p className="mt-2 text-xs text-slate-500">
-                {dateTime(p.issued_at)} · Code <span className="font-mono">{p.code}</span>
+                {dateTime(p.issued_at)} · <T>Code</T> <span className="font-mono">{p.code}</span>
               </p>
             </Link>
           </li>
@@ -78,7 +79,7 @@ export function PrescriptionList({ asDoctor, filter, compact }: { asDoctor: bool
       {!loading && hasMore && (
         <div className="text-center">
           <Button variant="secondary" onClick={() => load(items.length)}>
-            Show more
+            <T>Show more</T>
           </Button>
         </div>
       )}

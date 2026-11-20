@@ -8,9 +8,11 @@ import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Order } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
 import { mapLink } from "@/lib/geo";
+import { T } from "@/components/t";
 
 const POLL_MS = 10000;
 // The patient may cancel until the pharmacy has the order ready.
@@ -21,6 +23,7 @@ export function OrderDetail() {
 }
 
 function Detail() {
+  const t = useT();
   const { orderID } = useParams<{ orderID: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
@@ -46,7 +49,7 @@ function Detail() {
   }, [active, reload]);
 
   async function cancel() {
-    if (!confirm("Cancel this order? The pharmacy will be told.")) return;
+    if (!confirm(t("Cancel this order? The pharmacy will be told."))) return;
     setBusy(true);
     const { data, error } = await api.POST("/api/v1/medicine-orders/{orderID}/cancel", {
       params: { path: { orderID } },
@@ -65,7 +68,7 @@ function Detail() {
   return (
     <div className="space-y-4">
       <Link href="/medicines" className="text-sm text-teal-800 hover:underline">
-        ← Medicines
+        ← <T>Medicines</T>
       </Link>
 
       <Card className="space-y-3">
@@ -82,8 +85,7 @@ function Detail() {
         {showCode && (
           <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-center">
             <p className="text-sm text-teal-900">
-              Give this code to the {order.fulfilment === "pickup" ? "pharmacy when you collect" : "person delivering"} — only
-              after you have the medicines.
+              {t(order.fulfilment === "pickup" ? "Give this code to the pharmacy when you collect — only after you have the medicines." : "Give this code to the person delivering — only after you have the medicines.")}
             </p>
             <p className="mt-1 font-mono text-3xl font-semibold tracking-[0.3em] text-teal-900">{order.delivery_code}</p>
           </div>
@@ -104,7 +106,7 @@ function Detail() {
               <>
                 {" · "}
                 <a href={riderMap} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">
-                  Where is the rider?
+                  <T>Where is the rider?</T>
                 </a>{" "}
                 <span className="text-xs text-slate-500">(updated {dateTime(order.rider_location?.at)})</span>
               </>
@@ -123,26 +125,26 @@ function Detail() {
             ))}
           {(order.delivery_charge_paisa ?? 0) > 0 && (
             <li className="flex justify-between text-slate-600">
-              <span>Delivery</span>
+              <span><T>Delivery</T></span>
               <span>{taka(order.delivery_charge_paisa)}</span>
             </li>
           )}
           <li className="flex justify-between border-t border-slate-100 pt-2 font-semibold text-slate-900">
-            <span>Total, cash on {order.fulfilment === "pickup" ? "pickup" : "delivery"}</span>
+            <span>{t(order.fulfilment === "pickup" ? "Total, cash on pickup" : "Total, cash on delivery")}</span>
             <span>{taka(order.total_paisa)}</span>
           </li>
         </ul>
 
         {order.status === "cancelled" && (
           <Alert>
-            Cancelled by {order.cancelled_by === "patient" ? "you" : "the pharmacy"}
+            {t(order.cancelled_by === "patient" ? "Cancelled by you" : "Cancelled by the pharmacy")}
             {order.cancel_reason ? `: ${order.cancel_reason}` : "."}
           </Alert>
         )}
         {error && <Alert>{error}</Alert>}
         {CANCELLABLE.has(order.status ?? "") && (
           <Button variant="danger" onClick={cancel} disabled={busy}>
-            Cancel order
+            <T>Cancel order</T>
           </Button>
         )}
       </Card>
@@ -153,7 +155,7 @@ function Detail() {
       {(reviewed || (order.status === "delivered" && order.reviewed)) && <Alert kind="success">Thanks for rating the pharmacy.</Alert>}
 
       <Card>
-        <h2 className="mb-3 font-semibold text-slate-900">Progress</h2>
+        <h2 className="mb-3 font-semibold text-slate-900"><T>Progress</T></h2>
         <OrderTimeline order={order} />
       </Card>
     </div>
@@ -161,6 +163,7 @@ function Detail() {
 }
 
 function ReviewForm({ orderID, onDone }: { orderID: string; onDone: () => void }) {
+  const t = useT();
   const [rating, setRating] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -168,7 +171,7 @@ function ReviewForm({ orderID, onDone }: { orderID: string; onDone: () => void }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!rating) {
-      setError("Pick 1 to 5 stars.");
+      setError(t("Pick 1 to 5 stars."));
       return;
     }
     setBusy(true);
@@ -184,8 +187,8 @@ function ReviewForm({ orderID, onDone }: { orderID: string; onDone: () => void }
   return (
     <Card>
       <form onSubmit={submit} className="space-y-3">
-        <h2 className="font-semibold text-slate-900">Rate the pharmacy</h2>
-        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+        <h2 className="font-semibold text-slate-900"><T>Rate the pharmacy</T></h2>
+        <div className="flex gap-1" role="radiogroup" aria-label={t("Rating")}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               type="button"

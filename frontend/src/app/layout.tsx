@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { SiteHeader } from "@/components/site-header";
 import { T } from "@/components/t";
 import { Container } from "@/components/ui";
+import { LangRemount } from "@/components/use-lang";
 import { LANG_SCRIPT } from "@/lib/i18n";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <AuthProvider>
           <SiteHeader />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1">
+            <LangRemount>{children}</LangRemount>
+          </main>
           <footer className="border-t border-chrome-line bg-chrome py-6 text-sm text-white/70">
             <Container className="flex flex-wrap justify-between gap-2">
               <span>

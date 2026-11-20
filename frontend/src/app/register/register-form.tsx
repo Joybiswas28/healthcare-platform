@@ -152,7 +152,7 @@ export function RegisterForm() {
           {busy ? "Sending code…" : "Continue"}
         </Button>
         <p className="text-center text-sm text-slate-600">
-          Already have an account?{" "}
+          <T>Already have an account?</T>{" "}
           <Link href="/login" className="text-teal-800 hover:underline">
             <T>Log in</T>
           </Link>

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ConsultationBadge } from "@/components/consultation-status";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Consultation, type ConsultationStatus } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
+import { T } from "@/components/t";
 
 const PAGE_SIZE = 20;
 
@@ -18,6 +20,7 @@ const FILTERS: { value: ConsultationStatus | ""; label: string }[] = [
 ];
 
 export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
+  const t = useT();
   const [status, setStatus] = useState<ConsultationStatus | "">("");
   const [items, setItems] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +61,7 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
               status === f.value ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
             }`}
           >
-            {f.label}
+            {t(f.label)}
           </button>
         ))}
       </div>
@@ -68,8 +71,8 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
         <Card>
           <p className="text-slate-600">
             {asDoctor
-              ? "No consultations here yet. Patients can request you once online consultations are turned on in your dashboard."
-              : "No consultations here yet. Pick a doctor who consults online, or post a concern and let doctors come to you."}
+              ? t("No consultations here yet. Patients can request you once online consultations are turned on in your dashboard.")
+              : t("No consultations here yet. Pick a doctor who consults online, or post a concern and let doctors come to you.")}
           </p>
         </Card>
       )}
@@ -85,12 +88,12 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
                 <div>
                   <p className="font-semibold text-slate-900">{c.subject}</p>
                   <p className="text-sm text-slate-600">
-                    {asDoctor ? `Patient: ${c.patient_name}` : c.doctor_name} · {tokens(c.fee_tokens)}
+                    {asDoctor ? t("Patient: {name}", { name: c.patient_name }) : c.doctor_name} · {tokens(c.fee_tokens)}
                   </p>
                 </div>
                 <ConsultationBadge status={c.status} asDoctor={asDoctor} />
               </div>
-              <p className="mt-2 text-xs text-slate-500">Requested {dateTime(c.requested_at)}</p>
+              <p className="mt-2 text-xs text-slate-500">{t("Requested {date}", { date: dateTime(c.requested_at) })}</p>
             </Link>
           </li>
         ))}
@@ -100,7 +103,7 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
       {!loading && hasMore && (
         <div className="text-center">
           <Button variant="secondary" onClick={() => load(items.length, status)}>
-            Show more
+            <T>Show more</T>
           </Button>
         </div>
       )}

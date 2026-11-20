@@ -4,6 +4,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { Container } from "@/components/ui";
 import { DoctorFeed } from "./doctor-feed";
 import { PatientConcerns } from "./patient-concerns";
+import { T } from "@/components/t";
 
 export default function ConcernsPage() {
   return (
@@ -15,7 +16,7 @@ export default function ConcernsPage() {
           ) : user.role === "doctor" ? (
             <DoctorFeed />
           ) : (
-            <p className="text-sm text-slate-600">Concerns are for patients and doctors.</p>
+            <p className="text-sm text-slate-600"><T>Concerns are for patients and doctors.</T></p>
           )
         }
       </RequireAuth>

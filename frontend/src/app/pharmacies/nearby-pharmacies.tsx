@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { LocationPicker, validCoords } from "@/components/location-picker";
 import { Alert, Badge, Button, ButtonLink, Card, Select } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Pharmacy } from "@/lib/api/client";
 import { km, type Coords } from "@/lib/geo";
+import { T } from "@/components/t";
 
 export function NearbyPharmacies() {
+  const t = useT();
   const [coords, setCoords] = useState<Coords | null>(null);
   const [radius, setRadius] = useState(5);
   const [items, setItems] = useState<Pharmacy[] | null>(null);
@@ -16,7 +19,7 @@ export function NearbyPharmacies() {
 
   async function search() {
     if (!validCoords(coords)) {
-      setError("Share or enter your location first.");
+      setError(t("Share or enter your location first."));
       return;
     }
     setBusy(true);
@@ -47,7 +50,7 @@ export function NearbyPharmacies() {
             {busy ? "Searching…" : "Find pharmacies"}
           </Button>
           <ButtonLink href="/medicines/new" variant="secondary">
-            Order medicine
+            <T>Order medicine</T>
           </ButtonLink>
         </div>
       </Card>
@@ -73,7 +76,7 @@ export function NearbyPharmacies() {
 }
 
 export function Stars({ rating, count }: { rating?: number | null; count?: number }) {
-  if (!count || rating == null) return <span className="text-xs text-slate-500">No reviews yet</span>;
+  if (!count || rating == null) return <span className="text-xs text-slate-500"><T>No reviews yet</T></span>;
   return (
     <span className="text-sm text-slate-700">
       <span className="text-amber-500" aria-hidden>
@@ -85,6 +88,7 @@ export function Stars({ rating, count }: { rating?: number | null; count?: numbe
 }
 
 export function PharmacySummary({ pharmacy: p }: { pharmacy: Pharmacy }) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -92,7 +96,7 @@ export function PharmacySummary({ pharmacy: p }: { pharmacy: Pharmacy }) {
         <p className="text-sm text-slate-600">{[p.address, p.area, p.district].filter(Boolean).join(", ")}</p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <Stars rating={p.rating} count={p.review_count} />
-          {p.offers_delivery ? <Badge tone="teal">Delivers within {p.delivery_radius_km} km</Badge> : <Badge>Pickup only</Badge>}
+          {p.offers_delivery ? <Badge tone="teal">{t("Delivers within {km} km", { km: p.delivery_radius_km })}</Badge> : <Badge>Pickup only</Badge>}
           {p.accepting_orders === false && <Badge tone="amber">Not taking orders now</Badge>}
         </div>
       </div>

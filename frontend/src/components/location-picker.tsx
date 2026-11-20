@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { currentPosition, type Coords } from "@/lib/geo";
 import { Alert, Button } from "./ui";
+import { useT } from "./use-lang";
+import { T } from "@/components/t";
 
 const input =
   "w-full rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20";
@@ -17,6 +19,7 @@ export function LocationPicker({
   onChange: (c: Coords | null) => void;
   label?: string;
 }) {
+  const t = useT();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -39,7 +42,9 @@ export function LocationPicker({
 
   return (
     <fieldset className="space-y-2">
-      <legend className="mb-1 text-sm font-medium text-slate-700">{label}</legend>
+      <legend className="mb-1 text-sm font-medium text-slate-700">
+        <T>{label}</T>
+      </legend>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="secondary" onClick={locate} disabled={busy}>
           {busy ? "Locating…" : "📍 Use my current location"}
@@ -51,26 +56,26 @@ export function LocationPicker({
         )}
       </div>
       <details className="text-sm">
-        <summary className="cursor-pointer text-slate-600">Enter coordinates by hand</summary>
+        <summary className="cursor-pointer text-slate-600"><T>Enter coordinates by hand</T></summary>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <input
-            aria-label="Latitude"
-            placeholder="Latitude, e.g. 23.7465"
+            aria-label={t("Latitude")}
+            placeholder={t("Latitude, e.g. 23.7465")}
             inputMode="decimal"
             value={value && Number.isFinite(value.latitude) ? value.latitude : ""}
             onChange={(e) => set("latitude", e.target.value)}
             className={input}
           />
           <input
-            aria-label="Longitude"
-            placeholder="Longitude, e.g. 90.3750"
+            aria-label={t("Longitude")}
+            placeholder={t("Longitude, e.g. 90.3750")}
             inputMode="decimal"
             value={value && Number.isFinite(value.longitude) ? value.longitude : ""}
             onChange={(e) => set("longitude", e.target.value)}
             className={input}
           />
         </div>
-        <p className="mt-1 text-xs text-slate-500">Tip: long-press a spot in Google Maps to copy its coordinates.</p>
+        <p className="mt-1 text-xs text-slate-500"><T>Tip: long-press a spot in Google Maps to copy its coordinates.</T></p>
       </details>
       {error && <Alert>{error}</Alert>}
     </fieldset>

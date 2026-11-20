@@ -1,8 +1,9 @@
 import type { Medicine } from "@/lib/api/client";
+import { T } from "@/components/t";
 
 // The medicine table used on the prescription page and the public verify page.
 export function MedicineList({ medicines }: { medicines: Medicine[] }) {
-  if (medicines.length === 0) return <p className="text-sm text-slate-500">No medicines.</p>;
+  if (medicines.length === 0) return <p className="text-sm text-slate-500"><T>No medicines.</T></p>;
   return (
     <ol className="space-y-2">
       {medicines.map((m, i) => (

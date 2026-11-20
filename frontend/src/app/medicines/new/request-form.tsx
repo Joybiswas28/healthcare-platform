@@ -6,9 +6,11 @@ import { LocationPicker, validCoords } from "@/components/location-picker";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { Alert, Button, Card, Field, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type MedicineRequestInput, type Prescription, type RequestItem } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
 import type { Coords } from "@/lib/geo";
+import { T } from "@/components/t";
 
 // Every request needs a prescription: one from this site, or a photo/PDF of a paper one.
 type Source = "prescription" | "paper";
@@ -21,13 +23,14 @@ export function RequestForm() {
   return (
     <RequireAuth>
       {(user) =>
-        user.role === "patient" ? <Form /> : <p className="text-sm text-slate-600">Only patient accounts can order medicine.</p>
+        user.role === "patient" ? <Form /> : <p className="text-sm text-slate-600"><T>Only patient accounts can order medicine.</T></p>
       }
     </RequireAuth>
   );
 }
 
 function Form() {
+  const t = useT();
   const router = useRouter();
   const preset = useSearchParams().get("prescription_id");
   const [source, setSource] = useState<Source>("prescription");
@@ -52,7 +55,7 @@ function Form() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     if (!validCoords(coords)) {
-      setError(fulfilment === "delivery" ? "Add the delivery location." : "Add your location so nearby pharmacies can see the request.");
+      setError(t(fulfilment === "delivery" ? "Add the delivery location." : "Add your location so nearby pharmacies can see the request."));
       return;
     }
     const cleanItems = items
@@ -74,7 +77,7 @@ function Form() {
     if (source === "prescription") {
       if (!prescriptionID) {
         setBusy(false);
-        setError("Choose a prescription.");
+        setError(t("Choose a prescription."));
         return;
       }
       res = await fetch("/api/v1/medicine-requests", {
@@ -86,12 +89,12 @@ function Form() {
       const picked = file.current?.files?.[0];
       if (!picked) {
         setBusy(false);
-        setError("Attach a photo or PDF of the prescription.");
+        setError(t("Attach a photo or PDF of the prescription."));
         return;
       }
       if (picked.size > MAX_FILE_BYTES) {
         setBusy(false);
-        setError("The file can be at most 10 MB.");
+        setError(t("The file can be at most 10 MB."));
         return;
       }
       // The backend reads "data" first, then "file".
@@ -103,7 +106,7 @@ function Form() {
     const data = await res.json().catch(() => null);
     setBusy(false);
     if (res.ok && data?.id) router.push(`/medicines/requests/${data.id}`);
-    else setError(errorMessage(data, "Could not send the request."));
+    else setError(errorMessage(data, t("Could not send the request.")));
   }
 
   if (prescriptions === null) return <Spinner />;
@@ -117,18 +120,18 @@ function Form() {
     <form onSubmit={onSubmit} className="space-y-4">
       <Card className="space-y-4">
         <div className="flex flex-wrap gap-2" role="tablist">
-          {tabs.map((t) => (
+          {tabs.map((tab) => (
             <button
               type="button"
-              key={t.id}
+              key={tab.id}
               role="tab"
-              aria-selected={source === t.id}
-              onClick={() => setSource(t.id)}
+              aria-selected={source === tab.id}
+              onClick={() => setSource(tab.id)}
               className={`rounded-full px-3 py-1 text-sm ${
-                source === t.id ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
+                source === tab.id ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
               }`}
             >
-              {t.label}
+              {t(tab.label)}
             </button>
           ))}
         </div>
@@ -166,9 +169,9 @@ function Form() {
 
         {source === "paper" && (
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-slate-700">Photo or PDF of the prescription</span>
+            <span className="mb-1 block font-medium text-slate-700"><T>Photo or PDF of the prescription</T></span>
             <input ref={file} type="file" accept="application/pdf,image/jpeg,image/png" className="text-sm" />
-            <span className="mt-1 block text-xs text-slate-500">Up to 10 MB. Only pharmacies quoting for it can open it.</span>
+            <span className="mt-1 block text-xs text-slate-500"><T>Up to 10 MB. Only pharmacies quoting for it can open it.</T></span>
           </label>
         )}
 
@@ -180,10 +183,10 @@ function Form() {
             {items.map((it, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 sm:grid-cols-[1fr_6rem_7rem_auto]">
                 {/* Phones: the name takes a full row, strength and quantity share the next. */}
-                <input aria-label="Name" placeholder="Name, e.g. Napa" value={it.name} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className={`${input} col-span-3 sm:col-span-1`} />
-                <input aria-label="Strength" placeholder="500 mg" value={it.strength ?? ""} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, strength: e.target.value } : x)))} className={input} />
-                <input aria-label="Quantity" placeholder="10 tablets" value={it.quantity ?? ""} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)))} className={input} />
-                <button type="button" onClick={() => setItems((p) => p.filter((_, j) => j !== i))} className="px-2 text-sm text-red-700" aria-label="Remove">
+                <input aria-label={t("Name")} placeholder={t("Name, e.g. Napa")} value={it.name} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className={`${input} col-span-3 sm:col-span-1`} />
+                <input aria-label={t("Strength")} placeholder="500 mg" value={it.strength ?? ""} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, strength: e.target.value } : x)))} className={input} />
+                <input aria-label={t("Quantity")} placeholder={t("10 tablets")} value={it.quantity ?? ""} onChange={(e) => setItems((p) => p.map((x, j) => (j === i ? { ...x, quantity: e.target.value } : x)))} className={input} />
+                <button type="button" onClick={() => setItems((p) => p.filter((_, j) => j !== i))} className="px-2 text-sm text-red-700" aria-label={t("Remove")}>
                   ✕
                 </button>
               </div>
@@ -197,12 +200,12 @@ function Form() {
 
       <Card className="space-y-4">
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-slate-700">How do you want it?</legend>
+          <legend className="mb-2 text-sm font-medium text-slate-700"><T>How do you want it?</T></legend>
           <div className="flex gap-4 text-sm">
             {(["delivery", "pickup"] as const).map((v) => (
               <label key={v} className="flex items-center gap-2">
                 <input type="radio" name="fulfilment" checked={fulfilment === v} onChange={() => setFulfilment(v)} className="accent-teal-700" />
-                {v === "delivery" ? "Home delivery" : "I'll pick it up"}
+                {t(v === "delivery" ? "Home delivery" : "I'll pick it up")}
               </label>
             ))}
           </div>
@@ -213,9 +216,9 @@ function Form() {
           label={fulfilment === "delivery" ? "Delivery location" : "Your location (to find pharmacies nearby)"}
         />
         {fulfilment === "delivery" && (
-          <Field label="Delivery address" name="address" required placeholder="House, road, area, landmarks" />
+          <Field label="Delivery address" name="address" required placeholder={t("House, road, area, landmarks")} />
         )}
-        <Field label="Contact phone (optional)" name="contact_phone" type="tel" placeholder="Defaults to your account's number" />
+        <Field label="Contact phone (optional)" name="contact_phone" type="tel" placeholder={t("Defaults to your account's number")} />
         <TextArea label="Note for the pharmacy (optional)" name="note" rows={2} maxLength={500} />
       </Card>
 

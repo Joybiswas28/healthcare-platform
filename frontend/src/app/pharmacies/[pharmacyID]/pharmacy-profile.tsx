@@ -9,6 +9,7 @@ import { api, type Pharmacy, type Review } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
 import { mapLink } from "@/lib/geo";
 import { PharmacySummary } from "../nearby-pharmacies";
+import { T } from "@/components/t";
 
 export function PharmacyProfile() {
   const { pharmacyID } = useParams<{ pharmacyID: string }>();
@@ -32,7 +33,7 @@ export function PharmacyProfile() {
   return (
     <div className="space-y-4">
       <Link href="/pharmacies" className="text-sm text-teal-800 hover:underline">
-        ← Pharmacies near you
+        ← <T>Pharmacies near you</T>
       </Link>
       <Card className="space-y-3">
         <PharmacySummary pharmacy={pharmacy} />
@@ -43,7 +44,7 @@ export function PharmacyProfile() {
             <>
               {" · "}
               <a href={map} target="_blank" rel="noopener noreferrer" className="text-teal-800 hover:underline">
-                Map
+                <T>Map</T>
               </a>
             </>
           )}
@@ -53,8 +54,8 @@ export function PharmacyProfile() {
       </Card>
 
       <section>
-        <h2 className="mb-2 text-lg font-semibold text-slate-900">Reviews</h2>
-        {reviews.length === 0 && <p className="text-sm text-slate-600">No reviews yet.</p>}
+        <h2 className="mb-2 text-lg font-semibold text-slate-900"><T>Reviews</T></h2>
+        {reviews.length === 0 && <p className="text-sm text-slate-600"><T>No reviews yet.</T></p>}
         <ul className="space-y-2">
           {reviews.map((r, i) => (
             <li key={i}>

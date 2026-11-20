@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type LedgerEntry, type TokenPackage, type Wallet } from "@/lib/api/client";
 import { dateTime, prettyDate, taka, tokens } from "@/lib/format";
+import { T } from "@/components/t";
 
 const KIND_LABELS: Record<string, string> = {
   token_purchase: "Bought tokens",
@@ -18,6 +20,7 @@ const KIND_LABELS: Record<string, string> = {
 const DEV_CHECKOUT = /^\/api\/v1\/dev\/payments\/([0-9a-f-]+)\/succeed$/;
 
 export function WalletView() {
+  const t = useT();
   const router = useRouter();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [packages, setPackages] = useState<TokenPackage[]>([]);
@@ -52,7 +55,7 @@ export function WalletView() {
     }
     const dev = DEV_CHECKOUT.exec(data.checkout_url);
     if (dev) {
-      if (!confirm(`Development mode: no real payment is taken. Pretend to pay ${taka(pkg.price_paisa)}?`)) {
+      if (!confirm(t("Development mode: no real payment is taken. Pretend to pay {amount}?", { amount: taka(pkg.price_paisa) }))) {
         setBuying(null);
         return;
       }
@@ -74,15 +77,14 @@ export function WalletView() {
 
       {wallet && (
         <Card>
-          <p className="text-sm text-slate-600">Available</p>
+          <p className="text-sm text-slate-600"><T>Available</T></p>
           <p className="text-3xl font-semibold text-slate-900">{tokens(wallet.tokens_available)}</p>
-          <p className="text-xs text-slate-500">1 token = {taka(wallet.token_value_paisa ?? tokenValue)}</p>
+          <p className="text-xs text-slate-500">{t("1 token = {amount}", { amount: taka(wallet.token_value_paisa ?? tokenValue) })}</p>
           {(wallet.lots ?? []).length > 0 && (
             <ul className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm text-slate-600">
               {wallet.lots!.map((lot) => (
                 <li key={lot.id}>
-                  {tokens(lot.tokens_remaining)} of {lot.tokens_total} · expires{" "}
-                  {prettyDate(lot.expires_at?.slice(0, 10))}
+                  {t("{left} of {total} · expires {date}", { left: tokens(lot.tokens_remaining), total: lot.tokens_total, date: prettyDate(lot.expires_at?.slice(0, 10)) })}
                 </li>
               ))}
             </ul>
@@ -91,15 +93,15 @@ export function WalletView() {
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Buy tokens</h2>
-        {packages.length === 0 && <p className="text-sm text-slate-600">No packages are on sale right now.</p>}
+        <h2 className="mb-3 text-lg font-semibold text-slate-900"><T>Buy tokens</T></h2>
+        {packages.length === 0 && <p className="text-sm text-slate-600"><T>No packages are on sale right now.</T></p>}
         <div className="grid gap-3 sm:grid-cols-3">
           {packages.map((p) => (
             <Card key={p.id}>
               <h3 className="font-semibold text-slate-900">{p.name}</h3>
               <p className="mt-1 text-2xl font-semibold text-teal-800">{taka(p.price_paisa)}</p>
               <p className="text-sm text-slate-600">
-                {tokens(p.tokens)} · valid {p.validity_days} days
+                {t("{tokens} · valid {days} days", { tokens: tokens(p.tokens), days: p.validity_days })}
               </p>
               <Button className="mt-4 w-full" onClick={() => buy(p)} disabled={buying !== null}>
                 {buying === p.id ? "Opening payment…" : "Buy"}
@@ -111,13 +113,13 @@ export function WalletView() {
 
       {history.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">History</h2>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900"><T>History</T></h2>
           <Card className="p-0">
             <ul className="divide-y divide-slate-100 text-sm">
               {history.map((e, i) => (
                 <li key={i} className="flex justify-between gap-3 px-5 py-3">
                   <span>
-                    {KIND_LABELS[e.kind ?? ""] ?? e.kind}
+                    {t(KIND_LABELS[e.kind ?? ""] ?? e.kind ?? "")}
                     <span className="block text-xs text-slate-500">{dateTime(e.created_at)}</span>
                   </span>
                   <span className={(e.amount_paisa ?? 0) < 0 ? "text-red-700" : "text-emerald-700"}>
