@@ -11,11 +11,13 @@ import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Order } from "@/lib/api/client";
 import { taka } from "@/lib/format";
 import { mapLink } from "@/lib/geo";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 export function RiderOrder() {
   return (
     <RequireAuth>
-      {(user) => (user.role === "rider" ? <Inner /> : <p className="text-sm text-slate-600">This page is for rider accounts.</p>)}
+      {(user) => (user.role === "rider" ? <Inner /> : <p className="text-sm text-slate-600"><T>This page is for rider accounts.</T></p>)}
     </RequireAuth>
   );
 }
@@ -23,6 +25,7 @@ export function RiderOrder() {
 function Inner() {
   const { orderID } = useParams<{ orderID: string }>();
   const router = useRouter();
+  const t = useT();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,7 +42,7 @@ function Inner() {
   }, [reload]);
 
   async function pickedUp() {
-    if (!confirm("Did you collect the medicines from the pharmacy?")) return;
+    if (!confirm(t("Did you collect the medicines from the pharmacy?"))) return;
     setBusy(true);
     const { data, error } = await api.POST("/api/v1/rider/orders/{orderID}/picked-up", { params: { path: { orderID } } });
     setBusy(false);
@@ -48,7 +51,7 @@ function Inner() {
   }
 
   async function release() {
-    if (!confirm("Give this job back? Another rider can take it.")) return;
+    if (!confirm(t("Give this job back? Another rider can take it."))) return;
     setBusy(true);
     const { error } = await api.POST("/api/v1/rider/orders/{orderID}/release", { params: { path: { orderID } } });
     setBusy(false);
@@ -74,17 +77,19 @@ function Inner() {
   return (
     <div className="space-y-4">
       <Link href="/rider" className="text-sm text-teal-800 hover:underline">
-        ← Deliveries
+        ← <T>Deliveries</T>
       </Link>
 
       <Card className="space-y-4">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">Delivery</h1>
+          <h1 className="text-xl font-semibold text-slate-900"><T>Delivery</T></h1>
           <OrderBadge order={order} />
         </div>
 
         <div className={`rounded-lg border p-3 text-sm ${toPharmacy ? "border-teal-300 bg-teal-50" : "border-slate-200"}`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">1. Collect from</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <T>1. Collect from</T>
+          </p>
           <p className="font-semibold text-slate-900">{order.pharmacy_name}</p>
           <p className="text-slate-700">{order.pharmacy_address}</p>
           <a href={`tel:${order.pharmacy_phone}`} className="text-teal-800 underline">
@@ -93,7 +98,9 @@ function Inner() {
         </div>
 
         <div className={`rounded-lg border p-3 text-sm ${order.status === "out_for_delivery" ? "border-teal-300 bg-teal-50" : "border-slate-200"}`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">2. Deliver to</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <T>2. Deliver to</T>
+          </p>
           <p className="font-semibold text-slate-900">{order.patient_name}</p>
           <p className="text-slate-700">{order.address}</p>
           <p>
@@ -104,7 +111,7 @@ function Inner() {
               <>
                 {" · "}
                 <a href={patientMap} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">
-                  Open in maps
+                  <T>Open in maps</T>
                 </a>
               </>
             )}
@@ -112,8 +119,9 @@ function Inner() {
         </div>
 
         <p className="text-sm text-slate-700">
-          Collect <span className="font-semibold">{taka(order.total_paisa)}</span> cash from the patient · you earn{" "}
-          {taka(order.delivery_charge_paisa)}
+          <T vars={{ amount: taka(order.total_paisa), earn: taka(order.delivery_charge_paisa) }}>
+            {"Collect {amount} cash from the patient · you earn {earn}"}
+          </T>
         </p>
       </Card>
 
@@ -125,7 +133,7 @@ function Inner() {
             I&apos;ve picked it up
           </Button>
           <Button variant="secondary" onClick={release} disabled={busy}>
-            Give the job back
+            <T>Give the job back</T>
           </Button>
         </Card>
       )}
@@ -137,7 +145,7 @@ function Inner() {
       {order.status === "delivered" && <Alert kind="success">Delivered. Thank you!</Alert>}
 
       <Card>
-        <h2 className="mb-3 font-semibold text-slate-900">Progress</h2>
+        <h2 className="mb-3 font-semibold text-slate-900"><T>Progress</T></h2>
         <OrderTimeline order={order} />
       </Card>
     </div>

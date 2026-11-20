@@ -9,6 +9,8 @@ import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type MedicineRequest, type QuotedItem } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
 import { km } from "@/lib/geo";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 type Row = { name: string; strength: string; quantity: string; available: boolean; price: string };
 
@@ -18,7 +20,7 @@ const input =
 export function QuoteRequest() {
   return (
     <RequireAuth>
-      {(user) => (user.role === "pharmacy" ? <Inner /> : <p className="text-sm text-slate-600">This page is for pharmacy accounts.</p>)}
+      {(user) => (user.role === "pharmacy" ? <Inner /> : <p className="text-sm text-slate-600"><T>This page is for pharmacy accounts.</T></p>)}
     </RequireAuth>
   );
 }
@@ -43,6 +45,7 @@ function initialRows(r: MedicineRequest): Row[] {
 
 function Inner() {
   const { pharmacyID, requestID } = useParams<{ pharmacyID: string; requestID: string }>();
+  const t = useT();
   const [req, setReq] = useState<MedicineRequest | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState("");
@@ -83,11 +86,11 @@ function Inner() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     if (items.length === 0) {
-      setError("Add at least one medicine.");
+      setError(t("Add at least one medicine."));
       return;
     }
     if (items.some((i) => i.available && i.price_paisa <= 0)) {
-      setError("Give a price for every available medicine, or untick it.");
+      setError(t("Give a price for every available medicine, or untick it."));
       return;
     }
     setBusy(true);
@@ -107,13 +110,13 @@ function Inner() {
       setError(errorMessage(error));
       return;
     }
-    setNotice(`Quote sent: ${taka(data.total_paisa)}. The patient sees it now.`);
+    setNotice(t("Quote sent: {amount}. The patient sees it now.", { amount: taka(data.total_paisa) }));
     reload();
   }
 
   async function withdraw() {
     const quoteID = req?.my_quote?.id;
-    if (!quoteID || !confirm("Withdraw your quote?")) return;
+    if (!quoteID || !confirm(t("Withdraw your quote?"))) return;
     const { error } = await api.POST("/api/v1/manage/pharmacies/{pharmacyID}/quotes/{quoteID}/withdraw", {
       params: { path: { pharmacyID, quoteID } },
     });
@@ -128,25 +131,25 @@ function Inner() {
   return (
     <div className="space-y-4">
       <Link href={`/manage/pharmacies/${pharmacyID}`} className="text-sm text-teal-800 hover:underline">
-        ← Requests
+        ← <T>Requests</T>
       </Link>
 
       <Card className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-xl font-semibold text-slate-900">
-            {req.fulfilment === "pickup" ? "Pickup" : "Delivery"} request · {km(req.distance_km)} away
+            <T vars={{ distance: km(req.distance_km) }}>{req.fulfilment === "pickup" ? "Pickup request · {distance} away" : "Delivery request · {distance} away"}</T>
           </h1>
           <Badge tone={req.status === "open" ? "amber" : "slate"}>{req.status}</Badge>
         </div>
         <p className="text-xs text-slate-500">
-          {dateTime(req.created_at)} · open until {dateTime(req.expires_at)} · {req.quote_count ?? 0} quotes. The patient&apos;s identity is
-          shared only when they choose you.
+          {dateTime(req.created_at)} · <T vars={{ date: dateTime(req.expires_at) }}>{"open until {date}"}</T> ·{" "}
+          <T vars={{ n: req.quote_count ?? 0 }}>{"{n} quotes. The patient's identity is shared only when they choose you."}</T>
         </p>
         {req.prescription && (
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
             <p className="font-medium text-slate-900">
-              Prescription {req.prescription.code} · {req.prescription.doctor_name} (BMDC {req.prescription.doctor_bmdc})
-              {req.prescription.status === "revoked" && <span className="text-red-700"> — REVOKED</span>}
+              <T>Prescription</T> {req.prescription.code} · {req.prescription.doctor_name} (BMDC {req.prescription.doctor_bmdc})
+              {req.prescription.status === "revoked" && <span className="text-red-700"> — {t("REVOKED")}</span>}
             </p>
             <ul className="mt-1 list-inside list-disc text-slate-700">
               {(req.prescription.medicines ?? []).map((m, i) => (
@@ -162,7 +165,7 @@ function Inner() {
             href={`/api/v1/manage/pharmacies/${pharmacyID}/requests/${req.id}/attachment`}
             className="inline-block text-sm text-teal-800 underline"
           >
-            📎 Open the uploaded prescription
+            📎 <T>Open the uploaded prescription</T>
           </a>
         )}
         {(req.items ?? []).length > 0 && (
@@ -172,18 +175,20 @@ function Inner() {
             ))}
           </ul>
         )}
-        {req.note && <p className="text-sm text-slate-700">Patient&apos;s note: “{req.note}”</p>}
+        {req.note && <p className="text-sm text-slate-700">
+            <T>Patient&apos;s note:</T> “{req.note}”
+          </p>}
       </Card>
 
       {notice && <Alert kind="success">{notice}</Alert>}
       {mine && mine.status !== "withdrawn" && (
         <Alert kind={mine.status === "accepted" ? "success" : "info"}>
-          Your quote: {taka(mine.total_paisa)} · {mine.status}
+          <T vars={{ amount: taka(mine.total_paisa) }}>{"Your quote: {amount}"}</T> · <T>{mine.status ?? ""}</T>
           {mine.status === "pending" && (
             <>
               {" · "}
               <button onClick={withdraw} className="font-medium underline">
-                Withdraw
+                <T>Withdraw</T>
               </button>
             </>
           )}
@@ -193,27 +198,29 @@ function Inner() {
       {canQuote && (
         <Card>
           <form onSubmit={submit} className="space-y-4">
-            <h2 className="font-semibold text-slate-900">{mine && mine.status === "pending" ? "Revise your quote" : "Send a quote"}</h2>
+            <h2 className="font-semibold text-slate-900">
+              <T>{mine && mine.status === "pending" ? "Revise your quote" : "Send a quote"}</T>
+            </h2>
             <div className="space-y-2">
               <div className="hidden grid-cols-[1fr_6rem_7rem_5rem_7rem_auto] gap-2 text-xs text-slate-500 sm:grid">
-                <span>Medicine</span>
-                <span>Strength</span>
-                <span>Quantity</span>
-                <span>In stock</span>
-                <span>Price (৳, total)</span>
+                <span><T>Medicine</T></span>
+                <span><T>Strength</T></span>
+                <span><T>Quantity</T></span>
+                <span><T>In stock</T></span>
+                <span><T>Price (৳, total)</T></span>
                 <span />
               </div>
               {rows.map((r, i) => (
                 <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_6rem_7rem_5rem_7rem_auto]">
-                  <input aria-label="Medicine" value={r.name} onChange={(e) => update(i, { name: e.target.value })} className={`${input} col-span-2 sm:col-span-1`} />
-                  <input aria-label="Strength" value={r.strength} onChange={(e) => update(i, { strength: e.target.value })} className={input} />
-                  <input aria-label="Quantity" placeholder="e.g. 10 tablets" value={r.quantity} onChange={(e) => update(i, { quantity: e.target.value })} className={input} />
+                  <input aria-label={t("Medicine")} value={r.name} onChange={(e) => update(i, { name: e.target.value })} className={`${input} col-span-2 sm:col-span-1`} />
+                  <input aria-label={t("Strength")} value={r.strength} onChange={(e) => update(i, { strength: e.target.value })} className={input} />
+                  <input aria-label={t("Quantity")} placeholder={t("e.g. 10 tablets")} value={r.quantity} onChange={(e) => update(i, { quantity: e.target.value })} className={input} />
                   <label className="flex items-center gap-1 text-sm">
                     <input type="checkbox" checked={r.available} onChange={(e) => update(i, { available: e.target.checked })} className="accent-teal-700" />
-                    <span className="sm:hidden">In stock</span>
+                    <span className="sm:hidden"><T>In stock</T></span>
                   </label>
                   <input
-                    aria-label="Price in taka"
+                    aria-label={t("Price in taka")}
                     type="number"
                     min={0}
                     step="0.01"
@@ -222,7 +229,7 @@ function Inner() {
                     onChange={(e) => update(i, { price: e.target.value })}
                     className={`${input} disabled:bg-slate-100`}
                   />
-                  <button type="button" onClick={() => setRows((p) => p.filter((_, j) => j !== i))} className="px-2 text-sm text-red-700" aria-label="Remove">
+                  <button type="button" onClick={() => setRows((p) => p.filter((_, j) => j !== i))} className="px-2 text-sm text-red-700" aria-label={t("Remove")}>
                     ✕
                   </button>
                 </div>
@@ -232,7 +239,7 @@ function Inner() {
                 onClick={() => setRows((p) => [...p, { name: "", strength: "", quantity: "", available: true, price: "" }])}
                 className="text-sm text-teal-800 hover:underline"
               >
-                + Add medicine
+                + <T>Add medicine</T>
               </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -248,9 +255,9 @@ function Inner() {
               )}
               <Field label="Ready in (minutes)" name="eta" type="number" min={5} max={1440} required defaultValue={mine?.eta_minutes ?? 45} />
             </div>
-            <Field label="Note (optional)" name="note" maxLength={500} defaultValue={mine?.note ?? ""} placeholder="e.g. Brand substitute: Ace instead of Napa" />
+            <Field label="Note (optional)" name="note" maxLength={500} defaultValue={mine?.note ?? ""} placeholder={t("e.g. Brand substitute: Ace instead of Napa")} />
             <p className="text-sm text-slate-700">
-              Medicines total: <span className="font-semibold">{taka(medicinesTotal)}</span>
+              <T>Medicines total:</T> <span className="font-semibold">{taka(medicinesTotal)}</span>
             </p>
             {error && <Alert>{error}</Alert>}
             <Button type="submit" disabled={busy}>

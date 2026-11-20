@@ -1,5 +1,6 @@
 import type { Order } from "@/lib/api/client";
 import { dateTime } from "@/lib/format";
+import { T } from "./t";
 import { Badge } from "./ui";
 
 const LABELS: Record<string, { label: string; tone: "slate" | "teal" | "amber" | "red" }> = {
@@ -33,7 +34,9 @@ export function OrderTimeline({ order }: { order: Order }) {
       {events.map((e, i) => (
         <li key={i} className="text-sm">
           <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-surface bg-teal-700" aria-hidden />
-          <p className="font-medium text-slate-900">{orderStatusLabel(e.status, order.fulfilment)}</p>
+          <p className="font-medium text-slate-900">
+            <T>{orderStatusLabel(e.status, order.fulfilment)}</T>
+          </p>
           {e.note && <p className="text-slate-600">{e.note}</p>}
           <p className="text-xs text-slate-500">{dateTime(e.created_at)}</p>
         </li>

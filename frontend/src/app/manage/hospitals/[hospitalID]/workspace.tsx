@@ -12,6 +12,7 @@ import { BookingsTab } from "./bookings-tab";
 import { DoctorsTab } from "./doctors-tab";
 import { MembersTab } from "./members-tab";
 import { ProfileTab } from "./profile-tab";
+import { T } from "@/components/t";
 
 const TABS = [
   { id: "doctors", label: "Doctors & sessions" },
@@ -26,7 +27,7 @@ export function Workspace() {
   return (
     <RequireAuth>
       {(user) =>
-        user.role === "hospital_admin" ? <Inner /> : <p className="text-sm text-slate-600">This page is for hospital administrators.</p>
+        user.role === "hospital_admin" ? <Inner /> : <p className="text-sm text-slate-600"><T>This page is for hospital administrators.</T></p>
       }
     </RequireAuth>
   );
@@ -55,26 +56,29 @@ function Inner() {
   return (
     <div className="space-y-6">
       <Link href="/manage/hospitals" className="text-sm text-teal-800 hover:underline">
-        ← My hospitals
+        ← <T>My hospitals</T>
       </Link>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">{hospital.name}</h1>
         <Badge tone={v.tone}>{v.label}</Badge>
         {hospital.verification_status === "approved" && (
           <Link href={`/hospitals/${hospital.id}`} className="text-sm text-teal-800 hover:underline">
-            View public page
+            <T>View public page</T>
           </Link>
         )}
       </div>
       {hospital.verification_status === "rejected" && hospital.verification_note && (
         <Alert>
-          Verification was rejected: {hospital.verification_note}. Correct the profile and save it to ask for another check.
+          <T vars={{ note: hospital.verification_note }}>
+            {"Verification was rejected: {note}. Correct the profile and save it to ask for another check."}
+          </T>
         </Alert>
       )}
       {hospital.verification_status === "pending" && (
         <Alert kind="info">
-          An admin is checking your licence number. You can prepare your profile and photos meanwhile; inviting doctors
-          opens once the hospital is verified.
+          <T>
+            {"An admin is checking your licence number. You can prepare your profile and photos meanwhile; inviting doctors opens once the hospital is verified."}
+          </T>
         </Alert>
       )}
 
@@ -89,7 +93,7 @@ function Inner() {
               tab === t.id ? "border-teal-700 text-teal-800" : "border-transparent text-slate-600 hover:text-slate-900"
             }`}
           >
-            {t.label}
+            <T>{t.label}</T>
           </button>
         ))}
       </div>

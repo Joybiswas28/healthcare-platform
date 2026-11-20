@@ -28,7 +28,7 @@ export function LoadFailure({
   const what = failure.slice(MISSING.length);
   return (
     <NotFoundCard title={`This ${what} could not be found`} backHref={backHref} backLabel={backLabel}>
-      The link may be wrong or out of date, or it may belong to another account.
+      <T>The link may be wrong or out of date, or it may belong to another account.</T>
     </NotFoundCard>
   );
 }
@@ -57,7 +57,7 @@ export function NotFoundCard({
         <ButtonLink href={backHref}>{backLabel}</ButtonLink>
         {backHref !== "/" && (
           <ButtonLink href="/" variant="secondary">
-            Home
+            <T>Home</T>
           </ButtonLink>
         )}
       </div>

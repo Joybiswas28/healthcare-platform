@@ -5,6 +5,8 @@ import { ScheduleEditor, type ScheduleBody } from "@/components/schedule-editor"
 import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type Chamber } from "@/lib/api/client";
 import { clock, taka, WEEKDAYS } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 export function MyChambers() {
   const [chambers, setChambers] = useState<Chamber[] | null>(null);
@@ -30,12 +32,12 @@ export function MyChambers() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600">
-        Patients book a serial in one of your weekly sessions. Sessions may not overlap, across all your chambers and hospitals.
+        <T>Patients book a serial in one of your weekly sessions. Sessions may not overlap, across all your chambers and hospitals.</T>
       </p>
 
       {adding ? (
         <Card>
-          <h2 className="mb-3 font-semibold text-slate-900">Add a private chamber</h2>
+          <h2 className="mb-3 font-semibold text-slate-900"><T>Add a private chamber</T></h2>
           <ChamberForm
             submitLabel="Add chamber"
             onSave={async (body) => {
@@ -52,15 +54,15 @@ export function MyChambers() {
         <Button onClick={() => setAdding(true)}>+ Add a private chamber</Button>
       )}
 
-      {own.length === 0 && !adding && <p className="text-sm text-slate-600">No private chambers yet.</p>}
+      {own.length === 0 && !adding && <p className="text-sm text-slate-600"><T>No private chambers yet.</T></p>}
       {own.map((c) => (
         <OwnChamber key={c.id} chamber={c} onChange={reload} />
       ))}
 
       {hospital.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">At hospitals</h2>
-          <p className="text-sm text-slate-600">The hospital sets the fee, room and sessions for these.</p>
+          <h2 className="text-lg font-semibold text-slate-900"><T>At hospitals</T></h2>
+          <p className="text-sm text-slate-600"><T>The hospital sets the fee, room and sessions for these.</T></p>
           {hospital.map((c) => (
             <Card key={c.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -68,12 +70,15 @@ export function MyChambers() {
                   <p className="font-semibold text-slate-900">{c.hospital_name}</p>
                   <p className="text-sm text-slate-600">{[c.room, c.address, c.district].filter(Boolean).join(" · ")}</p>
                 </div>
-                <span className="text-sm text-slate-700">Fee {taka(c.fee_paisa)}</span>
+                <span className="text-sm text-slate-700">
+                  <T vars={{ fee: taka(c.fee_paisa) }}>{"Fee {fee}"}</T>
+                </span>
               </div>
               <ul className="mt-3 space-y-1 text-sm text-slate-700">
                 {(c.schedules ?? []).map((s) => (
                   <li key={s.id}>
-                    {WEEKDAYS[s.weekday ?? 0]} · {clock(s.start_time)} – {clock(s.end_time)} · up to {s.max_patients}
+                    <T>{WEEKDAYS[s.weekday ?? 0]}</T> · {clock(s.start_time)} – {clock(s.end_time)} ·{" "}
+                    <T vars={{ n: s.max_patients ?? 0 }}>{"up to {n} patients"}</T>
                   </li>
                 ))}
               </ul>
@@ -108,6 +113,7 @@ function ChamberForm({
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -131,7 +137,7 @@ function ChamberForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Chamber name" name="name" required defaultValue={initial?.name} placeholder="e.g. Popular Diagnostic, Dhanmondi" />
+        <Field label="Chamber name" name="name" required defaultValue={initial?.name} placeholder={t("e.g. Popular Diagnostic, Dhanmondi")} />
         <Field label="Fee (৳)" name="fee" type="number" min={0} step={1} required defaultValue={initial ? (initial.fee_paisa ?? 0) / 100 : ""} />
         <Field label="Address" name="address" required defaultValue={initial?.address} />
         <Field label="Area" name="area" defaultValue={initial?.area ?? ""} />
@@ -140,7 +146,7 @@ function ChamberForm({
       </div>
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input type="checkbox" name="booking" defaultChecked={initial?.booking_enabled !== false} className="accent-teal-700" />
-        Open for online booking
+        <T>Open for online booking</T>
       </label>
       {error && <Alert>{error}</Alert>}
       <div className="flex gap-2">
@@ -148,7 +154,7 @@ function ChamberForm({
           {busy ? "Saving…" : submitLabel}
         </Button>
         <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancel
+          <T>Cancel</T>
         </Button>
       </div>
     </form>
@@ -187,9 +193,11 @@ function OwnChamber({ chamber: c, onChange }: { chamber: Chamber; onChange: () =
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-700">Fee {taka(c.fee_paisa)}</span>
+            <span className="text-sm text-slate-700">
+                  <T vars={{ fee: taka(c.fee_paisa) }}>{"Fee {fee}"}</T>
+                </span>
             <button onClick={() => setEditing(true)} className="text-sm text-teal-800 hover:underline">
-              Edit
+              <T>Edit</T>
             </button>
           </div>
         </div>

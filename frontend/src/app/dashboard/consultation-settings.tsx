@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { T } from "@/components/t";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
+import { taka } from "@/lib/format";
 
 type Settings = { enabled: boolean; fee: number; verified: boolean };
 
@@ -62,7 +63,7 @@ export function ConsultationSettings() {
             <T>Accept online consultations</T>
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
-            Fee
+            <T>Fee</T>
             <input
               type="number"
               name="fee"
@@ -71,7 +72,7 @@ export function ConsultationSettings() {
               defaultValue={settings.fee}
               className="w-20 rounded-lg border border-slate-300 px-2 py-1"
             />
-            tokens (1 token = ৳100)
+            <T vars={{ amount: taka(10000) }}>{"tokens (1 token = {amount})"}</T>
           </label>
           {error && <Alert>{error}</Alert>}
           {saved && <Alert kind="success">Saved.</Alert>}

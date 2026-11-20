@@ -5,6 +5,8 @@ import { LocationPicker, validCoords } from "@/components/location-picker";
 import { Alert, Button, Field } from "@/components/ui";
 import type { Pharmacy, PharmacyInput } from "@/lib/api/client";
 import type { Coords } from "@/lib/geo";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 // Registration and editing share this form. `onSave` returns an error message, or "" on success.
 export function PharmacyForm({
@@ -27,7 +29,7 @@ export function PharmacyForm({
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!validCoords(coords)) {
-      setError("Add the shop's location: patients and riders are matched by distance.");
+      setError(t("Add the shop's location: patients and riders are matched by distance."));
       return;
     }
     const f = new FormData(e.currentTarget);
@@ -56,13 +58,14 @@ export function PharmacyForm({
   }
 
   const p = initial;
+  const t = useT();
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Pharmacy name" name="name" defaultValue={p?.name} required />
         <Field label="DGDA drug licence number" name="drug_license_no" defaultValue={p?.drug_license_no} required />
         <Field label="Phone" name="phone" type="tel" defaultValue={p?.phone} required />
-        <Field label="Opening hours" name="opening_hours" defaultValue={p?.opening_hours ?? ""} placeholder="e.g. 8 AM – 11 PM" />
+        <Field label="Opening hours" name="opening_hours" defaultValue={p?.opening_hours ?? ""} placeholder={t("e.g. 8 AM – 11 PM")} />
         <Field label="Address" name="address" defaultValue={p?.address} required />
         <Field label="Area" name="area" defaultValue={p?.area ?? ""} />
         <Field label="District" name="district" defaultValue={p?.district} required />
@@ -71,7 +74,7 @@ export function PharmacyForm({
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
           <input type="checkbox" checked={delivers} onChange={(e) => setDelivers(e.target.checked)} className="accent-teal-700" />
-          We deliver
+          <T>We deliver</T>
         </label>
         {delivers && (
           <div className="w-40">
@@ -88,7 +91,7 @@ export function PharmacyForm({
         )}
         <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
           <input type="checkbox" name="accepting_orders" defaultChecked={p?.accepting_orders ?? true} className="accent-teal-700" />
-          Taking orders now
+          <T>Taking orders now</T>
         </label>
       </div>
       {error && <Alert>{error}</Alert>}

@@ -9,6 +9,8 @@ import { api, errorMessage, type Job, type Order, type Rider } from "@/lib/api/c
 import { dateTime, taka } from "@/lib/format";
 import { currentPosition, km } from "@/lib/geo";
 import { VERIFICATION } from "@/app/manage/hospitals/my-hospitals";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 // While on duty and this page is open, report the position this often.
 const LOCATION_EVERY_MS = 60_000;
@@ -40,6 +42,7 @@ export function RiderHome() {
 function ProfileForm({ rider, onSaved }: { rider: Rider | null; onSaved: (r: Rider) => void }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,17 +64,20 @@ function ProfileForm({ rider, onSaved }: { rider: Rider | null; onSaved: (r: Rid
   return (
     <Card className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="font-semibold text-slate-900">Rider profile</h2>
+        <h2 className="font-semibold text-slate-900"><T>Rider profile</T></h2>
         {v && <Badge tone={v.tone}>{v.label}</Badge>}
       </div>
-      {!rider && <p className="text-sm text-slate-600">Add your NID and vehicle. An admin verifies you before you can take deliveries.</p>}
+      {!rider && <p className="text-sm text-slate-600"><T>Add your NID and vehicle. An admin verifies you before you can take deliveries.</T></p>}
       {rider?.verification_status === "pending" && (
         <Alert kind="info">An admin is checking your details. You can still correct them below.</Alert>
       )}
       {rider?.verification_status === "rejected" && (
         <Alert>
-          Verification was rejected{rider.verification_note ? `: ${rider.verification_note}` : ""}. Correct the details and save to
-          ask again.
+          {rider.verification_note ? (
+            <T vars={{ note: rider.verification_note }}>{"Verification was rejected: {note}. Correct the details and save to ask again."}</T>
+          ) : (
+            <T>Verification was rejected. Correct the details and save to ask again.</T>
+          )}
         </Alert>
       )}
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
@@ -79,7 +85,7 @@ function ProfileForm({ rider, onSaved }: { rider: Rider | null; onSaved: (r: Rid
         <Select label="Vehicle" name="vehicle" defaultValue={rider?.vehicle ?? "motorcycle"}>
           {Object.entries(VEHICLES).map(([k, label]) => (
             <option key={k} value={k}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </Select>
@@ -106,6 +112,7 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const on = !!rider.available;
+  const t = useT();
 
   const loadOrders = useCallback(async () => {
     const [o, e] = await Promise.all([api.GET("/api/v1/rider/orders", { params: { query: { limit: 20 } } }), api.GET("/api/v1/rider/earnings")]);
@@ -161,7 +168,7 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
   }
 
   async function accept(job: Job) {
-    if (!job.order_id || !confirm(`Take this delivery from ${job.pharmacy_name}? You'll collect ${taka(job.cash_to_collect_paisa)} cash.`)) return;
+    if (!job.order_id || !confirm(t("Take this delivery from {pharmacy}? You'll collect {amount} cash.", { pharmacy: job.pharmacy_name, amount: taka(job.cash_to_collect_paisa) }))) return;
     setBusy(true);
     const { data, error } = await api.POST("/api/v1/rider/jobs/{orderID}/accept", { params: { path: { orderID: job.order_id } } });
     setBusy(false);
@@ -176,9 +183,11 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
     <div className="space-y-6">
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="font-semibold text-slate-900">{on ? "You're on duty" : "You're off duty"}</p>
+          <p className="font-semibold text-slate-900">
+            <T>{on ? "You're on duty" : "You're off duty"}</T>
+          </p>
           <p className="text-sm text-slate-600">
-            {on ? "Keep this page open so pharmacies and patients see where you are." : "Go on duty to see deliveries near you."}
+            <T>{on ? "Keep this page open so pharmacies and patients see where you are." : "Go on duty to see deliveries near you."}</T>
           </p>
         </div>
         <Button onClick={toggle} disabled={busy} variant={on ? "secondary" : "primary"}>
@@ -190,7 +199,7 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
 
       {current.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">Current delivery</h2>
+          <h2 className="text-lg font-semibold text-slate-900"><T>Current delivery</T></h2>
           {current.map((o) => (
             <OrderRow key={o.id} order={o} />
           ))}
@@ -199,11 +208,11 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
 
       {on && current.length === 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">Jobs near you</h2>
+          <h2 className="text-lg font-semibold text-slate-900"><T>Jobs near you</T></h2>
           {jobs === null ? (
             <Spinner />
           ) : jobs.length === 0 ? (
-            <p className="text-sm text-slate-600">No deliveries waiting within 5 km. This list refreshes by itself.</p>
+            <p className="text-sm text-slate-600"><T>No deliveries waiting within 5 km. This list refreshes by itself.</T></p>
           ) : (
             jobs.map((j) => (
               <Card key={j.order_id}>
@@ -212,16 +221,20 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
                     <p className="font-semibold text-slate-900">{j.pharmacy_name}</p>
                     <p className="text-sm text-slate-600">{j.pharmacy_address}</p>
                     <p className="text-sm text-slate-600">
-                      {km(j.distance_to_pharmacy_km)} to the pharmacy · {km(j.delivery_distance_km)} to the patient
+                      <T vars={{ a: km(j.distance_to_pharmacy_km), b: km(j.delivery_distance_km) }}>{"{a} to the pharmacy · {b} to the patient"}</T>
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-teal-800">You earn {taka(j.earning_paisa)}</p>
-                    <p className="text-xs text-slate-500">Collect {taka(j.cash_to_collect_paisa)} cash</p>
+                    <p className="text-lg font-semibold text-teal-800">
+                      <T vars={{ amount: taka(j.earning_paisa) }}>{"You earn {amount}"}</T>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      <T vars={{ amount: taka(j.cash_to_collect_paisa) }}>{"Collect {amount} cash"}</T>
+                    </p>
                   </div>
                 </div>
                 <Button className="mt-3" onClick={() => accept(j)} disabled={busy}>
-                  Take this job
+                  <T>Take this job</T>
                 </Button>
               </Card>
             ))
@@ -231,14 +244,20 @@ function OnDuty({ rider, onChange }: { rider: Rider; onChange: (r: Rider) => voi
 
       {earnings && (
         <Card className="flex flex-wrap justify-between gap-3">
-          <span className="text-sm text-slate-600">Completed deliveries: {earnings.deliveries ?? 0}</span>
-          <span className="text-sm font-semibold text-slate-900">Earned {taka(earnings.earning_paisa)}</span>
+          <span className="text-sm text-slate-600">
+            <T vars={{ n: earnings.deliveries ?? 0 }}>{"Completed deliveries: {n}"}</T>
+          </span>
+          <span className="text-sm font-semibold text-slate-900">
+            <T vars={{ amount: taka(earnings.earning_paisa) }}>{"Earned {amount}"}</T>
+          </span>
         </Card>
       )}
 
       {done.length > 0 && (
         <details>
-          <summary className="cursor-pointer text-sm text-slate-600">Past deliveries ({done.length})</summary>
+          <summary className="cursor-pointer text-sm text-slate-600">
+            <T vars={{ n: done.length }}>{"Past deliveries ({n})"}</T>
+          </summary>
           <div className="mt-3 space-y-3">
             {done.map((o) => (
               <OrderRow key={o.id} order={o} />
@@ -256,7 +275,9 @@ function OrderRow({ order: o }: { order: Order }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-slate-900">{o.pharmacy_name} → {o.patient_name}</p>
-          <p className="text-sm text-slate-600">Collect {taka(o.total_paisa)} cash</p>
+          <p className="text-sm text-slate-600">
+            <T vars={{ amount: taka(o.total_paisa) }}>{"Collect {amount} cash"}</T>
+          </p>
         </div>
         <OrderBadge order={o} />
       </div>

@@ -4,6 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 const STATUS: Record<string, { label: string; tone: "slate" | "teal" | "amber" | "red" }> = {
   confirmed: { label: "Waiting", tone: "teal" },
@@ -27,6 +29,7 @@ export function PatientDay() {
   const [busy, setBusy] = useState<string | null>(null);
   const [ticket, setTicket] = useState<Appointment | null>(null);
   const [ticketError, setTicketError] = useState("");
+  const t = useT();
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +51,7 @@ export function PatientDay() {
 
   async function outcome(a: Appointment, kind: "complete" | "no-show") {
     if (!a.id) return;
-    if (kind === "no-show" && !confirm(`Mark ${a.patient_name} as not showing up?`)) return;
+    if (kind === "no-show" && !confirm(t("Mark {name} as not showing up?", { name: a.patient_name }))) return;
     setBusy(a.id);
     setError("");
     const path =
@@ -71,7 +74,7 @@ export function PatientDay() {
     if (!code) return;
     const { data, error, response } = await api.GET("/api/v1/doctor/tickets/{code}", { params: { path: { code } } });
     if (data) setTicket(data);
-    else setTicketError(response.status === 404 ? "No booking with this ticket code for you." : errorMessage(error));
+    else setTicketError(response.status === 404 ? t("No booking with this ticket code for you.") : errorMessage(error));
   }
 
   const past = date <= today;
@@ -101,16 +104,16 @@ export function PatientDay() {
           {a.status === "confirmed" && a.date && a.date <= today && (
             <>
               <Button onClick={() => outcome(a, "complete")} disabled={busy === a.id}>
-                Mark seen
+                <T>Mark seen</T>
               </Button>
               <Button variant="secondary" onClick={() => outcome(a, "no-show")} disabled={busy === a.id}>
-                No-show
+                <T>No-show</T>
               </Button>
             </>
           )}
           {a.status !== "cancelled" && a.date && a.date <= today && (
             <ButtonLink href={`/prescriptions/new?appointment_id=${a.id}&date=${a.date}`} variant="secondary">
-              Write prescription
+              <T>Write prescription</T>
             </ButtonLink>
           )}
         </div>
@@ -123,15 +126,15 @@ export function PatientDay() {
       <Card>
         <form onSubmit={lookUp} className="flex flex-wrap items-end gap-2">
           <label className="flex-1">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Patient&apos;s ticket code</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700"><T>Patient&apos;s ticket code</T></span>
             <input
               name="code"
-              placeholder="e.g. K7Q2M4XA"
+              placeholder={t("e.g. K7Q2M4XA")}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono uppercase outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
             />
           </label>
           <Button type="submit" variant="secondary">
-            Look up
+            <T>Look up</T>
           </Button>
         </form>
         {ticketError && <div className="mt-3"><Alert>{ticketError}</Alert></div>}
@@ -139,22 +142,22 @@ export function PatientDay() {
       </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, -1))} aria-label="Previous day">
+        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, -1))} aria-label={t("Previous day")}>
           ←
         </Button>
         <input
           type="date"
           value={date}
           onChange={(e) => e.target.value && changeDate(e.target.value)}
-          aria-label="Date"
+          aria-label={t("Date")}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, 1))} aria-label="Next day">
+        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, 1))} aria-label={t("Next day")}>
           →
         </Button>
         {date !== today && (
           <Button variant="secondary" onClick={() => changeDate(today)}>
-            Today
+            <T>Today</T>
           </Button>
         )}
         <span className="text-sm text-slate-600">{prettyDate(date)}</span>
@@ -164,7 +167,9 @@ export function PatientDay() {
       {items === null ? (
         !error && <Spinner />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">No bookings {past ? "on" : "yet for"} this day.</p>
+        <p className="text-sm text-slate-600">
+          <T>{past ? "No bookings on this day." : "No bookings yet for this day."}</T>
+        </p>
       ) : (
         <div className="space-y-3">{items.map(row)}</div>
       )}

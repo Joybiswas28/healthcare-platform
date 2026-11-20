@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Alert, Button } from "./ui";
+import { T } from "@/components/t";
 
 // The 6-digit code the patient reads out at handover. Five wrong codes lock the order.
 export function DeliveryCodeForm({
@@ -27,7 +28,7 @@ export function DeliveryCodeForm({
   return (
     <form onSubmit={submit} className="space-y-2">
       <label className="block text-sm">
-        <span className="mb-1 block font-medium text-slate-700">Patient&apos;s 6-digit delivery code</span>
+        <span className="mb-1 block font-medium text-slate-700"><T>Patient&apos;s 6-digit delivery code</T></span>
         <input
           name="code"
           inputMode="numeric"
@@ -38,7 +39,7 @@ export function DeliveryCodeForm({
           className="w-40 rounded-lg border border-slate-300 px-3 py-2 font-mono text-lg tracking-[0.3em] outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
         />
       </label>
-      <p className="text-xs text-slate-500">Ask the patient for it after handing over the medicines and collecting the cash.</p>
+      <p className="text-xs text-slate-500"><T>Ask the patient for it after handing over the medicines and collecting the cash.</T></p>
       {error && <Alert>{error}</Alert>}
       <Button type="submit" disabled={busy}>
         {busy ? "Checking…" : label}

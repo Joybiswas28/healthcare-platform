@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { Alert, Button } from "@/components/ui";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 type Decision = { status: "approved" | "rejected"; note?: string };
 
@@ -14,6 +16,7 @@ export function VerifyActions({
   onDecide: (d: Decision) => Promise<string>;
 }) {
   const [rejecting, setRejecting] = useState(false);
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,28 +39,28 @@ export function VerifyActions({
       {rejecting ? (
         <form onSubmit={reject} className="flex flex-wrap items-end gap-2">
           <label className="min-w-60 flex-1 text-sm">
-            <span className="mb-1 block font-medium text-slate-700">Reason (shown to the applicant)</span>
+            <span className="mb-1 block font-medium text-slate-700"><T>Reason (shown to the applicant)</T></span>
             <input
               name="note"
               required
               minLength={3}
               autoFocus
-              placeholder="e.g. Licence number does not match the certificate"
+              placeholder={t("e.g. Licence number does not match the certificate")}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
             />
           </label>
           <Button type="submit" variant="danger" disabled={busy}>
-            Reject
+            <T>Reject</T>
           </Button>
           <Button type="button" variant="secondary" onClick={() => setRejecting(false)}>
-            Back
+            <T>Back</T>
           </Button>
         </form>
       ) : (
         <div className="flex flex-wrap gap-2">
           {current !== "approved" && (
             <Button onClick={() => decide({ status: "approved" })} disabled={busy}>
-              Approve
+              <T>Approve</T>
             </Button>
           )}
           {current !== "rejected" && (

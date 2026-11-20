@@ -5,6 +5,8 @@ import { ScheduleEditor, type ScheduleBody } from "@/components/schedule-editor"
 import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type Chamber, type Hospital, type StaffDoctor } from "@/lib/api/client";
 import { taka } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 const STATUS = {
   invited: { label: "Invitation sent", tone: "amber" },
@@ -20,6 +22,7 @@ export function DoctorsTab({ hospital }: { hospital: Hospital }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [inviting, setInviting] = useState(false);
+  const t = useT();
 
   const reload = useCallback(async () => {
     const { data, error } = await api.GET("/api/v1/manage/hospitals/{hospitalID}/doctors", {
@@ -50,7 +53,7 @@ export function DoctorsTab({ hospital }: { hospital: Hospital }) {
       return;
     }
     (e.target as HTMLFormElement).reset();
-    setNotice(`Invitation sent to ${data.name}. They join once they accept it.`);
+    setNotice(t("Invitation sent to {name}. They join once they accept it.", { name: data.name }));
     reload();
   }
 
@@ -62,9 +65,9 @@ export function DoctorsTab({ hospital }: { hospital: Hospital }) {
   return (
     <div className="space-y-6">
       <Card>
-        <h2 className="font-semibold text-slate-900">Invite a doctor</h2>
+        <h2 className="font-semibold text-slate-900"><T>Invite a doctor</T></h2>
         <p className="mb-3 text-sm text-slate-600">
-          Use the doctor&apos;s BMDC registration number. Only verified doctors with an account can be invited.
+          <T>Use the doctor&apos;s BMDC registration number. Only verified doctors with an account can be invited.</T>
         </p>
         <form onSubmit={invite} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
           <Field label="BMDC number" name="bmdc" required placeholder="A-12345" />
@@ -79,7 +82,7 @@ export function DoctorsTab({ hospital }: { hospital: Hospital }) {
       {notice && <Alert kind="success">{notice}</Alert>}
       {error && <Alert>{error}</Alert>}
 
-      {current.length === 0 && <p className="text-sm text-slate-600">No doctors yet.</p>}
+      {current.length === 0 && <p className="text-sm text-slate-600"><T>No doctors yet.</T></p>}
       {current.map((d) => (
         <DoctorCard
           key={d.doctor_id}
@@ -93,11 +96,13 @@ export function DoctorsTab({ hospital }: { hospital: Hospital }) {
 
       {past.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer text-slate-600">Former and declined ({past.length})</summary>
+          <summary className="cursor-pointer text-slate-600">
+            <T vars={{ n: past.length }}>{"Former and declined ({n})"}</T>
+          </summary>
           <ul className="mt-2 space-y-1">
             {past.map((d) => (
               <li key={d.doctor_id} className="text-slate-600">
-                {d.name} · {STATUS[d.status ?? "removed"].label}
+                {d.name} · <T>{STATUS[d.status ?? "removed"].label}</T>
               </li>
             ))}
           </ul>
@@ -124,6 +129,7 @@ function DoctorCard({
   const [editing, setEditing] = useState(false);
   const [opening, setOpening] = useState(false);
   const s = STATUS[d.status ?? "invited"];
+  const t = useT();
 
   async function saveRole(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -140,8 +146,11 @@ function DoctorCard({
   }
 
   async function remove() {
-    const what = d.status === "invited" ? "Withdraw the invitation" : `Remove ${d.name} from the hospital`;
-    if (!confirm(`${what}? Booking stops for their chambers here.`)) return;
+    const question =
+      d.status === "invited"
+        ? t("Withdraw the invitation? Booking stops for their chambers here.")
+        : t("Remove {name} from the hospital? Booking stops for their chambers here.", { name: d.name });
+    if (!confirm(question)) return;
     const { data, error } = await api.DELETE("/api/v1/manage/hospitals/{hospitalID}/doctors/{doctorID}", {
       params: { path: { hospitalID, doctorID } },
     });
@@ -151,7 +160,10 @@ function DoctorCard({
     }
     if (data.upcoming_appointments) {
       onNotice(
-        `${d.name} removed. ${data.upcoming_appointments} upcoming booking(s) remain — cancel or reschedule them in the Bookings tab.`,
+        t("{name} removed. {n} upcoming booking(s) remain — cancel or reschedule them in the Bookings tab.", {
+          name: d.name,
+          n: data.upcoming_appointments,
+        }),
       );
     }
     onChange();
@@ -184,7 +196,7 @@ function DoctorCard({
             <Badge tone={s.tone}>{s.label}</Badge>
           </div>
           <p className="text-sm text-slate-600">
-            {[d.designation, d.department].filter(Boolean).join(", ") || "No department set"}
+            {[d.designation, d.department].filter(Boolean).join(", ") || <T>No department set</T>}
             {" · "}
             {[d.specialization, d.degrees].filter(Boolean).join(", ")}
           </p>
@@ -192,7 +204,7 @@ function DoctorCard({
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setEditing((x) => !x)}>
-            Edit role
+            <T>Edit role</T>
           </Button>
           <Button variant="danger" onClick={remove}>
             {d.status === "invited" ? "Withdraw" : "Remove"}
@@ -219,20 +231,20 @@ function DoctorCard({
               <Field label="Room" name="room" placeholder="Room 412, 4th floor" />
               <Button type="submit">Open chamber</Button>
               <Button type="button" variant="secondary" onClick={() => setOpening(false)}>
-                Cancel
+                <T>Cancel</T>
               </Button>
             </form>
           ) : (
             (d.chambers ?? []).length === 0 && (
               <Button variant="secondary" onClick={() => setOpening(true)}>
-                + Open a chamber for {d.name}
+                + <T vars={{ name: d.name }}>{"Open a chamber for {name}"}</T>
               </Button>
             )
           )}
         </div>
       )}
       {d.status === "invited" && (
-        <p className="mt-3 text-sm text-slate-500">Chambers can be set up once the doctor accepts the invitation.</p>
+        <p className="mt-3 text-sm text-slate-500"><T>Chambers can be set up once the doctor accepts the invitation.</T></p>
       )}
     </Card>
   );
@@ -293,7 +305,8 @@ function ChamberEditor({
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <span>
-          <span className="font-medium text-slate-900">{c.room || "Chamber"}</span> · Fee {taka(c.fee_paisa)}
+          <span className="font-medium text-slate-900">{c.room || <T>Chamber</T>}</span> ·{" "}
+          <T vars={{ fee: taka(c.fee_paisa) }}>{"Fee {fee}"}</T>
           {c.booking_enabled === false && (
             <>
               {" "}
@@ -302,7 +315,7 @@ function ChamberEditor({
           )}
         </span>
         <button onClick={() => setEditing((x) => !x)} className="text-teal-800 hover:underline">
-          Edit chamber
+          <T>Edit chamber</T>
         </button>
       </div>
 
@@ -312,7 +325,7 @@ function ChamberEditor({
           <Field label="Room" name="room" defaultValue={c.room ?? ""} />
           <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
             <input type="checkbox" name="booking" defaultChecked={c.booking_enabled !== false} className="accent-teal-700" />
-            Booking open
+            <T>Booking open</T>
           </label>
           <Button type="submit">Save</Button>
         </form>

@@ -5,6 +5,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { TextArea } from "@/components/textarea";
 import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 type Profile = Schemas["DoctorProfile"];
 
@@ -19,6 +21,7 @@ export function ProfileForm() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     api.GET("/api/v1/doctor/profile").then(({ data, error }) => {
@@ -61,20 +64,23 @@ export function ProfileForm() {
         <Badge tone={STATUS[status].tone}>{STATUS[status].label}</Badge>
         {verified && (
           <Link href={`/doctors/${profile.user_id}`} className="text-sm text-teal-800 hover:underline">
-            View my public page
+            <T>View my public page</T>
           </Link>
         )}
       </div>
       {status === "pending" && !profile.bmdc_reg_no && (
         <Alert kind="info">
-          Add your BMDC registration number and qualifications. An admin checks them before patients can find you.
+          <T>Add your BMDC registration number and qualifications. An admin checks them before patients can find you.</T>
         </Alert>
       )}
       {status === "pending" && profile.bmdc_reg_no && <Alert kind="info">Your details are with an admin for checking.</Alert>}
       {status === "rejected" && (
         <Alert>
-          Verification was rejected{profile.verification_note ? `: ${profile.verification_note}` : "."} Correct the details and save
-          to ask again.
+          {profile.verification_note ? (
+            <T vars={{ note: profile.verification_note }}>{"Verification was rejected: {note}. Correct the details and save to ask again."}</T>
+          ) : (
+            <T>Verification was rejected. Correct the details and save to ask again.</T>
+          )}
         </Alert>
       )}
 
@@ -91,7 +97,7 @@ export function ProfileForm() {
           />
           {/* A disabled input isn't submitted; send the verified number unchanged. */}
           {verified && <input type="hidden" name="bmdc_reg_no" value={profile.bmdc_reg_no ?? ""} />}
-          <Field label="Specialty" name="specialization" defaultValue={profile.specialization ?? ""} required placeholder="e.g. Medicine" />
+          <Field label="Specialty" name="specialization" defaultValue={profile.specialization ?? ""} required placeholder={t("e.g. Medicine")} />
           <Field label="Degrees" name="degrees" defaultValue={profile.degrees ?? ""} required placeholder="MBBS, FCPS (Medicine)" />
           <Field
             label="Years of experience"

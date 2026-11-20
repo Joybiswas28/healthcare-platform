@@ -7,6 +7,8 @@ import { TextArea } from "@/components/textarea";
 import { Alert, Button, Card, Field, Select, Spinner } from "@/components/ui";
 import { api, errorMessage, type Medicine, type PrescriptionInput } from "@/lib/api/client";
 import { prettyDate } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 const MAX_MEDICINES = 30;
 const MAX_INVESTIGATIONS = 20;
@@ -31,10 +33,10 @@ export function PrescriptionForm() {
     <RequireAuth>
       {(user) =>
         user.role !== "doctor" ? (
-          <p className="text-sm text-slate-600">Only doctors can write prescriptions.</p>
+          <p className="text-sm text-slate-600"><T>Only doctors can write prescriptions.</T></p>
         ) : !source ? (
           <Alert kind="info">
-            Open a consultation or your patient list and choose &quot;Write prescription&quot; from there.
+            <T>Open a consultation or your patient list and choose &quot;Write prescription&quot; from there.</T>
           </Alert>
         ) : (
           <Form source={source} />
@@ -46,6 +48,7 @@ export function PrescriptionForm() {
 
 function Form({ source }: { source: Source }) {
   const router = useRouter();
+  const t = useT();
   const [context, setContext] = useState<string | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MEDICINE }]);
   const [investigations, setInvestigations] = useState<string[]>([]);
@@ -58,7 +61,7 @@ function Form({ source }: { source: Source }) {
       api
         .GET("/api/v1/consultations/{consultationID}", { params: { path: { consultationID: source.id } } })
         .then(({ data, error }) =>
-          data ? setContext(`${data.patient_name} · Consultation: ${data.subject}`) : setError(errorMessage(error)),
+          data ? setContext(`${data.patient_name} · ${t("Consultation")}: ${data.subject}`) : setError(errorMessage(error)),
         );
     } else {
       // The doctor's day list is the only appointment lookup the API offers.
@@ -66,12 +69,14 @@ function Form({ source }: { source: Source }) {
         .GET("/api/v1/doctor/appointments", { params: { query: { date: source.date || undefined } } })
         .then(({ data, error }) => {
           const a = data?.appointments?.find((x) => x.id === source.id);
-          if (a) setContext(`${a.patient_name} · Serial ${a.serial_no} on ${prettyDate(a.date)} at ${a.chamber_name}`);
-          else if (data) setContext("Patient from your appointment list");
+          if (a) setContext(
+              `${a.patient_name} · ${t("Serial {serial} on {date} at {place}", { serial: a.serial_no ?? 0, date: prettyDate(a.date), place: a.chamber_name })}`,
+            );
+          else if (data) setContext(t("Patient from your appointment list"));
           else setError(errorMessage(error));
         });
     }
-  }, [source.kind, source.id, source.date]);
+  }, [source.kind, source.id, source.date, t]);
 
   function updateMedicine(i: number, field: keyof Medicine, value: string) {
     setMedicines((prev) => prev.map((m, j) => (j === i ? { ...m, [field]: value } : m)));
@@ -86,12 +91,12 @@ function Form({ source }: { source: Source }) {
       .map((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, (v ?? "").trim()])) as Medicine)
       .filter((m) => m.name);
     if (!text("chief_complaints") && !text("diagnosis")) {
-      setError("Write the chief complaints or the diagnosis (or both).");
+      setError(t("Write the chief complaints or the diagnosis (or both)."));
       return;
     }
     const incomplete = meds.find((m) => !m.dosage || !m.duration);
     if (incomplete) {
-      setError(`Add the dosage and duration for ${incomplete.name}.`);
+      setError(t("Add the dosage and duration for {name}.", { name: incomplete.name }));
       return;
     }
 
@@ -111,7 +116,7 @@ function Form({ source }: { source: Source }) {
       advice: text("advice"),
       follow_up_date: text("follow_up_date"),
     };
-    if (!confirm("Issue this prescription? It can't be edited afterwards, only revoked.")) return;
+    if (!confirm(t("Issue this prescription? It can't be edited afterwards, only revoked."))) return;
 
     setBusy(true);
     setError("");
@@ -128,16 +133,18 @@ function Form({ source }: { source: Source }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {context && <Alert kind="info">For: {context}</Alert>}
+      {context && <Alert kind="info">
+          <T>For:</T> {context}
+        </Alert>}
 
       <Card className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Patient's age" name="patient_age" placeholder="e.g. 34 years" maxLength={30} />
+          <Field label="Patient's age" name="patient_age" placeholder={t("e.g. 34 years")} maxLength={30} />
           <Select label="Gender" name="patient_gender" defaultValue="">
             <option value="">—</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
+            <option value="male">{t("Male")}</option>
+            <option value="female">{t("Female")}</option>
+            <option value="other">{t("Other")}</option>
           </Select>
         </div>
         <TextArea label="Chief complaints" name="chief_complaints" rows={2} />
@@ -146,30 +153,32 @@ function Form({ source }: { source: Source }) {
 
       <Card className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Medicines (Rx)</h2>
+          <h2 className="font-semibold text-slate-900"><T>Medicines (Rx)</T></h2>
           <Button
             type="button"
             variant="secondary"
             disabled={medicines.length >= MAX_MEDICINES}
             onClick={() => setMedicines((prev) => [...prev, { ...EMPTY_MEDICINE }])}
           >
-            + Add medicine
+            + <T>Add medicine</T>
           </Button>
         </div>
         {medicines.map((m, i) => (
           <fieldset key={i} className="rounded-lg border border-slate-200 p-3">
-            <legend className="px-1 text-xs text-slate-500">Medicine {i + 1}</legend>
+            <legend className="px-1 text-xs text-slate-500">
+              <T vars={{ n: i + 1 }}>{"Medicine {n}"}</T>
+            </legend>
             <div className="grid gap-2 sm:grid-cols-[5rem_1fr_7rem]">
-              <input aria-label="Form" placeholder="Tab." value={m.form ?? ""} onChange={(e) => updateMedicine(i, "form", e.target.value)} className={input} />
-              <input aria-label="Name" placeholder="Name, e.g. Napa" value={m.name} onChange={(e) => updateMedicine(i, "name", e.target.value)} className={input} />
-              <input aria-label="Strength" placeholder="500 mg" value={m.strength ?? ""} onChange={(e) => updateMedicine(i, "strength", e.target.value)} className={input} />
+              <input aria-label={t("Form")} placeholder="Tab." value={m.form ?? ""} onChange={(e) => updateMedicine(i, "form", e.target.value)} className={input} />
+              <input aria-label={t("Name")} placeholder={t("Name, e.g. Napa")} value={m.name} onChange={(e) => updateMedicine(i, "name", e.target.value)} className={input} />
+              <input aria-label={t("Strength")} placeholder="500 mg" value={m.strength ?? ""} onChange={(e) => updateMedicine(i, "strength", e.target.value)} className={input} />
             </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-[7rem_7rem_1fr_auto]">
-              <input aria-label="Dosage" placeholder="1+0+1" value={m.dosage} onChange={(e) => updateMedicine(i, "dosage", e.target.value)} className={input} />
-              <input aria-label="Duration" placeholder="5 days" value={m.duration} onChange={(e) => updateMedicine(i, "duration", e.target.value)} className={input} />
+              <input aria-label={t("Dosage")} placeholder="1+0+1" value={m.dosage} onChange={(e) => updateMedicine(i, "dosage", e.target.value)} className={input} />
+              <input aria-label={t("Duration")} placeholder={t("5 days")} value={m.duration} onChange={(e) => updateMedicine(i, "duration", e.target.value)} className={input} />
               <input
-                aria-label="Instructions"
-                placeholder="after meal"
+                aria-label={t("Instructions")}
+                placeholder={t("after meal")}
                 value={m.instructions ?? ""}
                 onChange={(e) => updateMedicine(i, "instructions", e.target.value)}
                 className={input}
@@ -178,9 +187,9 @@ function Form({ source }: { source: Source }) {
                 type="button"
                 onClick={() => setMedicines((prev) => prev.filter((_, j) => j !== i))}
                 className="rounded-lg px-2 text-sm text-red-700 hover:bg-red-50"
-                aria-label={`Remove medicine ${i + 1}`}
+                aria-label={t("Remove medicine {n}", { n: i + 1 })}
               >
-                Remove
+                <T>Remove</T>
               </button>
             </div>
           </fieldset>
@@ -189,23 +198,23 @@ function Form({ source }: { source: Source }) {
 
       <Card className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Investigations</h2>
+          <h2 className="font-semibold text-slate-900"><T>Investigations</T></h2>
           <Button
             type="button"
             variant="secondary"
             disabled={investigations.length >= MAX_INVESTIGATIONS}
             onClick={() => setInvestigations((prev) => [...prev, ""])}
           >
-            + Add test
+            + <T>Add test</T>
           </Button>
         </div>
-        {investigations.length === 0 && <p className="text-sm text-slate-500">No tests.</p>}
-        {investigations.map((t, i) => (
+        {investigations.length === 0 && <p className="text-sm text-slate-500"><T>No tests.</T></p>}
+        {investigations.map((test, i) => (
           <div key={i} className="flex gap-2">
             <input
-              aria-label={`Test ${i + 1}`}
+              aria-label={t("Test {n}", { n: i + 1 })}
               placeholder="e.g. CBC"
-              value={t}
+              value={test}
               onChange={(e) => setInvestigations((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
               className={input}
             />
@@ -214,7 +223,7 @@ function Form({ source }: { source: Source }) {
               onClick={() => setInvestigations((prev) => prev.filter((_, j) => j !== i))}
               className="rounded-lg px-2 text-sm text-red-700 hover:bg-red-50"
             >
-              Remove
+              <T>Remove</T>
             </button>
           </div>
         ))}

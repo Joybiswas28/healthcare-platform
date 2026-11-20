@@ -16,7 +16,7 @@ export function T({ children, vars, bnVars }: { children: string; vars?: Vars; b
   return (
     <>
       <span data-l="en">{en}</span>
-      <span data-l="bn">{interpolate(bn, bnVars ? { ...vars, ...bnVars } : vars)}</span>
+      <span data-l="bn">{interpolate(bn, bnVars ? { ...vars, ...bnVars } : vars, true)}</span>
     </>
   );
 }

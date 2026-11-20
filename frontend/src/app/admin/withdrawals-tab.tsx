@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
+import { T } from "@/components/t";
 
 type Withdrawal = Schemas["Withdrawal"];
 type Status = "requested" | "paid" | "rejected";
@@ -42,7 +43,7 @@ export function WithdrawalsTab() {
               status === s ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
             }`}
           >
-            {s === "requested" ? "To pay" : s}
+            <T>{s === "requested" ? "To pay" : s}</T>
           </button>
         ))}
       </div>
@@ -50,7 +51,7 @@ export function WithdrawalsTab() {
       {items === null ? (
         !error && <Spinner />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">{status === "requested" ? "No withdrawals to pay." : "None."}</p>
+        <p className="text-sm text-slate-600"><T>{status === "requested" ? "No withdrawals to pay." : "None."}</T></p>
       ) : (
         <ul className="space-y-3">
           {items.map((w) => (
@@ -93,14 +94,19 @@ function WithdrawalCard({ withdrawal: w, onDone }: { withdrawal: Withdrawal; onD
         <div>
           <p className="font-semibold text-slate-900">{w.doctor_name}</p>
           <p className="text-sm text-slate-700">
-            {METHODS[w.method ?? ""] ?? w.method}: <span className="font-mono">{w.account_details}</span>
+            <T>{METHODS[w.method ?? ""] ?? w.method ?? ""}</T>: <span className="font-mono">{w.account_details}</span>
           </p>
           <p className="text-xs text-slate-500">
-            Requested {dateTime(w.created_at)}
-            {w.processed_at ? ` · processed ${dateTime(w.processed_at)}` : ""}
+            <T vars={{ date: dateTime(w.created_at) }}>{"Requested {date}"}</T>
+            {w.processed_at && (
+              <>
+                {" · "}
+                <T vars={{ date: dateTime(w.processed_at) }}>{"processed {date}"}</T>
+              </>
+            )}
           </p>
-          {w.payout_ref && <p className="text-xs text-slate-600">Payout ref: {w.payout_ref}</p>}
-          {w.admin_note && <p className="text-xs text-red-700">Note: {w.admin_note}</p>}
+          {w.payout_ref && <p className="text-xs text-slate-600"><T>Payout ref:</T> {w.payout_ref}</p>}
+          {w.admin_note && <p className="text-xs text-red-700"><T>Note:</T> {w.admin_note}</p>}
         </div>
         <div className="text-right">
           <p className="text-xl font-semibold text-slate-900">{taka(w.amount_paisa)}</p>
@@ -113,7 +119,7 @@ function WithdrawalCard({ withdrawal: w, onDone }: { withdrawal: Withdrawal; onD
           <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
             <label className="min-w-60 flex-1 text-sm">
               <span className="mb-1 block font-medium text-slate-700">
-                {mode === "paid" ? "Transaction ID of the payment you sent" : "Reason (the doctor sees it; money goes back to their balance)"}
+                <T>{mode === "paid" ? "Transaction ID of the payment you sent" : "Reason (the doctor sees it; money goes back to their balance)"}</T>
               </span>
               <input
                 name="value"
@@ -126,14 +132,14 @@ function WithdrawalCard({ withdrawal: w, onDone }: { withdrawal: Withdrawal; onD
               {mode === "paid" ? "Mark paid" : "Reject"}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setMode(null)}>
-              Back
+              <T>Back</T>
             </Button>
           </form>
         ) : (
           <div className="flex gap-2">
             <Button onClick={() => setMode("paid")}>I&apos;ve sent the money</Button>
             <Button variant="danger" onClick={() => setMode("rejected")}>
-              Reject
+              <T>Reject</T>
             </Button>
           </div>
         ))}

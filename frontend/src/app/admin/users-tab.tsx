@@ -5,10 +5,13 @@ import { useAuth } from "@/components/auth-provider";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Role, type User } from "@/lib/api/client";
 import { dateTime, ROLE_LABELS } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 const PAGE_SIZE = 30;
 
 export function UsersTab() {
+  const t = useT();
   const { user: me } = useAuth();
   const [query, setQuery] = useState({ q: "", role: "" as Role | "" });
   const [items, setItems] = useState<User[] | null>(null);
@@ -46,8 +49,8 @@ export function UsersTab() {
     if (!u.id) return;
     const question =
       status === "suspended"
-        ? `Suspend ${u.name}? They are signed out everywhere and can't log in until reactivated.`
-        : `Reactivate ${u.name}?`;
+        ? t("Suspend {name}? They are signed out everywhere and can't log in until reactivated.", { name: u.name })
+        : t("Reactivate {name}?", { name: u.name });
     if (!confirm(question)) return;
     const { data, error } = await api.POST("/api/v1/admin/users/{userID}/status", {
       params: { path: { userID: u.id } },
@@ -62,15 +65,15 @@ export function UsersTab() {
       <form onSubmit={search} className="flex flex-wrap gap-2">
         <input
           name="q"
-          placeholder="Name or phone number"
-          aria-label="Name or phone number"
+          placeholder={t("Name or phone number")}
+          aria-label={t("Name or phone number")}
           className="min-w-60 flex-1 rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
         />
-        <select name="role" aria-label="Role" className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm">
-          <option value="">All roles</option>
+        <select name="role" aria-label={t("Role")} className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm">
+          <option value="">{t("All roles")}</option>
           {Object.entries(ROLE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>
@@ -81,7 +84,7 @@ export function UsersTab() {
       {items === null ? (
         !error && <Spinner />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">No accounts match.</p>
+        <p className="text-sm text-slate-600"><T>No accounts match.</T></p>
       ) : (
         <Card className="p-0">
           <ul className="divide-y divide-slate-100">
@@ -89,9 +92,9 @@ export function UsersTab() {
               <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
                 <span>
                   <span className="font-medium text-slate-900">{u.name}</span>
-                  {u.id === me?.id && <span className="text-slate-500"> (you)</span>}
+                  {u.id === me?.id && <span className="text-slate-500"> {t("(you)")}</span>}
                   <span className="block text-slate-600">
-                    {u.phone} · {ROLE_LABELS[u.role ?? ""] ?? u.role} · joined {dateTime(u.created_at)}
+                    {u.phone} · <T>{ROLE_LABELS[u.role ?? ""] ?? u.role ?? ""}</T> · <T vars={{ date: dateTime(u.created_at) }}>{"joined {date}"}</T>
                   </span>
                 </span>
                 <span className="flex items-center gap-3">
@@ -99,11 +102,11 @@ export function UsersTab() {
                   {u.role !== "admin" &&
                     (u.status === "suspended" ? (
                       <Button variant="secondary" onClick={() => setStatus(u, "active")}>
-                        Reactivate
+                        <T>Reactivate</T>
                       </Button>
                     ) : (
                       <Button variant="danger" onClick={() => setStatus(u, "suspended")}>
-                        Suspend
+                        <T>Suspend</T>
                       </Button>
                     ))}
                 </span>
@@ -114,7 +117,7 @@ export function UsersTab() {
       )}
       {items && hasMore && (
         <Button variant="secondary" onClick={() => load(items.length)}>
-          Show more
+          <T>Show more</T>
         </Button>
       )}
     </div>

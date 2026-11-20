@@ -7,6 +7,7 @@ import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Hospital } from "@/lib/api/client";
 import { HospitalLogo } from "@/app/hospitals/hospital-results";
 import { HospitalForm } from "./hospital-form";
+import { T } from "@/components/t";
 
 export const VERIFICATION = {
   pending: { label: "Waiting for verification", tone: "amber" },
@@ -32,15 +33,15 @@ export function MyHospitals() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">My hospitals</h1>
+        <h1 className="text-2xl font-semibold text-slate-900"><T>My hospitals</T></h1>
         {!registering && <Button onClick={() => setRegistering(true)}>Register a hospital</Button>}
       </div>
 
       {registering && (
         <Card>
-          <h2 className="mb-1 font-semibold text-slate-900">Register a hospital</h2>
+          <h2 className="mb-1 font-semibold text-slate-900"><T>Register a hospital</T></h2>
           <p className="mb-4 text-sm text-slate-600">
-            The hospital stays hidden from patients until an admin checks the licence number.
+            <T>The hospital stays hidden from patients until an admin checks the licence number.</T>
           </p>
           <HospitalForm
             submitLabel="Submit for verification"
@@ -52,7 +53,7 @@ export function MyHospitals() {
             }}
           />
           <Button variant="secondary" className="mt-3" onClick={() => setRegistering(false)}>
-            Cancel
+            <T>Cancel</T>
           </Button>
         </Card>
       )}
@@ -60,8 +61,9 @@ export function MyHospitals() {
       {items.length === 0 && !registering && (
         <Card>
           <p className="text-slate-600">
-            You don&apos;t manage a hospital yet. Register one, or ask your hospital&apos;s owner account to add your phone
-            number as staff.
+            <T>
+              {"You don't manage a hospital yet. Register one, or ask your hospital's owner account to add your phone number as staff."}
+            </T>
           </p>
         </Card>
       )}
@@ -83,7 +85,9 @@ export function MyHospitals() {
                     {h.my_role && <Badge>{h.my_role === "owner" ? "Owner" : "Staff"}</Badge>}
                   </div>
                   <p className="text-sm text-slate-600">{[h.area, h.district].filter(Boolean).join(", ")}</p>
-                  <p className="text-xs text-slate-500">{h.doctor_count ?? 0} doctors</p>
+                  <p className="text-xs text-slate-500">
+                    <T vars={{ n: h.doctor_count ?? 0 }}>{h.doctor_count === 1 ? "{n} doctor" : "{n} doctors"}</T>
+                  </p>
                 </div>
               </Link>
             </li>

@@ -3,6 +3,7 @@
 import { RequireAuth } from "@/components/require-auth";
 import { Container } from "@/components/ui";
 import { MyHospitals } from "./my-hospitals";
+import { T } from "@/components/t";
 
 export default function ManageHospitalsPage() {
   return (
@@ -12,7 +13,7 @@ export default function ManageHospitalsPage() {
           user.role === "hospital_admin" ? (
             <MyHospitals />
           ) : (
-            <p className="text-sm text-slate-600">This page is for hospital administrator accounts.</p>
+            <p className="text-sm text-slate-600"><T>This page is for hospital administrator accounts.</T></p>
           )
         }
       </RequireAuth>

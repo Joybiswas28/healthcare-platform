@@ -7,6 +7,7 @@ import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Pharmacy } from "@/lib/api/client";
 import { VERIFICATION } from "@/app/manage/hospitals/my-hospitals";
 import { PharmacyForm } from "./pharmacy-form";
+import { T } from "@/components/t";
 
 export function MyPharmacies() {
   const router = useRouter();
@@ -28,15 +29,15 @@ export function MyPharmacies() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">My pharmacies</h1>
+        <h1 className="text-2xl font-semibold text-slate-900"><T>My pharmacies</T></h1>
         {!registering && <Button onClick={() => setRegistering(true)}>Register a pharmacy</Button>}
       </div>
 
       {registering && (
         <Card>
-          <h2 className="mb-1 font-semibold text-slate-900">Register a pharmacy</h2>
+          <h2 className="mb-1 font-semibold text-slate-900"><T>Register a pharmacy</T></h2>
           <p className="mb-4 text-sm text-slate-600">
-            Patients see the pharmacy after an admin checks the drug licence number.
+            <T>Patients see the pharmacy after an admin checks the drug licence number.</T>
           </p>
           <PharmacyForm
             submitLabel="Submit for verification"
@@ -49,7 +50,7 @@ export function MyPharmacies() {
           />
           {items.length > 0 && (
             <Button variant="secondary" className="mt-3" onClick={() => setRegistering(false)}>
-              Cancel
+              <T>Cancel</T>
             </Button>
           )}
         </Card>

@@ -12,6 +12,7 @@ import { dateTime, taka, todayInDhaka } from "@/lib/format";
 import { km } from "@/lib/geo";
 import { VERIFICATION } from "@/app/manage/hospitals/my-hospitals";
 import { PharmacyForm } from "../pharmacy-form";
+import { T } from "@/components/t";
 
 const TABS = [
   { id: "requests", label: "New requests" },
@@ -26,7 +27,7 @@ const POLL_MS = 20000;
 export function PharmacyWorkspace() {
   return (
     <RequireAuth>
-      {(user) => (user.role === "pharmacy" ? <Inner /> : <p className="text-sm text-slate-600">This page is for pharmacy accounts.</p>)}
+      {(user) => (user.role === "pharmacy" ? <Inner /> : <p className="text-sm text-slate-600"><T>This page is for pharmacy accounts.</T></p>)}
     </RequireAuth>
   );
 }
@@ -53,7 +54,7 @@ function Inner() {
   return (
     <div className="space-y-6">
       <Link href="/manage/pharmacies" className="text-sm text-teal-800 hover:underline">
-        ← My pharmacies
+        ← <T>My pharmacies</T>
       </Link>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">{pharmacy.name}</h1>
@@ -64,7 +65,9 @@ function Inner() {
         <Alert kind="info">An admin is checking your drug licence. Requests from patients appear here once you are verified.</Alert>
       )}
       {pharmacy.verification_status === "rejected" && pharmacy.verification_note && (
-        <Alert>Verification was rejected: {pharmacy.verification_note}. Correct the profile and save it to ask again.</Alert>
+        <Alert>
+          <T vars={{ note: pharmacy.verification_note }}>{"Verification was rejected: {note}. Correct the profile and save it to ask again."}</T>
+        </Alert>
       )}
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200 [mask-image:linear-gradient(to_left,transparent,black_2.5rem)] md:[mask-image:none]" role="tablist">
@@ -78,7 +81,7 @@ function Inner() {
               tab === t.id ? "border-teal-700 text-teal-800" : "border-transparent text-slate-600 hover:text-slate-900"
             }`}
           >
-            {t.label}
+            <T>{t.label}</T>
           </button>
         ))}
       </div>
@@ -130,7 +133,7 @@ function RequestsTab({ pharmacyID }: { pharmacyID: string }) {
   }, [pharmacyID]);
 
   if (!items) return error ? <Alert>{error}</Alert> : <Spinner />;
-  if (items.length === 0) return <p className="text-sm text-slate-600">No open requests near you right now. This list refreshes by itself.</p>;
+  if (items.length === 0) return <p className="text-sm text-slate-600"><T>No open requests near you right now. This list refreshes by itself.</T></p>;
 
   return (
     <ul className="space-y-3">
@@ -143,20 +146,25 @@ function RequestsTab({ pharmacyID }: { pharmacyID: string }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-slate-900">
-                  {r.prescription
-                    ? `Prescription · ${(r.prescription.medicines ?? []).length} medicines`
-                    : r.has_attachment
-                      ? "Paper prescription"
-                      : `${(r.items ?? []).length} medicines`}
+                  {r.prescription ? (
+                    <T vars={{ n: (r.prescription.medicines ?? []).length }}>{"Prescription · {n} medicines"}</T>
+                  ) : r.has_attachment ? (
+                    <T>Paper prescription</T>
+                  ) : (
+                    <T vars={{ n: (r.items ?? []).length }}>{"{n} medicines"}</T>
+                  )}
                 </p>
                 <p className="text-sm text-slate-600">
-                  {r.fulfilment === "pickup" ? "Pickup" : "Delivery"} · {km(r.distance_km)} away · {r.quote_count ?? 0} quotes so far
+                  <T>{r.fulfilment === "pickup" ? "Pickup" : "Delivery"}</T> ·{" "}
+                  <T vars={{ distance: km(r.distance_km), n: r.quote_count ?? 0 }}>{"{distance} away · {n} quotes so far"}</T>
                 </p>
               </div>
-              {r.my_quote ? <Badge tone="teal">Quoted {taka(r.my_quote.total_paisa)}</Badge> : <Badge tone="amber">Not quoted</Badge>}
+              {r.my_quote ? <Badge tone="teal">
+                  <T vars={{ amount: taka(r.my_quote.total_paisa) }}>{"Quoted {amount}"}</T>
+                </Badge> : <Badge tone="amber">Not quoted</Badge>}
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              {dateTime(r.created_at)} · open until {dateTime(r.expires_at)}
+              {dateTime(r.created_at)} · <T vars={{ date: dateTime(r.expires_at) }}>{"open until {date}"}</T>
             </p>
           </Link>
         </li>
@@ -206,7 +214,7 @@ function OrdersTab({ pharmacyID }: { pharmacyID: string }) {
             }}
             className={`rounded-full px-3 py-1 text-sm ${status === f.id ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200"}`}
           >
-            {f.label}
+            <T>{f.label}</T>
           </button>
         ))}
       </div>
@@ -214,7 +222,7 @@ function OrdersTab({ pharmacyID }: { pharmacyID: string }) {
       {items === null ? (
         !error && <Spinner />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">No orders here.</p>
+        <p className="text-sm text-slate-600"><T>No orders here.</T></p>
       ) : (
         <ul className="space-y-3">
           {items.map((o) => (
@@ -227,7 +235,7 @@ function OrdersTab({ pharmacyID }: { pharmacyID: string }) {
                   <div>
                     <p className="font-semibold text-slate-900">{o.patient_name}</p>
                     <p className="text-sm text-slate-600">
-                      {o.fulfilment === "pickup" ? "Pickup" : "Delivery"} · {taka(o.total_paisa)}
+                      <T>{o.fulfilment === "pickup" ? "Pickup" : "Delivery"}</T> · {taka(o.total_paisa)}
                     </p>
                   </div>
                   <OrderBadge order={o} />
@@ -275,7 +283,9 @@ function StatementTab({ pharmacyID }: { pharmacyID: string }) {
             ["Platform commission due", taka(result.commission_due_paisa)],
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg bg-slate-50 p-3">
-              <dt className="text-xs text-slate-500">{label}</dt>
+              <dt className="text-xs text-slate-500">
+                <T>{label}</T>
+              </dt>
               <dd className="text-lg font-semibold text-slate-900">{value}</dd>
             </div>
           ))}

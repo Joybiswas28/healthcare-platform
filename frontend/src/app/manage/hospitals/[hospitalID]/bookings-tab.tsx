@@ -5,6 +5,8 @@ import { TextArea } from "@/components/textarea";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Appointment, type Hospital, type StaffDoctor } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka, upcomingDates, WEEKDAYS } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 const STATUS: Record<string, { label: string; tone: "slate" | "teal" | "amber" | "red" }> = {
   confirmed: { label: "Confirmed", tone: "teal" },
@@ -29,6 +31,7 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
   const [items, setItems] = useState<Appointment[] | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const t = useT();
   const [action, setAction] = useState<{ kind: "cancel" | "reschedule"; appointment: Appointment } | null>(null);
 
   useEffect(() => {
@@ -66,22 +69,22 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, -1))} aria-label="Previous day">
+        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, -1))} aria-label={t("Previous day")}>
           ←
         </Button>
         <input
           type="date"
           value={date}
           onChange={(e) => e.target.value && changeDate(e.target.value)}
-          aria-label="Date"
+          aria-label={t("Date")}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, 1))} aria-label="Next day">
+        <Button variant="secondary" onClick={() => changeDate(shiftDate(date, 1))} aria-label={t("Next day")}>
           →
         </Button>
         {date !== today && (
           <Button variant="secondary" onClick={() => changeDate(today)}>
-            Today
+            <T>Today</T>
           </Button>
         )}
         <select
@@ -90,10 +93,10 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
             setItems(null);
             setDoctorID(e.target.value);
           }}
-          aria-label="Doctor"
+          aria-label={t("Doctor")}
           className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm"
         >
-          <option value="">All doctors</option>
+          <option value="">{t("All doctors")}</option>
           {doctors.map((d) => (
             <option key={d.doctor_id} value={d.doctor_id}>
               {d.name}
@@ -109,7 +112,7 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
       {items === null ? (
         !error && <Spinner />
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-600">No bookings on this day.</p>
+        <p className="text-sm text-slate-600"><T>No bookings on this day.</T></p>
       ) : (
         <div className="space-y-3">
           {items.map((a) => {
@@ -135,14 +138,14 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
                   </div>
                   <Badge tone={s.tone}>{s.label}</Badge>
                 </div>
-                {a.cancel_reason && <p className="mt-2 text-xs text-slate-500">Reason: {a.cancel_reason}</p>}
+                {a.cancel_reason && <p className="mt-2 text-xs text-slate-500"><T>Reason:</T> {a.cancel_reason}</p>}
                 {open && (
                   <div className="mt-3 flex gap-2">
                     <Button variant="secondary" onClick={() => setAction({ kind: "reschedule", appointment: a })}>
-                      Reschedule
+                      <T>Reschedule</T>
                     </Button>
                     <Button variant="danger" onClick={() => setAction({ kind: "cancel", appointment: a })}>
-                      Cancel
+                      <T>Cancel</T>
                     </Button>
                   </div>
                 )}
@@ -155,7 +158,7 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
                         onDone={(u) => {
                           replace(u);
                           setAction(null);
-                          setNotice(`Booking cancelled. ${a.patient_name} will get an SMS.`);
+                          setNotice(t("Booking cancelled. {name} will get an SMS.", { name: a.patient_name }));
                         }}
                         onClose={() => setAction(null)}
                       />
@@ -168,7 +171,11 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
                           replace({ ...a, status: "rescheduled", rescheduled_to: fresh.id });
                           setAction(null);
                           setNotice(
-                            `Moved to ${prettyDate(fresh.date)}, serial ${fresh.serial_no}, new ticket ${fresh.ticket_code}. The patient gets an SMS.`,
+                            t("Moved to {date}, serial {serial}, new ticket {ticket}. The patient gets an SMS.", {
+                              date: prettyDate(fresh.date),
+                              serial: fresh.serial_no ?? 0,
+                              ticket: fresh.ticket_code,
+                            }),
                           );
                         }}
                         onClose={() => setAction(null)}
@@ -220,7 +227,7 @@ function CancelForm({
           {busy ? "Cancelling…" : "Cancel booking"}
         </Button>
         <Button type="button" variant="secondary" onClick={onClose}>
-          Back
+          <T>Back</T>
         </Button>
       </div>
     </form>
@@ -247,6 +254,7 @@ function RescheduleForm({
   const [date, setDate] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -263,13 +271,13 @@ function RescheduleForm({
   }
 
   if (sessions.length === 0) {
-    return <Alert kind="info">This doctor has no other sessions at the hospital to move the booking to.</Alert>;
+    return <Alert kind="info">{t("This doctor has no other sessions at the hospital to move the booking to.")}</Alert>;
   }
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
       <label className="text-sm">
-        <span className="mb-1 block font-medium text-slate-700">Session</span>
+        <span className="mb-1 block font-medium text-slate-700"><T>Session</T></span>
         <select
           value={scheduleID}
           onChange={(e) => {
@@ -280,13 +288,13 @@ function RescheduleForm({
         >
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
-              {WEEKDAYS[s.weekday ?? 0]} {clock(s.start_time)}
+              {t(WEEKDAYS[s.weekday ?? 0])} {clock(s.start_time)}
             </option>
           ))}
         </select>
       </label>
       <label className="text-sm">
-        <span className="mb-1 block font-medium text-slate-700">Date</span>
+        <span className="mb-1 block font-medium text-slate-700"><T>Date</T></span>
         <select value={date || dates[0] || ""} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-slate-300 bg-surface px-3 py-2">
           {dates.map((d) => (
             <option key={d} value={d}>
@@ -299,7 +307,7 @@ function RescheduleForm({
         {busy ? "Moving…" : "Move booking"}
       </Button>
       <Button type="button" variant="secondary" onClick={onClose}>
-        Back
+        <T>Back</T>
       </Button>
       {error && (
         <div className="w-full">

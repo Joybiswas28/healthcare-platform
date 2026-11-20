@@ -12,13 +12,15 @@ import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Order } from "@/lib/api/client";
 import { taka } from "@/lib/format";
 import { mapLink } from "@/lib/geo";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 const POLL_MS = 15000;
 
 export function PharmacyOrder() {
   return (
     <RequireAuth>
-      {(user) => (user.role === "pharmacy" ? <Inner /> : <p className="text-sm text-slate-600">This page is for pharmacy accounts.</p>)}
+      {(user) => (user.role === "pharmacy" ? <Inner /> : <p className="text-sm text-slate-600"><T>This page is for pharmacy accounts.</T></p>)}
     </RequireAuth>
   );
 }
@@ -30,6 +32,7 @@ function Inner() {
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const path = { pharmacyID, orderID };
+  const t = useT();
 
   const reload = useCallback(async () => {
     const { data, error, response } = await api.GET("/api/v1/manage/pharmacies/{pharmacyID}/orders/{orderID}", {
@@ -47,8 +50,8 @@ function Inner() {
   const active = isActiveOrder(order);
   useEffect(() => {
     if (!active) return;
-    const t = setInterval(reload, POLL_MS);
-    return () => clearInterval(t);
+    const timer = setInterval(reload, POLL_MS);
+    return () => clearInterval(timer);
   }, [active, reload]);
 
   async function step(kind: "preparing" | "ready") {
@@ -67,8 +70,8 @@ function Inner() {
   async function dispatch(mode: "pharmacy" | "rider") {
     const question =
       mode === "rider"
-        ? "Offer this delivery to platform riders nearby? A rider collects it from you."
-        : "Send it with your own delivery person now?";
+        ? t("Offer this delivery to platform riders nearby? A rider collects it from you.")
+        : t("Send it with your own delivery person now?");
     if (!confirm(question)) return;
     setBusy(true);
     setError("");
@@ -117,7 +120,7 @@ function Inner() {
   return (
     <div className="space-y-4">
       <Link href={`/manage/pharmacies/${pharmacyID}?tab=orders`} className="text-sm text-teal-800 hover:underline">
-        ← Orders
+        ← <T>Orders</T>
       </Link>
 
       <Card className="space-y-3">
@@ -128,12 +131,12 @@ function Inner() {
               <a href={`tel:${order.contact_phone}`} className="text-teal-800 underline">
                 {order.contact_phone}
               </a>
-              {delivery && order.address ? ` · ${order.address}` : " · Pickup"}
+              {delivery && order.address ? ` · ${order.address}` : ` · ${t("Pickup")}`}
               {delivery && map && (
                 <>
                   {" · "}
                   <a href={map} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">
-                    Map
+                    <T>Map</T>
                   </a>
                 </>
               )}
@@ -146,28 +149,28 @@ function Inner() {
           {(order.items ?? []).map((i, n) => (
             <li key={n} className={`flex justify-between gap-3 ${i.available ? "text-slate-700" : "text-slate-400 line-through"}`}>
               <span>{[i.name, i.strength, i.quantity].filter(Boolean).join(" · ")}</span>
-              <span>{i.available ? taka(i.price_paisa) : "not available"}</span>
+              <span>{i.available ? taka(i.price_paisa) : t("not available")}</span>
             </li>
           ))}
           {(order.delivery_charge_paisa ?? 0) > 0 && (
             <li className="flex justify-between text-slate-600">
-              <span>Delivery</span>
+              <span><T>Delivery</T></span>
               <span>{taka(order.delivery_charge_paisa)}</span>
             </li>
           )}
           <li className="flex justify-between border-t border-slate-100 pt-2 font-semibold text-slate-900">
-            <span>Cash to collect</span>
+            <span><T>Cash to collect</T></span>
             <span>{taka(order.total_paisa)}</span>
           </li>
           {order.commission_paisa != null && s === "delivered" && (
             <li className="flex justify-between text-xs text-slate-500">
-              <span>Platform commission</span>
+              <span><T>Platform commission</T></span>
               <span>{taka(order.commission_paisa)}</span>
             </li>
           )}
         </ul>
         {order.prescription_id && (
-          <p className="text-xs text-slate-500">Dispense only against the prescription shown on the request.</p>
+          <p className="text-xs text-slate-500"><T>Dispense only against the prescription shown on the request.</T></p>
         )}
       </Card>
 
@@ -175,10 +178,10 @@ function Inner() {
 
       {active && (
         <Card className="space-y-3">
-          <h2 className="font-semibold text-slate-900">Next step</h2>
+          <h2 className="font-semibold text-slate-900"><T>Next step</T></h2>
           {s === "confirmed" && (
             <Button onClick={() => step("preparing")} disabled={busy}>
-              Start preparing
+              <T>Start preparing</T>
             </Button>
           )}
           {s === "preparing" && (
@@ -189,21 +192,23 @@ function Inner() {
           {s === "ready" && delivery && !order.delivery_mode && (
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => dispatch("pharmacy")} disabled={busy}>
-                Send with our own staff
+                <T>Send with our own staff</T>
               </Button>
               <Button variant="secondary" onClick={() => dispatch("rider")} disabled={busy}>
-                Ask a platform rider
+                <T>Ask a platform rider</T>
               </Button>
             </div>
           )}
-          {s === "ready" && order.delivery_mode === "rider" && <p className="text-sm text-slate-600">Waiting for a nearby rider to take the job.</p>}
+          {s === "ready" && order.delivery_mode === "rider" && <p className="text-sm text-slate-600"><T>Waiting for a nearby rider to take the job.</T></p>}
           {s === "rider_assigned" && (
             <p className="text-sm text-slate-600">
-              {order.rider_name} ({order.rider_phone}) is coming to collect it.
+              <T vars={{ name: order.rider_name, phone: order.rider_phone }}>{"{name} ({phone}) is coming to collect it."}</T>
             </p>
           )}
           {s === "out_for_delivery" && order.delivery_mode === "rider" && (
-            <p className="text-sm text-slate-600">{order.rider_name} is delivering it.</p>
+            <p className="text-sm text-slate-600">
+              <T vars={{ name: order.rider_name }}>{"{name} is delivering it."}</T>
+            </p>
           )}
           {handOver && <DeliveryCodeForm label={delivery ? "Mark delivered" : "Hand over"} onSubmit={complete} />}
 
@@ -213,16 +218,16 @@ function Inner() {
                 <TextArea label="Reason (sent to the patient by SMS)" name="reason" rows={2} minLength={5} required autoFocus />
                 <div className="flex gap-2">
                   <Button type="submit" variant="danger" disabled={busy}>
-                    Cancel order
+                    <T>Cancel order</T>
                   </Button>
                   <Button type="button" variant="secondary" onClick={() => setCancelling(false)}>
-                    Back
+                    <T>Back</T>
                   </Button>
                 </div>
               </form>
             ) : (
               <button onClick={() => setCancelling(true)} className="block text-sm text-red-700 hover:underline">
-                Cancel this order
+                <T>Cancel this order</T>
               </button>
             ))}
         </Card>
@@ -230,13 +235,13 @@ function Inner() {
 
       {s === "cancelled" && (
         <Alert>
-          Cancelled by the {order.cancelled_by}
+          <T>{order.cancelled_by === "patient" ? "Cancelled by the patient" : order.cancelled_by === "pharmacy" ? "Cancelled by the pharmacy" : "Cancelled"}</T>
           {order.cancel_reason ? `: ${order.cancel_reason}` : "."}
         </Alert>
       )}
 
       <Card>
-        <h2 className="mb-3 font-semibold text-slate-900">Progress</h2>
+        <h2 className="mb-3 font-semibold text-slate-900"><T>Progress</T></h2>
         <OrderTimeline order={order} />
       </Card>
     </div>

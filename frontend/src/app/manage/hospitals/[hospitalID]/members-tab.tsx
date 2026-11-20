@@ -4,11 +4,14 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Alert, Badge, Button, Card, Field, Spinner } from "@/components/ui";
 import { api, errorMessage, type Hospital, type Member } from "@/lib/api/client";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 export function MembersTab({ hospital }: { hospital: Hospital }) {
   const hospitalID = hospital.id ?? "";
   const isOwner = hospital.my_role === "owner";
   const { user } = useAuth();
+  const t = useT();
   const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,7 +45,7 @@ export function MembersTab({ hospital }: { hospital: Hospital }) {
   }
 
   async function remove(m: Member) {
-    if (!m.user_id || !confirm(`Remove ${m.name}? They lose access to this hospital.`)) return;
+    if (!m.user_id || !confirm(t("Remove {name}? They lose access to this hospital.", { name: m.name }))) return;
     const { error } = await api.DELETE("/api/v1/manage/hospitals/{hospitalID}/members/{userID}", {
       params: { path: { hospitalID, userID: m.user_id } },
     });
@@ -56,9 +59,9 @@ export function MembersTab({ hospital }: { hospital: Hospital }) {
     <div className="space-y-4">
       {isOwner && (
         <Card>
-          <h2 className="font-semibold text-slate-900">Add a staff account</h2>
+          <h2 className="font-semibold text-slate-900"><T>Add a staff account</T></h2>
           <p className="mb-3 text-sm text-slate-600">
-            The person first signs up as a &quot;Hospital administrator&quot;; then add their mobile number here.
+            <T>The person first signs up as a &quot;Hospital administrator&quot;; then add their mobile number here.</T>
           </p>
           <form onSubmit={add} className="flex flex-wrap items-end gap-2">
             <div className="flex-1">
@@ -77,14 +80,14 @@ export function MembersTab({ hospital }: { hospital: Hospital }) {
             <li key={m.user_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
               <span>
                 <span className="font-medium text-slate-900">{m.name}</span>
-                {m.user_id === user?.id && <span className="text-slate-500"> (you)</span>}
+                {m.user_id === user?.id && <span className="text-slate-500"> {t("(you)")}</span>}
                 <span className="block text-slate-600">{m.phone}</span>
               </span>
               <span className="flex items-center gap-3">
                 <Badge tone={m.role === "owner" ? "teal" : "slate"}>{m.role === "owner" ? "Owner" : "Staff"}</Badge>
                 {isOwner && m.role !== "owner" && (
                   <button onClick={() => remove(m)} className="text-red-700 hover:underline">
-                    Remove
+                    <T>Remove</T>
                   </button>
                 )}
               </span>

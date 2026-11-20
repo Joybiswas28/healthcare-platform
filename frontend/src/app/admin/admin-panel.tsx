@@ -5,6 +5,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { DoctorsQueue, HospitalsQueue, PharmaciesQueue, RidersQueue } from "./queues";
 import { UsersTab } from "./users-tab";
 import { WithdrawalsTab } from "./withdrawals-tab";
+import { T } from "@/components/t";
 
 const TABS = [
   { id: "doctors", label: "Doctors" },
@@ -19,7 +20,7 @@ type Tab = (typeof TABS)[number]["id"];
 export function AdminPanel() {
   return (
     <RequireAuth>
-      {(user) => (user.role === "admin" ? <Panel /> : <p className="text-sm text-slate-600">This page is for platform admins.</p>)}
+      {(user) => (user.role === "admin" ? <Panel /> : <p className="text-sm text-slate-600"><T>This page is for platform admins.</T></p>)}
     </RequireAuth>
   );
 }
@@ -31,7 +32,7 @@ function Panel() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Admin</h1>
+      <h1 className="text-2xl font-semibold text-slate-900"><T>Admin</T></h1>
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200 [mask-image:linear-gradient(to_left,transparent,black_2.5rem)] md:[mask-image:none]" role="tablist">
         {TABS.map((t) => (
           <button
@@ -43,7 +44,7 @@ function Panel() {
               tab === t.id ? "border-teal-700 text-teal-800" : "border-transparent text-slate-600 hover:text-slate-900"
             }`}
           >
-            {t.label}
+            <T>{t.label}</T>
           </button>
         ))}
       </div>

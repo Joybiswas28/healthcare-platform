@@ -12,10 +12,15 @@ export const LANG_SCRIPT = `(function(){try{var l=localStorage.getItem("${LANG_S
 
 export type Vars = Record<string, string | number | undefined | null>;
 
-// "Hello, {name}" + { name: "Karim" } -> "Hello, Karim"
-export function interpolate(text: string, vars?: Vars): string {
+// "Hello, {name}" + { name: "Karim" } -> "Hello, Karim". For Bangla text,
+// number values get Bangla digits; strings (names, codes) are left as they are.
+export function interpolate(text: string, vars?: Vars, bn = false): string {
   if (!vars) return text;
-  return text.replace(/\{(\w+)\}/g, (m, k: string) => (vars[k] == null ? m : String(vars[k])));
+  return text.replace(/\{(\w+)\}/g, (m, k: string) => {
+    const v = vars[k];
+    if (v == null) return m;
+    return bn && typeof v === "number" ? bnDigits(String(v)) : String(v);
+  });
 }
 
 export function hasBangla(text: string): boolean {
@@ -23,7 +28,7 @@ export function hasBangla(text: string): boolean {
 }
 
 export function translate(lang: Lang, text: string, vars?: Vars): string {
-  return interpolate(lang === "bn" ? (BN[text] ?? text) : text, vars);
+  return lang === "bn" && text in BN ? interpolate(BN[text], vars, true) : interpolate(text, vars);
 }
 
 // Bangla digits for numbers shown in Bangla text.

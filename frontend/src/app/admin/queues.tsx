@@ -7,6 +7,8 @@ import { api, errorMessage, type Hospital, type Pharmacy, type Rider, type Schem
 import { dateTime } from "@/lib/format";
 import { mapLink } from "@/lib/geo";
 import { VerifyActions } from "./verify-actions";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 type Status = "pending" | "approved" | "rejected";
 type AdminDoctor = Schemas["AdminDoctor"];
@@ -77,15 +79,15 @@ function QueueShell({
               status === s ? "bg-teal-700 text-white" : "bg-surface text-slate-700 ring-1 ring-slate-200 hover:ring-teal-600"
             }`}
           >
-            {s === "pending" ? "Waiting" : s}
+            <T>{s === "pending" ? "Waiting" : s}</T>
           </button>
         ))}
       </div>
       {error && <Alert>{error}</Alert>}
-      {items === null ? !error && <Spinner /> : items.length === 0 ? <p className="text-sm text-slate-600">{empty}</p> : children}
+      {items === null ? !error && <Spinner /> : items.length === 0 ? <p className="text-sm text-slate-600"><T>{empty}</T></p> : children}
       {items && hasMore && (
         <Button variant="secondary" onClick={more}>
-          Show more
+          <T>Show more</T>
         </Button>
       )}
     </div>
@@ -110,14 +112,19 @@ export function DoctorsQueue() {
                 <div>
                   <p className="font-semibold text-slate-900">{d.name}</p>
                   <p className="text-sm text-slate-600">
-                    {[d.specialization, d.degrees].filter(Boolean).join(" · ") || "No specialty given"}
-                    {d.experience_years ? ` · ${d.experience_years} years` : ""}
+                    {[d.specialization, d.degrees].filter(Boolean).join(" · ") || <T>No specialty given</T>}
+                    {d.experience_years ? (
+                      <>
+                        {" · "}
+                        <T vars={{ n: d.experience_years }}>{"{n} years"}</T>
+                      </>
+                    ) : null}
                   </p>
                   <p className="text-sm text-slate-700">
-                    BMDC <span className="font-mono font-medium">{d.bmdc_reg_no ?? "— not given —"}</span> · {d.phone}
+                    BMDC <span className="font-mono font-medium">{d.bmdc_reg_no ?? <T>— not given —</T>}</span> · {d.phone}
                   </p>
-                  <p className="text-xs text-slate-500">Signed up {dateTime(d.created_at)}</p>
-                  {d.verification_note && <p className="text-xs text-red-700">Note: {d.verification_note}</p>}
+                  <p className="text-xs text-slate-500"><T vars={{ date: dateTime(d.created_at) }}>{"Signed up {date}"}</T></p>
+                  {d.verification_note && <p className="text-xs text-red-700"><T>Note:</T> {d.verification_note}</p>}
                 </div>
                 <Badge tone={STATUS_TONE[d.verification_status ?? "pending"]}>{d.verification_status}</Badge>
               </div>
@@ -146,6 +153,7 @@ export function DoctorsQueue() {
 }
 
 function CommissionEditor({ doctorID, current }: { doctorID: string; current?: number | null }) {
+  const t = useT();
   const [value, setValue] = useState(current);
   const [msg, setMsg] = useState("");
 
@@ -158,13 +166,13 @@ function CommissionEditor({ doctorID, current }: { doctorID: string; current?: n
     });
     if (data) {
       setValue(data.commission_bps);
-      setMsg("Saved.");
+      setMsg(t("Saved."));
     } else setMsg(errorMessage(error));
   }
 
   return (
     <form onSubmit={save} className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-sm">
-      <span className="text-slate-700">Platform share of online consultation fees:</span>
+      <span className="text-slate-700"><T>Platform share of online consultation fees:</T></span>
       <input
         name="percent"
         type="number"
@@ -172,13 +180,13 @@ function CommissionEditor({ doctorID, current }: { doctorID: string; current?: n
         max={100}
         step={0.5}
         defaultValue={value != null ? value / 100 : ""}
-        placeholder="default"
-        aria-label="Commission percent"
+        placeholder={t("default")}
+        aria-label={t("Commission percent")}
         className="w-24 rounded-lg border border-slate-300 px-2 py-1"
       />
       <span>%</span>
       <Button type="submit" variant="secondary">
-        Save
+        <T>Save</T>
       </Button>
       {msg && <span className="text-xs text-slate-500">{msg}</span>}
     </form>
@@ -205,7 +213,7 @@ export function HospitalsQueue() {
                   <div>
                     <p className="font-semibold text-slate-900">{h.name}</p>
                     <p className="text-sm text-slate-700">
-                      DGHS licence <span className="font-mono font-medium">{h.registration_no}</span>
+                      <T>DGHS licence</T> <span className="font-mono font-medium">{h.registration_no}</span>
                     </p>
                     <p className="text-sm text-slate-600">
                       {[h.address, h.area, h.district].filter(Boolean).join(", ")} · {h.phone}
@@ -213,19 +221,19 @@ export function HospitalsQueue() {
                         <>
                           {" · "}
                           <a href={map} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">
-                            Map
+                            <T>Map</T>
                           </a>
                         </>
                       )}
                     </p>
-                    <p className="text-xs text-slate-500">Registered {dateTime(h.created_at)}</p>
-                    {h.verification_note && <p className="text-xs text-red-700">Note: {h.verification_note}</p>}
+                    <p className="text-xs text-slate-500"><T vars={{ date: dateTime(h.created_at) }}>{"Registered {date}"}</T></p>
+                    {h.verification_note && <p className="text-xs text-red-700"><T>Note:</T> {h.verification_note}</p>}
                   </div>
                   <Badge tone={STATUS_TONE[h.verification_status ?? "pending"]}>{h.verification_status}</Badge>
                 </div>
                 {h.verification_status === "approved" && (
                   <Link href={`/hospitals/${h.id}`} className="text-sm text-teal-800 hover:underline">
-                    Public page
+                    <T>Public page</T>
                   </Link>
                 )}
                 <VerifyActions
@@ -269,7 +277,7 @@ export function PharmaciesQueue() {
                   <div>
                     <p className="font-semibold text-slate-900">{p.name}</p>
                     <p className="text-sm text-slate-700">
-                      DGDA drug licence <span className="font-mono font-medium">{p.drug_license_no}</span>
+                      <T>DGDA drug licence</T> <span className="font-mono font-medium">{p.drug_license_no}</span>
                     </p>
                     <p className="text-sm text-slate-600">
                       {[p.address, p.area, p.district].filter(Boolean).join(", ")} · {p.phone}
@@ -277,13 +285,13 @@ export function PharmaciesQueue() {
                         <>
                           {" · "}
                           <a href={map} target="_blank" rel="noopener noreferrer" className="text-teal-800 underline">
-                            Map
+                            <T>Map</T>
                           </a>
                         </>
                       )}
                     </p>
-                    <p className="text-xs text-slate-500">Registered {dateTime(p.created_at)}</p>
-                    {p.verification_note && <p className="text-xs text-red-700">Note: {p.verification_note}</p>}
+                    <p className="text-xs text-slate-500"><T vars={{ date: dateTime(p.created_at) }}>{"Registered {date}"}</T></p>
+                    {p.verification_note && <p className="text-xs text-red-700"><T>Note:</T> {p.verification_note}</p>}
                   </div>
                   <Badge tone={STATUS_TONE[p.verification_status ?? "pending"]}>{p.verification_status}</Badge>
                 </div>
@@ -328,11 +336,11 @@ export function RidersQueue() {
                 <div>
                   <p className="font-semibold text-slate-900">{r.name}</p>
                   <p className="text-sm text-slate-700">
-                    NID <span className="font-mono font-medium">{r.nid_number}</span> · {VEHICLES[r.vehicle ?? ""] ?? r.vehicle}
+                    NID <span className="font-mono font-medium">{r.nid_number}</span> · <T>{VEHICLES[r.vehicle ?? ""] ?? r.vehicle ?? ""}</T>
                   </p>
                   <p className="text-sm text-slate-600">{r.phone}</p>
-                  <p className="text-xs text-slate-500">Applied {dateTime(r.created_at)}</p>
-                  {r.verification_note && <p className="text-xs text-red-700">Note: {r.verification_note}</p>}
+                  <p className="text-xs text-slate-500"><T vars={{ date: dateTime(r.created_at) }}>{"Applied {date}"}</T></p>
+                  {r.verification_note && <p className="text-xs text-red-700"><T>Note:</T> {r.verification_note}</p>}
                 </div>
                 <Badge tone={STATUS_TONE[r.verification_status ?? "pending"]}>{r.verification_status}</Badge>
               </div>

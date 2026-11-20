@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { TextArea } from "@/components/textarea";
 import { Alert, Button, Field } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import type { Hospital, HospitalInput } from "@/lib/api/client";
 
 function list(value: FormDataEntryValue | null): string[] {
@@ -63,6 +64,7 @@ export function HospitalForm({
   }
 
   const h = initial;
+  const t = useT();
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -71,8 +73,8 @@ export function HospitalForm({
         <Field label="Phone" name="phone" type="tel" defaultValue={h?.phone} required />
         <Field label="Email" name="email" type="email" defaultValue={h?.email ?? ""} />
         <Field label="Address" name="address" defaultValue={h?.address} required />
-        <Field label="Area" name="area" defaultValue={h?.area ?? ""} placeholder="e.g. Panthapath" />
-        <Field label="District" name="district" defaultValue={h?.district} required placeholder="e.g. Dhaka" />
+        <Field label="Area" name="area" defaultValue={h?.area ?? ""} placeholder={t("e.g. Panthapath")} />
+        <Field label="District" name="district" defaultValue={h?.district} required placeholder={t("e.g. Dhaka")} />
         <Field label="Website" name="website" defaultValue={h?.website ?? ""} placeholder="https://…" />
       </div>
       <TextArea label="About the hospital" name="description" rows={3} defaultValue={h?.description ?? ""} />
@@ -88,7 +90,7 @@ export function HospitalForm({
         defaultValue={(h?.facilities ?? []).join(", ")}
         hint="Separate with commas, e.g. ICU, Emergency 24/7, Pharmacy"
       />
-      <Field label="Visiting hours" name="visiting_hours" defaultValue={h?.visiting_hours ?? ""} placeholder="e.g. 4 PM – 7 PM" />
+      <Field label="Visiting hours" name="visiting_hours" defaultValue={h?.visiting_hours ?? ""} placeholder={t("e.g. 4 PM – 7 PM")} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Latitude (optional)" name="latitude" inputMode="decimal" defaultValue={h?.latitude ?? ""} placeholder="23.7509" />
         <Field label="Longitude (optional)" name="longitude" inputMode="decimal" defaultValue={h?.longitude ?? ""} placeholder="90.3935" />

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Alert, Badge, Button, Card, Field, Select, Spinner } from "@/components/ui";
 import { api, errorMessage, type LedgerEntry, type Schemas } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 
 type Withdrawal = Schemas["Withdrawal"];
 
@@ -53,40 +55,47 @@ export function EarningsView() {
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <p className="text-sm text-slate-600">Available to withdraw</p>
+          <p className="text-sm text-slate-600"><T>Available to withdraw</T></p>
           <p className="text-3xl font-semibold text-slate-900">{taka(balance)}</p>
           <p className="mt-1 text-xs text-slate-500">
-            From completed online consultations, after the platform&apos;s share. Chamber fees are paid to you directly.
+            <T>From completed online consultations, after the platform&apos;s share. Chamber fees are paid to you directly.</T>
           </p>
         </Card>
         <Card>
-          <p className="text-sm text-slate-600">Waiting to be paid out</p>
+          <p className="text-sm text-slate-600"><T>Waiting to be paid out</T></p>
           <p className="text-3xl font-semibold text-slate-900">{taka(pending)}</p>
-          <p className="mt-1 text-xs text-slate-500">Withdrawals an admin hasn&apos;t sent yet.</p>
+          <p className="mt-1 text-xs text-slate-500"><T>Withdrawals an admin hasn&apos;t sent yet.</T></p>
         </Card>
       </div>
 
       {hasPending ? (
         <Alert kind="info">You have a withdrawal waiting. You can request another once it is paid or rejected.</Alert>
       ) : balance < MIN_WITHDRAWAL_PAISA ? (
-        <Alert kind="info">You can withdraw once you have at least {taka(MIN_WITHDRAWAL_PAISA)}.</Alert>
+        <Alert kind="info">
+          <T vars={{ amount: taka(MIN_WITHDRAWAL_PAISA) }}>{"You can withdraw once you have at least {amount}."}</T>
+        </Alert>
       ) : (
         <WithdrawForm balance={balance} onDone={reload} />
       )}
 
       {withdrawals.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-lg font-semibold text-slate-900">Withdrawals</h2>
+          <h2 className="text-lg font-semibold text-slate-900"><T>Withdrawals</T></h2>
           <Card className="p-0">
             <ul className="divide-y divide-slate-100 text-sm">
               {withdrawals.map((w) => (
                 <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                   <span>
-                    <span className="font-medium text-slate-900">{taka(w.amount_paisa)}</span> to{" "}
-                    {METHODS[w.method ?? "bkash"]} {w.account_details}
+                    <span className="font-medium text-slate-900">{taka(w.amount_paisa)}</span> →{" "}
+                    <T>{METHODS[w.method ?? "bkash"]}</T> {w.account_details}
                     <span className="block text-xs text-slate-500">
                       {dateTime(w.created_at)}
-                      {w.payout_ref ? ` · paid, ref ${w.payout_ref}` : ""}
+                      {w.payout_ref && (
+                        <>
+                          {" · "}
+                          <T vars={{ ref: w.payout_ref }}>{"paid, ref {ref}"}</T>
+                        </>
+                      )}
                       {w.admin_note ? ` · ${w.admin_note}` : ""}
                     </span>
                   </span>
@@ -99,14 +108,13 @@ export function EarningsView() {
       )}
 
       <section className="space-y-2">
-        <h2 className="text-lg font-semibold text-slate-900">History</h2>
+        <h2 className="text-lg font-semibold text-slate-900"><T>History</T></h2>
         {entries.length === 0 ? (
           <p className="text-sm text-slate-600">
-            No earnings yet. Turn on online consultations in your{" "}
+            <T>No earnings yet. Turn on online consultations in your dashboard.</T>{" "}
             <Link href="/dashboard" className="text-teal-800 underline">
-              dashboard
+              <T>Open dashboard</T>
             </Link>
-            .
           </p>
         ) : (
           <Card className="p-0">
@@ -116,10 +124,10 @@ export function EarningsView() {
                   <span>
                     {e.kind === "consultation_release" && e.reference_id ? (
                       <Link href={`/consultations/${e.reference_id}`} className="hover:underline">
-                        {KIND[e.kind]}
+                        <T>{KIND[e.kind]}</T>
                       </Link>
                     ) : (
-                      (KIND[e.kind ?? ""] ?? e.kind)
+                      <T>{KIND[e.kind ?? ""] ?? e.kind ?? ""}</T>
                     )}
                     <span className="block text-xs text-slate-500">{dateTime(e.created_at)}</span>
                   </span>
@@ -139,6 +147,7 @@ export function EarningsView() {
 
 function WithdrawForm({ balance, onDone }: { balance: number; onDone: () => void }) {
   const [method, setMethod] = useState<keyof typeof METHODS>("bkash");
+  const t = useT();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -147,7 +156,7 @@ function WithdrawForm({ balance, onDone }: { balance: number; onDone: () => void
     const f = new FormData(e.currentTarget);
     const amount = Math.round(Number(f.get("amount")) * 100);
     if (amount < MIN_WITHDRAWAL_PAISA || amount > balance) {
-      setError(`Enter between ${taka(MIN_WITHDRAWAL_PAISA)} and ${taka(balance)}.`);
+      setError(t("Enter between {min} and {max}.", { min: taka(MIN_WITHDRAWAL_PAISA), max: taka(balance) }));
       return;
     }
     setBusy(true);
@@ -163,28 +172,28 @@ function WithdrawForm({ balance, onDone }: { balance: number; onDone: () => void
   return (
     <Card>
       <form onSubmit={submit} className="space-y-3">
-        <h2 className="font-semibold text-slate-900">Withdraw</h2>
+        <h2 className="font-semibold text-slate-900"><T>Withdraw</T></h2>
         <div className="grid gap-3 sm:grid-cols-[10rem_10rem_1fr]">
           <Field label="Amount (৳)" name="amount" type="number" min={500} max={balance / 100} step={1} required defaultValue={Math.floor(balance / 100)} />
           <Select label="Send to" value={method} onChange={(e) => setMethod(e.target.value as keyof typeof METHODS)}>
             {Object.entries(METHODS).map(([k, label]) => (
               <option key={k} value={k}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </Select>
           <Field
-            label={method === "bank" ? "Bank, branch, account name and number" : `${METHODS[method]} number`}
+            label={method === "bank" ? "Bank, branch, account name and number" : t("{method} number", { method: t(METHODS[method]) })}
             name="account"
             required
-            placeholder={method === "bank" ? "e.g. City Bank, Gulshan, A. Siddiqua, 1234567890" : "01XXXXXXXXX"}
+            placeholder={method === "bank" ? t("e.g. City Bank, Gulshan, A. Siddiqua, 1234567890") : "01XXXXXXXXX"}
           />
         </div>
         {error && <Alert>{error}</Alert>}
         <Button type="submit" disabled={busy}>
           {busy ? "Requesting…" : "Request withdrawal"}
         </Button>
-        <p className="text-xs text-slate-500">An admin sends the money and records the transaction ID here.</p>
+        <p className="text-xs text-slate-500"><T>An admin sends the money and records the transaction ID here.</T></p>
       </form>
     </Card>
   );

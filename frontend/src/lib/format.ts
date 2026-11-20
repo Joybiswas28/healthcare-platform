@@ -18,8 +18,8 @@ function lang(): Lang {
 
 export function taka(paisa: number | null | undefined): string {
   if (paisa == null) return "—";
-  const amount = (paisa / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-  return `৳${lang() === "bn" ? bnDigits(amount) : amount}`;
+  const amount = (Math.abs(paisa) / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return `${paisa < 0 ? "-" : ""}৳${lang() === "bn" ? bnDigits(amount) : amount}`;
 }
 
 // "17:00" -> "5:00 PM", or in Bangla "বিকাল ৫:০০"
@@ -77,12 +77,18 @@ export function prettyDate(iso: string | undefined, inLang?: Lang): string {
   });
 }
 
-// A timestamp shown in Dhaka time: "18 Nov, 9:41 PM".
+// A timestamp shown in Dhaka time: "18 Nov, 9:41 PM", or in Bangla
+// "১৮ নভে, রাত ৯:৪১" (the browser's Bangla format still says AM/PM).
 export function dateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(lang() === "bn" ? "bn-BD" : "en-GB", {
+  if (lang() === "bn") {
+    const day = d.toLocaleDateString("bn-BD", { day: "numeric", month: "short", timeZone: "Asia/Dhaka" });
+    const hhmm = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Dhaka" });
+    return `${day}, ${clock(hhmm)}`;
+  }
+  return d.toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
     hour: "numeric",
