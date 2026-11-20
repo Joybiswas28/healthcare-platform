@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 import { Alert, Button, Spinner } from "@/components/ui";
 import { api, errorMessage, type Hospital } from "@/lib/api/client";
 
@@ -12,6 +14,7 @@ const PLACEHOLDERS = { name: "Hospital name", location: "District or area", depa
 
 export function HospitalResults() {
   const router = useRouter();
+  const t = useT();
   const params = useSearchParams();
   const filters = Object.fromEntries(FILTERS.map((k) => [k, params.get(k) ?? ""])) as Record<(typeof FILTERS)[number], string>;
   const key = params.toString();
@@ -62,8 +65,8 @@ export function HospitalResults() {
               key={k}
               name={k}
               defaultValue={filters[k]}
-              placeholder={PLACEHOLDERS[k]}
-              aria-label={PLACEHOLDERS[k]}
+              placeholder={t(PLACEHOLDERS[k])}
+              aria-label={t(PLACEHOLDERS[k])}
               className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
             />
           ))}
@@ -72,7 +75,9 @@ export function HospitalResults() {
       </form>
 
       {error && <Alert>{error}</Alert>}
-      {!loading && !error && items.length === 0 && <p className="py-8 text-slate-600">No hospitals match this search.</p>}
+      {!loading && !error && items.length === 0 && <p className="py-8 text-slate-600">
+          <T>No hospitals match this search.</T>
+        </p>}
 
       <ul className="grid gap-3 sm:grid-cols-2">
         {items.map((h) => (
@@ -86,7 +91,7 @@ export function HospitalResults() {
                 <h2 className="font-semibold text-slate-900">{h.name}</h2>
                 <p className="text-sm text-slate-600">{[h.area, h.district].filter(Boolean).join(", ")}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {h.doctor_count ?? 0} doctors
+                  <T vars={{ n: h.doctor_count ?? 0 }}>{"{n} doctors"}</T>
                   {(h.departments ?? []).length > 0 ? ` · ${h.departments!.slice(0, 3).join(", ")}` : ""}
                   {(h.departments ?? []).length > 3 ? "…" : ""}
                 </p>

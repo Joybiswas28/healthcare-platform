@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChamberCard } from "@/components/chamber-card";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 import { Badge, Card, Spinner } from "@/components/ui";
 import { api, type PublicHospital } from "@/lib/api/client";
 import { safeExternalUrl } from "@/lib/safe-next";
@@ -12,6 +14,7 @@ import { HospitalLogo } from "../hospital-results";
 
 export function HospitalProfile() {
   const { hospitalID } = useParams<{ hospitalID: string }>();
+  const t = useT();
   const [h, setH] = useState<PublicHospital | null>(null);
   const [error, setError] = useState("");
   const [department, setDepartment] = useState("");
@@ -39,7 +42,7 @@ export function HospitalProfile() {
   return (
     <div className="space-y-6">
       <Link href="/hospitals" className="text-sm text-teal-800 hover:underline">
-        ← All hospitals
+        ← <T>All hospitals</T>
       </Link>
 
       <Card>
@@ -55,7 +58,7 @@ export function HospitalProfile() {
                 <>
                   {" · "}
                   <a href={website} target="_blank" rel="noopener noreferrer nofollow" className="text-teal-800 hover:underline">
-                    Website
+                    <T>Website</T>
                   </a>
                 </>
               )}
@@ -63,12 +66,12 @@ export function HospitalProfile() {
                 <>
                   {" · "}
                   <a href={mapLink} target="_blank" rel="noopener noreferrer nofollow" className="text-teal-800 hover:underline">
-                    Map
+                    <T>Map</T>
                   </a>
                 </>
               )}
             </p>
-            {h.visiting_hours && <p className="mt-1 text-sm text-slate-600">Visiting hours: {h.visiting_hours}</p>}
+            {h.visiting_hours && <p className="mt-1 text-sm text-slate-600"><T vars={{ hours: h.visiting_hours }}>{"Visiting hours: {hours}"}</T></p>}
           </div>
         </div>
         {h.description && <p className="mt-4 whitespace-pre-line text-sm text-slate-700">{h.description}</p>}
@@ -92,22 +95,26 @@ export function HospitalProfile() {
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Doctors and sessions</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            <T>Doctors and sessions</T>
+          </h2>
           {departments.length > 1 && (
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              aria-label="Department"
+              aria-label={t("Department")}
               className="rounded-lg border border-slate-300 bg-surface px-3 py-2 text-sm"
             >
-              <option value="">All departments</option>
+              <option value="">{t("All departments")}</option>
               {departments.map((d) => (
                 <option key={d}>{d}</option>
               ))}
             </select>
           )}
         </div>
-        {doctors.length === 0 && <p className="text-sm text-slate-600">No doctors listed yet.</p>}
+        {doctors.length === 0 && <p className="text-sm text-slate-600">
+            <T>No doctors listed yet.</T>
+          </p>}
         {doctors.map((d) => (
           <div key={d.doctor_id} className="space-y-2">
             <div>
@@ -121,7 +128,7 @@ export function HospitalProfile() {
             {(d.chambers ?? [])
               .filter((c) => c.booking_enabled !== false)
               .map((c) => (
-                <ChamberCard key={c.id} chamber={{ ...c, address: c.address ?? h.address }} title={`Chamber at ${h.name}`} />
+                <ChamberCard key={c.id} chamber={{ ...c, address: c.address ?? h.address }} title={t("Chamber at {name}", { name: h.name })} />
               ))}
           </div>
         ))}

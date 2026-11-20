@@ -4,7 +4,19 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  /* Geist has no Bangla letters, so the browser takes those from Noto Sans Bengali. */
+  --font-sans: var(--font-geist-sans), var(--font-bengali), system-ui, sans-serif;
+}
+
+/* <T> renders both languages; show the one matching <html data-lang>. */
+[data-lang="bn"] [data-l="en"],
+html:not([data-lang="bn"]) [data-l="bn"] {
+  display: none;
+}
+
+/* Bangla letters need a little more line height. */
+[data-lang="bn"] body {
+  line-height: 1.65;
 }
 
 @theme {

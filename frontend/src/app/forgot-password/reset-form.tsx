@@ -2,11 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 import { Alert, Button, Card, Field } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
 
 export function ResetForm() {
   const router = useRouter();
+  const t = useT();
   const [phone, setPhone] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,7 +25,7 @@ export function ResetForm() {
     setBusy(false);
     if (error) {
       const wait = response.headers.get("retry-after");
-      setError(response.status === 429 && wait ? `Please wait ${wait} seconds and try again.` : errorMessage(error));
+      setError(response.status === 429 && wait ? t("Please wait {wait} seconds and try again.", { wait }) : errorMessage(error));
       return;
     }
     setPhone(value);
@@ -34,7 +37,7 @@ export function ResetForm() {
     const form = new FormData(e.currentTarget);
     const password = String(form.get("password"));
     if (password !== String(form.get("confirm"))) {
-      setError("The two passwords don't match.");
+      setError(t("The two passwords don't match."));
       return;
     }
     setBusy(true);
@@ -55,7 +58,7 @@ export function ResetForm() {
       <Card>
         <form onSubmit={onReset} className="space-y-4">
           {/* The backend answers the same way for unknown numbers, so this stays vague on purpose. */}
-          <Alert kind="info">If {phone} has an account, a 6-digit code is on its way.</Alert>
+          <Alert kind="info"><T vars={{ phone }}>{"If {phone} has an account, a 6-digit code is on its way."}</T></Alert>
           <Field
             label="Verification code"
             name="code"
@@ -72,7 +75,7 @@ export function ResetForm() {
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Saving…" : "Set new password"}
           </Button>
-          <p className="text-xs text-slate-500">You will be logged out on every other device.</p>
+          <p className="text-xs text-slate-500"><T>You will be logged out on every other device.</T></p>
         </form>
       </Card>
     );

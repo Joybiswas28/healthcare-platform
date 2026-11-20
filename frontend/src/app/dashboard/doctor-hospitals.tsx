@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { T } from "@/components/t";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Invitation } from "@/lib/api/client";
 
@@ -47,7 +48,9 @@ export function DoctorHospitals() {
 
   return (
     <Card>
-      <h2 className="font-semibold text-slate-900">Hospitals</h2>
+      <h2 className="font-semibold text-slate-900">
+        <T>Hospitals</T>
+      </h2>
       {items === null ? (
         error ? <Alert>{error}</Alert> : <Spinner />
       ) : (
@@ -55,7 +58,7 @@ export function DoctorHospitals() {
           {notice && <Alert kind="info">{notice}</Alert>}
           {error && <Alert>{error}</Alert>}
           {items.length === 0 && (
-            <p className="text-sm text-slate-600">No hospital invitations. Hospitals invite you by your BMDC number.</p>
+            <p className="text-sm text-slate-600"><T>No hospital invitations. Hospitals invite you by your BMDC number.</T></p>
           )}
           {items.map((h) => (
             <div key={h.hospital_id} className="rounded-lg border border-slate-200 p-3 text-sm">

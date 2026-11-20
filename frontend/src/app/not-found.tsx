@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NotFoundCard } from "@/components/load-failure";
+import { T } from "@/components/t";
 import { Container } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Page not found" };
@@ -17,12 +18,12 @@ export default function NotFound() {
   return (
     <Container className="py-16">
       <NotFoundCard title="Page not found">
-        There is no page at this address. It may have moved, or the link has a typo.
+        <T>There is no page at this address. It may have moved, or the link has a typo.</T>
       </NotFoundCard>
       <nav className="mx-auto mt-6 flex max-w-lg flex-wrap justify-center gap-x-5 gap-y-2 text-sm" aria-label="Popular pages">
         {PLACES.map((p) => (
           <Link key={p.href} href={p.href} className="text-teal-800 hover:underline">
-            {p.label}
+            <T>{p.label}</T>
           </Link>
         ))}
       </nav>

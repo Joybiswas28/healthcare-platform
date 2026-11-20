@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import type { User } from "@/lib/api/client";
 import { useAuth } from "./auth-provider";
 import { NotificationBell } from "./notification-bell";
+import { T } from "./t";
 import { ThemeToggle } from "./theme-toggle";
+import { LangToggle, useT } from "./use-lang";
 import { Container } from "./ui";
 
 // Header and footer sit on the fixed navy "chrome" colour in both themes,
@@ -30,6 +32,7 @@ function navItems(user: User | null): NavItem[] {
 export function SiteHeader() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   // Tapping any link in the phone menu closes it. (Reading the current path to do
   // this would make the root layout dynamic under Cache Components.)
@@ -59,7 +62,9 @@ export function SiteHeader() {
             +
           </span>
           {/* The full name is long; small screens get the short form. */}
-          <span className="hidden truncate lg:inline">Digital Healthcare Platform</span>
+          <span className="hidden truncate lg:inline">
+            <T>Digital Healthcare Platform</T>
+          </span>
           <span className="lg:hidden">DHP</span>
         </Link>
 
@@ -72,12 +77,13 @@ export function SiteHeader() {
                 href={i.href}
                 className={i.accent ? "rounded-md px-2 py-1 font-medium text-teal-400 hover:bg-white/10" : navLink}
               >
-                {i.label}
+                <T>{i.label}</T>
               </Link>
             ))}
           </nav>
 
           {/* Always visible, rendered once for both layouts. */}
+          <LangToggle />
           <ThemeToggle />
           {user && <NotificationBell role={user.role} />}
 
@@ -89,16 +95,16 @@ export function SiteHeader() {
                   {firstName}
                 </Link>
                 <button onClick={onLogout} className="rounded-md px-2 py-1 text-white/60 hover:bg-white/10 hover:text-white">
-                  Log out
+                  <T>Log out</T>
                 </button>
               </>
             ) : (
               <>
                 <Link href="/login" className={navLink}>
-                  Log in
+                  <T>Log in</T>
                 </Link>
                 <Link href="/register" className="rounded-lg bg-teal-700 px-3 py-1.5 font-medium text-white hover:bg-teal-600">
-                  Sign up
+                  <T>Sign up</T>
                 </Link>
               </>
             )}
@@ -109,7 +115,7 @@ export function SiteHeader() {
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             className="grid h-9 w-9 place-items-center rounded-lg text-white hover:bg-white/10 md:hidden"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={menuOpen ? t("Close menu") : t("Open menu")}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
           >
@@ -128,7 +134,7 @@ export function SiteHeader() {
         >
           <Container className="space-y-1 py-3">
             {user && (
-              <p className="px-3 pb-1 text-xs uppercase tracking-wider text-white/50">Signed in as {user.name}</p>
+              <p className="px-3 pb-1 text-xs uppercase tracking-wider text-white/50"><T vars={{ name: user.name }}>{"Signed in as {name}"}</T></p>
             )}
             {items.map((i) => (
               <Link
@@ -137,23 +143,23 @@ export function SiteHeader() {
                 onClick={close}
                 className={`${menuLink} ${i.accent ? "font-medium text-teal-400" : ""}`}
               >
-                {i.label}
+                <T>{i.label}</T>
               </Link>
             ))}
             <div className="my-2 border-t border-white/10" />
             {loading ? null : user ? (
               <>
                 <Link href="/dashboard" onClick={close} className={menuLink}>
-                  My dashboard
+                  <T>My dashboard</T>
                 </Link>
                 <Link href="/notifications" onClick={close} className={menuLink}>
-                  Notifications
+                  <T>Notifications</T>
                 </Link>
                 <Link href="/settings" onClick={close} className={menuLink}>
-                  Account settings
+                  <T>Account settings</T>
                 </Link>
                 <button onClick={onLogout} className={`${menuLink} w-full text-left text-white/70`}>
-                  Log out
+                  <T>Log out</T>
                 </button>
               </>
             ) : (
@@ -163,14 +169,14 @@ export function SiteHeader() {
                   onClick={close}
                   className="flex-1 rounded-lg border border-white/20 px-3 py-2.5 text-center text-white hover:bg-white/10"
                 >
-                  Log in
+                  <T>Log in</T>
                 </Link>
                 <Link
                   href="/register"
                   onClick={close}
                   className="flex-1 rounded-lg bg-teal-700 px-3 py-2.5 text-center font-medium text-white hover:bg-teal-600"
                 >
-                  Sign up
+                  <T>Sign up</T>
                 </Link>
               </div>
             )}

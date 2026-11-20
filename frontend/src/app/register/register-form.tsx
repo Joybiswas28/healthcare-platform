@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { T } from "@/components/t";
+import { useT } from "@/components/use-lang";
 import { Alert, Button, Card, Field, Select } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
 
@@ -15,6 +17,7 @@ type Details = { name: string; phone: string; password: string; role: Role };
 export function RegisterForm() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const t = useT();
   const [details, setDetails] = useState<Details | null>(null);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -24,7 +27,7 @@ export function RegisterForm() {
     const { error, response } = await api.POST("/api/v1/auth/otp", { body: { phone, purpose: "register" } });
     if (response.status === 429) {
       const wait = response.headers.get("retry-after");
-      return wait ? `Please wait ${wait} seconds before asking for another code.` : errorMessage(error);
+      return wait ? t("Please wait {wait} seconds before asking for another code.", { wait }) : errorMessage(error);
     }
     return error ? errorMessage(error) : "";
   }
@@ -39,7 +42,7 @@ export function RegisterForm() {
       role: String(form.get("role")) as Role,
     };
     if (next.password !== String(form.get("confirm"))) {
-      setError("The two passwords don't match.");
+      setError(t("The two passwords don't match."));
       return;
     }
     setBusy(true);
@@ -51,7 +54,7 @@ export function RegisterForm() {
       return;
     }
     setDetails(next);
-    setInfo(`We sent a 6-digit code to ${next.phone}.`);
+    setInfo(t("We sent a 6-digit code to {phone}.", { phone: next.phone }));
   }
 
   async function onCode(e: FormEvent<HTMLFormElement>) {
@@ -63,7 +66,7 @@ export function RegisterForm() {
     const { data, error } = await api.POST("/api/v1/auth/register", { body: { ...details, otp_code: code } });
     setBusy(false);
     if (!data?.user) {
-      setError(errorMessage(error, "Could not create the account."));
+      setError(errorMessage(error, t("Could not create the account.")));
       return;
     }
     setUser(data.user);
@@ -77,7 +80,7 @@ export function RegisterForm() {
     const problem = await sendCode(details.phone);
     setBusy(false);
     if (problem) setError(problem);
-    else setInfo(`We sent a new code to ${details.phone}.`);
+    else setInfo(t("We sent a new code to {phone}.", { phone: details.phone }));
   }
 
   if (details) {
@@ -105,7 +108,7 @@ export function RegisterForm() {
               ← Change details
             </button>
             <button type="button" onClick={resend} disabled={busy} className="text-teal-800 hover:underline">
-              Send the code again
+              <T>Send the code again</T>
             </button>
           </div>
         </form>
@@ -127,11 +130,11 @@ export function RegisterForm() {
           hint="We'll send a verification code to this number."
         />
         <Select label="I am a" name="role" defaultValue="patient">
-          <option value="patient">Patient</option>
-          <option value="doctor">Doctor</option>
-          <option value="hospital_admin">Hospital administrator</option>
-          <option value="pharmacy">Pharmacy owner</option>
-          <option value="rider">Delivery rider</option>
+          <option value="patient">{t("Patient")}</option>
+          <option value="doctor">{t("Doctor")}</option>
+          <option value="hospital_admin">{t("Hospital administrator")}</option>
+          <option value="pharmacy">{t("Pharmacy owner")}</option>
+          <option value="rider">{t("Delivery rider")}</option>
         </Select>
         <Field
           label="Password"
@@ -151,7 +154,7 @@ export function RegisterForm() {
         <p className="text-center text-sm text-slate-600">
           Already have an account?{" "}
           <Link href="/login" className="text-teal-800 hover:underline">
-            Log in
+            <T>Log in</T>
           </Link>
         </p>
       </form>

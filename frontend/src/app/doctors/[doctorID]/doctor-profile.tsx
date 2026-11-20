@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChamberCard } from "@/components/chamber-card";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { T } from "@/components/t";
 import { Badge, ButtonLink, Card, Spinner } from "@/components/ui";
 import { api, type PublicDoctor } from "@/lib/api/client";
 
@@ -35,7 +36,7 @@ export function DoctorProfile() {
   return (
     <div className="space-y-6">
       <Link href="/doctors" className="text-sm text-teal-800 hover:underline">
-        ← Back to search
+        ← <T>Back to search</T>
       </Link>
 
       <Card>
@@ -43,14 +44,20 @@ export function DoctorProfile() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">{doctor.name}</h1>
             <p className="text-slate-600">
-              {[doctor.specialization, doctor.degrees].filter(Boolean).join(" · ") || "General practice"}
+              {[doctor.specialization, doctor.degrees].filter(Boolean).join(" · ") || <T>General practice</T>}
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {doctor.verification_status === "approved" && <Badge tone="teal">BMDC verified</Badge>}
-              {doctor.bmdc_reg_no && <Badge>BMDC {doctor.bmdc_reg_no}</Badge>}
-              {doctor.experience_years ? <Badge>{doctor.experience_years} years experience</Badge> : null}
+              {doctor.bmdc_reg_no && <Badge>
+                  <T vars={{ no: doctor.bmdc_reg_no }}>{"BMDC {no}"}</T>
+                </Badge>}
+              {doctor.experience_years ? <Badge>
+                  <T vars={{ n: doctor.experience_years }}>{"{n} years experience"}</T>
+                </Badge> : null}
               {doctor.consultation_enabled && (
-                <Badge tone="teal">Online consultation · {doctor.consultation_fee_tokens} tokens</Badge>
+                <Badge tone="teal">
+                  <T vars={{ n: doctor.consultation_fee_tokens }}>{"Online consultation · {n} tokens"}</T>
+                </Badge>
               )}
             </div>
           </div>
@@ -62,9 +69,11 @@ export function DoctorProfile() {
       </Card>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Chambers and sessions</h2>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <T>Chambers and sessions</T>
+        </h2>
         {chambers.length === 0 && (
-          <p className="text-sm text-slate-600">This doctor has no chambers open for booking right now.</p>
+          <p className="text-sm text-slate-600"><T>This doctor has no chambers open for booking right now.</T></p>
         )}
         <div className="grid gap-4">
           {chambers.map((c) => (

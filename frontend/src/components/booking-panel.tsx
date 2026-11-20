@@ -3,7 +3,9 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { T } from "@/components/t";
 import { Alert, Button, ButtonLink } from "@/components/ui";
+import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Appointment, type Chamber, type Schedule } from "@/lib/api/client";
 import { clock, prettyDate, taka, upcomingDates } from "@/lib/format";
 
@@ -12,6 +14,7 @@ type Availability = { remaining?: number; booked?: number; max_patients?: number
 export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chamber: Chamber }) {
   const { user, loading: authLoading } = useAuth();
   const pathname = usePathname();
+  const t = useT();
   const dates = upcomingDates(schedule.weekday ?? 0);
   const [date, setDate] = useState(dates[0] ?? "");
   const [availability, setAvailability] = useState<Availability | null>(null);
@@ -49,16 +52,17 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
   if (booked) {
     return (
       <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-        <p className="font-semibold">Booked! Your serial number is {booked.serial_no}.</p>
-        <p className="mt-1">
-          {prettyDate(booked.date)} · {clock(booked.start_time)} at {booked.chamber_name}
+        <p className="font-semibold">
+          <T vars={{ n: booked.serial_no }}>{"Booked! Your serial number is {n}."}</T>
         </p>
         <p className="mt-1">
-          Ticket code: <span className="font-mono font-semibold tracking-wider">{booked.ticket_code}</span> — show
-          this at the chamber.
+          {prettyDate(booked.date)} · {clock(booked.start_time)} · {booked.chamber_name}
+        </p>
+        <p className="mt-1">
+          <T>Ticket code:</T> <span className="font-mono font-semibold tracking-wider">{booked.ticket_code}</span> — <T>show this at the chamber.</T>
         </p>
         <ButtonLink href="/appointments" variant="secondary" className="mt-3">
-          View my appointments
+          <T>View my appointments</T>
         </ButtonLink>
       </div>
     );
@@ -69,11 +73,15 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
   return (
     <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
       {dates.length === 0 ? (
-        <p className="text-sm text-slate-600">No dates in the next 30 days.</p>
+        <p className="text-sm text-slate-600">
+          <T>No dates in the next 30 days.</T>
+        </p>
       ) : (
         <>
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Choose a date</p>
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              <T>Choose a date</T>
+            </p>
             <div className="flex flex-wrap gap-2">
               {dates.map((d) => (
                 <button
@@ -96,9 +104,9 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
           <p className="text-sm text-slate-600">
             {availability
               ? full
-                ? "This session is full. Please choose another date."
-                : `${availability.remaining} of ${availability.max_patients} serials left · fee ${taka(chamber.fee_paisa)}`
-              : "Checking serials…"}
+                ? t("This session is full. Please choose another date.")
+                : t("{left} of {max} serials left · fee {fee}", { left: availability.remaining, max: availability.max_patients, fee: taka(chamber.fee_paisa) })
+              : t("Checking serials…")}
           </p>
 
           {error && <Alert>{error}</Alert>}
@@ -109,7 +117,9 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
                 {booking ? "Booking…" : "Book serial"}
               </Button>
             ) : (
-              <p className="text-sm text-slate-600">Only patient accounts can book serials.</p>
+              <p className="text-sm text-slate-600">
+                <T>Only patient accounts can book serials.</T>
+              </p>
             )
           ) : (
             <ButtonLink href={`/login?next=${encodeURIComponent(pathname)}`}>Log in to book</ButtonLink>

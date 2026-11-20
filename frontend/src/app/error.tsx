@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { T } from "@/components/t";
 import { Button, ButtonLink, Card, Container } from "@/components/ui";
 
 // Catches crashes inside a page. The header and footer stay, so people can
@@ -19,11 +20,13 @@ export default function PageError({ error, retry }: { error: unknown; retry: () 
         <p className="text-4xl" aria-hidden>
           ⚠️
         </p>
-        <h1 className="mt-2 text-xl font-semibold text-slate-900">Something went wrong</h1>
+        <h1 className="mt-2 text-xl font-semibold text-slate-900">
+          <T>Something went wrong</T>
+        </h1>
         <p className="mt-2 text-sm text-slate-600">
-          This page hit an unexpected problem. Trying again usually helps; your data is safe.
+          <T>This page hit an unexpected problem. Trying again usually helps; your data is safe.</T>
         </p>
-        {digest && <p className="mt-2 font-mono text-xs text-slate-500">Reference: {digest}</p>}
+        {digest && <p className="mt-2 font-mono text-xs text-slate-500"><T vars={{ digest }}>{"Reference: {digest}"}</T></p>}
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Button onClick={() => retry()}>Try again</Button>
           <ButtonLink href="/" variant="secondary">

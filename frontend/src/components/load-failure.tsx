@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { errorMessage } from "@/lib/api/client";
+import { T } from "./t";
 import { Alert, ButtonLink, Card } from "./ui";
 
 // Detail pages load one record by the id in the URL. When that fails they keep
@@ -48,8 +49,10 @@ export function NotFoundCard({
       <p className="text-4xl" aria-hidden>
         🔍
       </p>
-      <h1 className="mt-2 text-xl font-semibold text-slate-900">{title}</h1>
-      {children && <p className="mt-2 text-sm text-slate-600">{children}</p>}
+      <h1 className="mt-2 text-xl font-semibold text-slate-900">
+        <T>{title}</T>
+      </h1>
+      {children && <p className="mt-2 text-sm text-slate-600">{typeof children === "string" ? <T>{children}</T> : children}</p>}
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <ButtonLink href={backHref}>{backLabel}</ButtonLink>
         {backHref !== "/" && (

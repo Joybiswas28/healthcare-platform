@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
+import { T } from "./t";
+import { useT } from "./use-lang";
 
 type Props = {
   initial?: { name?: string; specialization?: string; location?: string; online?: boolean };
@@ -11,6 +13,7 @@ type Props = {
 // the back button works.
 export function DoctorSearchForm({ initial = {} }: Props) {
   const router = useRouter();
+  const t = useT();
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,28 +34,28 @@ export function DoctorSearchForm({ initial = {} }: Props) {
   return (
     <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-surface p-3 shadow-sm">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
-        <input name="name" placeholder="Doctor's name" aria-label="Doctor's name" defaultValue={initial.name} className={input} />
+        <input name="name" placeholder={t("Doctor's name")} aria-label={t("Doctor's name")} defaultValue={initial.name} className={input} />
         <input
           name="specialization"
-          placeholder="Specialty, e.g. Cardiology"
-          aria-label="Specialty"
+          placeholder={t("Specialty, e.g. Cardiology")}
+          aria-label={t("Specialty")}
           defaultValue={initial.specialization}
           className={input}
         />
         <input
           name="location"
-          placeholder="District or area"
-          aria-label="District or area"
+          placeholder={t("District or area")}
+          aria-label={t("District or area")}
           defaultValue={initial.location}
           className={input}
         />
         <button className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-800 dark:hover:bg-teal-600">
-          Search
+          <T>Search</T>
         </button>
       </div>
       <label className="mt-2 flex items-center gap-2 px-1 text-sm text-slate-600">
         <input type="checkbox" name="online" defaultChecked={initial.online} className="accent-teal-700" />
-        Only doctors who consult online
+        <T>Only doctors who consult online</T>
       </label>
     </form>
   );

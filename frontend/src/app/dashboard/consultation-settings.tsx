@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { T } from "@/components/t";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
 
@@ -46,7 +47,9 @@ export function ConsultationSettings() {
 
   return (
     <Card>
-      <h2 className="font-semibold text-slate-900">Online consultations</h2>
+      <h2 className="font-semibold text-slate-900">
+        <T>Online consultations</T>
+      </h2>
       {!settings ? (
         error ? <Alert>{error}</Alert> : <Spinner />
       ) : (
@@ -56,7 +59,7 @@ export function ConsultationSettings() {
           )}
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="accent-teal-700" />
-            Accept online consultations
+            <T>Accept online consultations</T>
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             Fee

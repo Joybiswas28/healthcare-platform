@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { T } from "@/components/t";
 import { Alert, Button, Card, Field } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
 import { DEMO_ACCOUNTS, SHOW_DEMO_ACCOUNTS } from "@/lib/demo-accounts";
@@ -48,10 +49,10 @@ export function LoginForm() {
           </Button>
           <div className="flex justify-between text-sm">
             <Link href="/forgot-password" className="text-teal-800 hover:underline">
-              Forgot password?
+              <T>Forgot password?</T>
             </Link>
             <Link href="/register" className="text-teal-800 hover:underline">
-              Create an account
+              <T>Create an account</T>
             </Link>
           </div>
         </form>
@@ -59,15 +60,19 @@ export function LoginForm() {
 
       {SHOW_DEMO_ACCOUNTS && (
         <Card className="border-dashed">
-          <h2 className="font-semibold text-slate-900">Demo accounts</h2>
+          <h2 className="font-semibold text-slate-900">
+            <T>Demo accounts</T>
+          </h2>
           <p className="mb-3 text-xs text-slate-500">
-            Test data on this computer only; this box is hidden on a real deployment. Click to log in as:
+            <T>Test data on this computer only; this box is hidden on a real deployment. Click to log in as:</T>
           </p>
           <ul className="divide-y divide-slate-100">
             {DEMO_ACCOUNTS.map((a) => (
               <li key={a.phone} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span>
-                  <span className="font-medium text-slate-900">{a.role}</span>
+                  <span className="font-medium text-slate-900">
+                    <T>{a.role}</T>
+                  </span>
                   <span className="text-slate-600"> · {a.name}</span>
                   <span className="block font-mono text-xs text-slate-500">
                     {a.phone} / {a.password}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DoctorSearchForm } from "@/components/doctor-search-form";
+import { T } from "@/components/t";
 import { Alert, Badge, Button, Spinner } from "@/components/ui";
 import { api, errorMessage, type DoctorSummary } from "@/lib/api/client";
 import { taka } from "@/lib/format";
@@ -66,7 +67,7 @@ export function DoctorResults() {
       {error && <Alert>{error}</Alert>}
 
       {!loading && !error && doctors.length === 0 && (
-        <p className="py-8 text-slate-600">No doctors match this search. Try a different specialty or district.</p>
+        <p className="py-8 text-slate-600"><T>No doctors match this search. Try a different specialty or district.</T></p>
       )}
 
       <ul className="grid gap-3">
@@ -80,27 +81,29 @@ export function DoctorResults() {
                 <div>
                   <h2 className="font-semibold text-slate-900">{d.name}</h2>
                   <p className="text-sm text-slate-600">
-                    {[d.specialization, d.degrees].filter(Boolean).join(" · ") || "General practice"}
+                    {[d.specialization, d.degrees].filter(Boolean).join(" · ") || <T>General practice</T>}
                   </p>
                   {d.experience_years ? (
-                    <p className="mt-1 text-xs text-slate-500">{d.experience_years} years of experience</p>
+                    <p className="mt-1 text-xs text-slate-500"><T vars={{ n: d.experience_years }}>{"{n} years of experience"}</T></p>
                   ) : null}
                 </div>
                 <div className="text-right text-sm">
                   {d.min_fee_paisa != null && (
                     <p className="text-slate-700">
-                      Fee from <span className="font-semibold">{taka(d.min_fee_paisa)}</span>
+                      <T>Fee from</T> <span className="font-semibold">{taka(d.min_fee_paisa)}</span>
                     </p>
                   )}
                   {d.consultation_enabled && (
                     <p className="mt-1">
-                      <Badge tone="teal">Online · {d.consultation_fee_tokens} tokens</Badge>
+                      <Badge tone="teal">
+                        <T vars={{ n: d.consultation_fee_tokens }}>{"Online · {n} tokens"}</T>
+                      </Badge>
                     </p>
                   )}
                 </div>
               </div>
               {d.districts && d.districts.length > 0 && (
-                <p className="mt-3 text-xs text-slate-500">Chambers in {d.districts.join(", ")}</p>
+                <p className="mt-3 text-xs text-slate-500"><T vars={{ places: d.districts.join(", ") }}>{"Chambers in {places}"}</T></p>
               )}
             </Link>
           </li>

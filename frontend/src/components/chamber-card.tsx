@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Chamber } from "@/lib/api/client";
 import { clock, taka, WEEKDAYS } from "@/lib/format";
 import { BookingPanel } from "./booking-panel";
+import { T } from "./t";
 import { Card } from "./ui";
 
 // A chamber with its weekly sessions; picking a session opens the booking panel.
@@ -25,15 +26,21 @@ export function ChamberCard({ chamber: c, title }: { chamber: Chamber; title?: s
           )}
           {title && c.room && <p className="text-sm text-slate-700">{c.room}</p>}
           <p className="text-sm text-slate-600">{[c.address, c.area, c.district].filter(Boolean).join(", ")}</p>
-          {c.phone && <p className="text-xs text-slate-500">Phone {c.phone}</p>}
+          {c.phone && (
+            <p className="text-xs text-slate-500">
+              <T vars={{ phone: c.phone }}>{"Phone {phone}"}</T>
+            </p>
+          )}
         </div>
         <p className="text-sm text-slate-700">
-          Fee <span className="font-semibold">{taka(c.fee_paisa)}</span>
+          <T>Fee</T> <span className="font-semibold">{taka(c.fee_paisa)}</span>
         </p>
       </div>
 
       {schedules.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">No sessions yet.</p>
+        <p className="mt-3 text-sm text-slate-500">
+          <T>No sessions yet.</T>
+        </p>
       ) : (
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {schedules.map((s) => (
@@ -45,12 +52,16 @@ export function ChamberCard({ chamber: c, title }: { chamber: Chamber; title?: s
                 }`}
                 aria-pressed={selected === s.id}
               >
-                <span className="font-medium">{WEEKDAYS[s.weekday ?? 0]}</span>
+                <span className="font-medium">
+                  <T>{WEEKDAYS[s.weekday ?? 0]}</T>
+                </span>
                 <span className="text-slate-600">
                   {" "}
                   · {clock(s.start_time)} – {clock(s.end_time)}
                 </span>
-                <span className="block text-xs text-slate-500">Up to {s.max_patients} patients</span>
+                <span className="block text-xs text-slate-500">
+                  <T vars={{ n: s.max_patients }}>{"Up to {n} patients"}</T>
+                </span>
               </button>
             </li>
           ))}
