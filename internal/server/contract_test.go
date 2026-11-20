@@ -291,6 +291,19 @@ func TestResponsesMatchSpec(t *testing.T) {
 	c.call("GET", api+"/prescriptions/verify/"+str(rx, "code"), "", nil, 200)
 	c.call("GET", api+"/wallet/history", pt, nil, 200)
 
+	// Rating the doctor: once per finished visit, never for a cancelled one.
+	c.call("POST", api+"/appointments/"+str(appt, "id")+"/review", pt, map[string]any{"rating": 5}, 409)
+	rv := c.call("POST", api+"/consultations/"+cid+"/review", pt, map[string]any{"rating": 4, "comment": "Explained everything clearly."}, 201)
+	c.call("POST", api+"/consultations/"+cid+"/review", pt, map[string]any{"rating": 5}, 409)
+	c.call("PUT", api+"/doctor/reviews/"+str(rv, "id")+"/reply", dt, map[string]any{"reply": "Thank you, get well soon."}, 200)
+	c.call("GET", api+"/doctor/reviews", dt, nil, 200)
+	c.call("GET", api+"/reviews/mine", pt, nil, 200)
+	c.call("GET", api+"/doctors?sort=rating", "", nil, 200)
+	c.call("GET", api+"/doctors?sort=nonsense", "", nil, 422)
+	if got := c.call("GET", api+"/doctors/"+doctorID, "", nil, 200); got["rating"] != 4.0 || got["review_count"] != 1.0 {
+		t.Fatalf("doctor rating = %v from %v reviews, want 4 from 1", got["rating"], got["review_count"])
+	}
+
 	// Earnings and a withdrawal (10 tokens at 50% = BDT 500).
 	c.call("GET", api+"/doctor/earnings", dt, nil, 200)
 	wd := c.call("POST", api+"/doctor/withdrawals", dt, map[string]any{"amount_paisa": 50000, "method": "bkash", "account_details": "01711111111"}, 201)

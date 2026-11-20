@@ -227,6 +227,7 @@ paths:
         - { name: specialization, in: query, schema: { type: string } }
         - { name: location, in: query, schema: { type: string }, description: Chamber district or area }
         - { name: online, in: query, schema: { type: boolean }, description: Only doctors taking online consultations }
+        - { name: sort, in: query, schema: { type: string, enum: [rating, fee] }, description: Highest rated or lowest chamber fee first; by name when absent }
         - $ref: "#/components/parameters/limit"
         - $ref: "#/components/parameters/offset"
       responses:
@@ -431,6 +432,44 @@ paths:
       responses:
         "201": { description: Requested, content: { application/json: { schema: { $ref: "#/components/schemas/Withdrawal" } } } }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/reviews:
+    get:
+      tags: [Doctor (self)]
+      summary: Reviews patients wrote about me, newest first
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rating: { type: number, nullable: true }
+                  review_count: { type: integer }
+                  reviews: { type: array, items: { $ref: "#/components/schemas/DoctorReview" } }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/reviews/{reviewID}/reply:
+    put:
+      tags: [Doctor (self)]
+      summary: Answer a review publicly; an empty reply removes the answer
+      parameters: [{ $ref: "#/components/parameters/reviewID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reply]
+              properties:
+                reply: { type: string, maxLength: 1000 }
+      responses:
+        "200": { description: Review, content: { application/json: { schema: { $ref: "#/components/schemas/DoctorReview" } } } }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/doctor/offers:
     get:
       tags: [Concerns]
@@ -535,6 +574,31 @@ paths:
       parameters: [{ $ref: "#/components/parameters/appointmentID" }]
       responses:
         "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/appointments/{appointmentID}/review:
+    post:
+      tags: [Doctors]
+      summary: Rate the doctor once, after a completed appointment
+      parameters: [{ $ref: "#/components/parameters/appointmentID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DoctorReviewInput" } } }
+      responses:
+        "201": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/DoctorReview" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/reviews/mine:
+    get:
+      tags: [Doctors]
+      summary: Doctor reviews I have written, with the visit each belongs to
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews: { type: array, items: { $ref: "#/components/schemas/MyDoctorReview" } }
         default: { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------------ wallet & payments
@@ -736,6 +800,17 @@ paths:
       parameters: [{ $ref: "#/components/parameters/consultationID" }]
       responses:
         "200": { $ref: "#/components/responses/Consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/review:
+    post:
+      tags: [Consultations]
+      summary: Rate the doctor once, after a completed consultation
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DoctorReviewInput" } } }
+      responses:
+        "201": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/DoctorReview" } } } }
         default: { $ref: "#/components/responses/Error" }
   /api/v1/consultations/{consultationID}/messages:
     get:
@@ -2077,6 +2152,7 @@ components:
     chamberID: { name: chamberID, in: path, required: true, schema: { type: string, format: uuid } }
     scheduleID: { name: scheduleID, in: path, required: true, schema: { type: string, format: uuid } }
     appointmentID: { name: appointmentID, in: path, required: true, schema: { type: string, format: uuid } }
+    reviewID: { name: reviewID, in: path, required: true, schema: { type: string, format: uuid } }
     paymentID: { name: paymentID, in: path, required: true, schema: { type: string, format: uuid } }
     consultationID: { name: consultationID, in: path, required: true, schema: { type: string, format: uuid } }
     concernID: { name: concernID, in: path, required: true, schema: { type: string, format: uuid } }
@@ -2263,6 +2339,8 @@ components:
         consultation_enabled: { type: boolean }
         consultation_fee_tokens: { type: integer }
         commission_bps: { type: integer, nullable: true, description: Only shown to the doctor and admins }
+        rating: { type: number, nullable: true, description: Average of patients' reviews; null before the first }
+        review_count: { type: integer }
     ProfileInput:
       type: object
       required: [bmdc_reg_no, specialization, degrees]
@@ -2328,12 +2406,40 @@ components:
         min_fee_paisa: { type: integer, format: int64, nullable: true }
         consultation_enabled: { type: boolean }
         consultation_fee_tokens: { type: integer }
+        rating: { type: number, nullable: true, description: Average of patients' reviews; null before the first }
+        review_count: { type: integer }
     PublicDoctor:
       allOf:
         - $ref: "#/components/schemas/DoctorProfile"
         - type: object
           properties:
             chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
+            reviews: { type: array, items: { $ref: "#/components/schemas/DoctorReview" }, description: The latest 20 }
+    DoctorReview:
+      type: object
+      description: A patient's rating of a doctor. The patient is never named.
+      properties:
+        id: { type: string, format: uuid }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, nullable: true }
+        source: { type: string, enum: [chamber, online] }
+        reply: { type: string, nullable: true, description: The doctor's public answer }
+        replied_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    MyDoctorReview:
+      allOf:
+        - $ref: "#/components/schemas/DoctorReview"
+        - type: object
+          properties:
+            doctor_id: { type: string, format: uuid }
+            appointment_id: { type: string, format: uuid, nullable: true }
+            consultation_id: { type: string, format: uuid, nullable: true }
+    DoctorReviewInput:
+      type: object
+      required: [rating]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, maxLength: 1000 }
     AdminDoctor:
       allOf:
         - $ref: "#/components/schemas/DoctorProfile"

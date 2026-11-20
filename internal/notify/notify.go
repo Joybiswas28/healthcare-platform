@@ -41,6 +41,7 @@ const (
 	KindOfferAccepted          = "offer_accepted"
 	KindPrescriptionIssued     = "prescription_issued"
 	KindDoctorVerification     = "doctor_verification"
+	KindDoctorReview           = "doctor_review"
 	KindWithdrawalProcessed    = "withdrawal_processed"
 	KindTokenPurchaseCompleted = "token_purchase_completed"
 )

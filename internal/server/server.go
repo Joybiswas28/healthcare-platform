@@ -151,6 +151,9 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/appointments", d.Appointments.Book)
 				r.Get("/appointments", d.Appointments.Mine)
 				r.Post("/appointments/{appointmentID}/cancel", d.Appointments.Cancel)
+				r.Post("/appointments/{appointmentID}/review", d.Doctors.ReviewAppointment)
+				r.Post("/consultations/{consultationID}/review", d.Doctors.ReviewConsultation)
+				r.Get("/reviews/mine", d.Doctors.MyReviews)
 
 				r.Get("/wallet", d.Wallet.Wallet)
 				r.Get("/wallet/history", d.Wallet.History)
@@ -256,6 +259,8 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/withdrawals", d.Wallet.RequestWithdrawal)
 				r.Get("/withdrawals", d.Wallet.MyWithdrawals)
 				r.Get("/offers", d.Consultations.MyOffers)
+				r.Get("/reviews", d.Doctors.DoctorReviews)
+				r.Put("/reviews/{reviewID}/reply", d.Doctors.ReplyToReview)
 				r.Get("/hospitals", d.Hospitals.Invitations)
 				r.Post("/hospitals/{hospitalID}/accept", d.Hospitals.AcceptInvitation())
 				r.Post("/hospitals/{hospitalID}/decline", d.Hospitals.DeclineInvitation())

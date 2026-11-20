@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -37,6 +38,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		Specialization: q.Get("specialization"),
 		Location:       q.Get("location"),
 		OnlineOnly:     q.Get("online") == "true",
+		Sort:           q.Get("sort"),
 		Limit:          limit,
 		Offset:         offset,
 	})
@@ -241,4 +243,84 @@ func (h *Handler) AdminVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusOK, p)
+}
+
+// ---- reviews
+
+// POST /appointments/{appointmentID}/review
+func (h *Handler) ReviewAppointment(w http.ResponseWriter, r *http.Request) {
+	h.addReview(w, r, "appointmentID", h.store.ReviewAppointment)
+}
+
+// POST /consultations/{consultationID}/review
+func (h *Handler) ReviewConsultation(w http.ResponseWriter, r *http.Request) {
+	h.addReview(w, r, "consultationID", h.store.ReviewConsultation)
+}
+
+func (h *Handler) addReview(w http.ResponseWriter, r *http.Request, param string,
+	add func(ctx context.Context, patientID, visitID string, in ReviewInput) (Review, error)) {
+	id, err := httpx.PathUUID(r, param)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	var in ReviewInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	v, err := add(r.Context(), callerID(r), id, in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusCreated, v)
+}
+
+// GET /reviews/mine
+func (h *Handler) MyReviews(w http.ResponseWriter, r *http.Request) {
+	vs, err := h.store.MyReviews(r.Context(), callerID(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"reviews": vs})
+}
+
+// GET /doctor/reviews
+func (h *Handler) DoctorReviews(w http.ResponseWriter, r *http.Request) {
+	limit, offset := httpx.Page(r)
+	p, err := h.store.GetProfile(r.Context(), callerID(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	vs, err := h.store.DoctorReviews(r.Context(), callerID(r), limit, offset)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"rating": p.Rating, "review_count": p.ReviewCount, "reviews": vs, "limit": limit, "offset": offset,
+	})
+}
+
+// PUT /doctor/reviews/{reviewID}/reply
+func (h *Handler) ReplyToReview(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "reviewID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	var in ReplyInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	v, err := h.store.Reply(r.Context(), callerID(r), id, in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, v)
 }

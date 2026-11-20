@@ -25,7 +25,9 @@ var errDoctorNotFound = apperr.NotFound("doctor not found")
 
 const profileColumns = `u.id, u.name, d.bmdc_reg_no, d.specialization, d.degrees, d.experience_years,
        d.bio, d.verification_status, d.verification_note,
-       d.consultation_enabled, d.consultation_fee_tokens, d.commission_bps`
+       d.consultation_enabled, d.consultation_fee_tokens, d.commission_bps,
+       (SELECT avg(rv.rating)::float8 FROM doctor_reviews rv WHERE rv.doctor_id = u.id),
+       (SELECT count(*) FROM doctor_reviews rv WHERE rv.doctor_id = u.id)`
 
 const profileSelect = `SELECT ` + profileColumns + `
 FROM doctor_profiles d
@@ -34,7 +36,8 @@ JOIN users u ON u.id = d.user_id`
 func profileDest(p *Profile) []any {
 	return []any{&p.UserID, &p.Name, &p.BMDCRegNo, &p.Specialization, &p.Degrees,
 		&p.ExperienceYears, &p.Bio, &p.VerificationStatus, &p.VerificationNote,
-		&p.ConsultationEnabled, &p.ConsultationFeeTokens, &p.CommissionBps}
+		&p.ConsultationEnabled, &p.ConsultationFeeTokens, &p.CommissionBps,
+		&p.Rating, &p.ReviewCount}
 }
 
 func scanProfile(row pgx.Row) (Profile, error) {
@@ -387,15 +390,29 @@ type SearchParams struct {
 	Specialization string
 	Location       string // matches chamber district or area
 	OnlineOnly     bool   // only doctors taking online consultations
+	Sort           string // "" (by name), "rating" or "fee"
 	Limit, Offset  int
+}
+
+// searchOrder maps SearchParams.Sort to an ORDER BY clause.
+var searchOrder = map[string]string{
+	"":       "u.name, u.id",
+	"rating": "rating DESC NULLS LAST, review_count DESC, u.name, u.id",
+	"fee":    "MIN(c.fee_paisa) NULLS LAST, u.name, u.id",
 }
 
 // Search lists approved, active doctors.
 func (s *Store) Search(ctx context.Context, p SearchParams) ([]Summary, error) {
+	order, ok := searchOrder[p.Sort]
+	if !ok {
+		return nil, apperr.Validation("sort must be rating or fee")
+	}
 	rows, err := s.db.Query(ctx, `
 		SELECT u.id, u.name, d.specialization, d.degrees, d.experience_years,
 		       COALESCE(array_agg(DISTINCT c.district) FILTER (WHERE c.id IS NOT NULL), '{}')::text[],
-		       MIN(c.fee_paisa), d.consultation_enabled, d.consultation_fee_tokens
+		       MIN(c.fee_paisa), d.consultation_enabled, d.consultation_fee_tokens,
+		       (SELECT avg(rv.rating)::float8 FROM doctor_reviews rv WHERE rv.doctor_id = u.id) AS rating,
+		       (SELECT count(*) FROM doctor_reviews rv WHERE rv.doctor_id = u.id) AS review_count
 		FROM doctor_profiles d
 		JOIN users u ON u.id = d.user_id
 		LEFT JOIN chambers c ON c.doctor_id = d.user_id AND `+LiveChamberSQL("c")+`
@@ -409,7 +426,7 @@ func (s *Store) Search(ctx context.Context, p SearchParams) ([]Summary, error) {
 		          AND (c2.district ILIKE $3 OR c2.area ILIKE $3)))
 		GROUP BY u.id, u.name, d.specialization, d.degrees, d.experience_years,
 		         d.consultation_enabled, d.consultation_fee_tokens
-		ORDER BY u.name, u.id
+		ORDER BY `+order+`
 		LIMIT $4 OFFSET $5`,
 		containsPattern(p.Name), containsPattern(p.Specialization), containsPattern(p.Location),
 		p.Limit, p.Offset, p.OnlineOnly)
@@ -419,7 +436,8 @@ func (s *Store) Search(ctx context.Context, p SearchParams) ([]Summary, error) {
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Summary, error) {
 		var sm Summary
 		err := r.Scan(&sm.ID, &sm.Name, &sm.Specialization, &sm.Degrees, &sm.ExperienceYears,
-			&sm.Districts, &sm.MinFeePaisa, &sm.ConsultationEnabled, &sm.ConsultationFeeTokens)
+			&sm.Districts, &sm.MinFeePaisa, &sm.ConsultationEnabled, &sm.ConsultationFeeTokens,
+			&sm.Rating, &sm.ReviewCount)
 		return sm, err
 	})
 }
@@ -438,7 +456,11 @@ func (s *Store) GetPublic(ctx context.Context, doctorID string) (PublicDoctor, e
 	if err != nil {
 		return PublicDoctor{}, err
 	}
-	return PublicDoctor{Profile: p, Chambers: chambers}, nil
+	reviews, err := s.DoctorReviews(ctx, doctorID, maxPublicReviews, 0)
+	if err != nil {
+		return PublicDoctor{}, err
+	}
+	return PublicDoctor{Profile: p, Chambers: chambers, Reviews: reviews}, nil
 }
 
 // ---------------------------------------------------------------- admin

@@ -31,6 +31,9 @@ type Profile struct {
 	ConsultationEnabled   bool `json:"consultation_enabled"`
 	ConsultationFeeTokens int  `json:"consultation_fee_tokens"`
 	CommissionBps         *int `json:"commission_bps,omitempty"` // shown to the doctor and admins only
+
+	Rating      *float64 `json:"rating"` // average of patients' reviews; null before the first
+	ReviewCount int      `json:"review_count"`
 }
 
 type ConsultationSettingsInput struct {
@@ -81,11 +84,15 @@ type Summary struct {
 
 	ConsultationEnabled   bool `json:"consultation_enabled"`
 	ConsultationFeeTokens int  `json:"consultation_fee_tokens"`
+
+	Rating      *float64 `json:"rating"`
+	ReviewCount int      `json:"review_count"`
 }
 
 type PublicDoctor struct {
 	Profile
 	Chambers []Chamber `json:"chambers"`
+	Reviews  []Review  `json:"reviews"` // the latest ones
 }
 
 type AdminDoctor struct {
