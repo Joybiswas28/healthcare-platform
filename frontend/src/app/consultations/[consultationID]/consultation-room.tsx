@@ -6,10 +6,11 @@ import { useCallback, useEffect, useState } from "react";
 import { ConsultationBadge } from "@/components/consultation-status";
 import { RequireAuth } from "@/components/require-auth";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
-import { ButtonLink, Card, Spinner } from "@/components/ui";
+import { RatingForm, StarRow } from "@/components/rating";
+import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
 import { PrescriptionList } from "@/app/prescriptions/prescription-list";
 import { useT } from "@/components/use-lang";
-import { api, type Consultation, type User } from "@/lib/api/client";
+import { api, errorMessage, type Consultation, type User } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
 import { Actions } from "./actions";
 import { Chat } from "./chat";
@@ -79,6 +80,8 @@ function Room({ user }: { user: User }) {
         <Actions consultation={c} asDoctor={asDoctor} onChange={setC} />
       </Card>
 
+      {!asDoctor && c.status === "completed" && <RateConsultation consultation={c} />}
+
       {showChat && <Chat consultation={c} me={user} />}
 
       {(c.status === "active" || c.status === "completed") && (
@@ -96,5 +99,49 @@ function Room({ user }: { user: User }) {
         </section>
       )}
     </div>
+  );
+}
+
+// After a completed consultation the patient can rate the doctor once.
+function RateConsultation({ consultation: c }: { consultation: Consultation }) {
+  // undefined while loading, 0 when not rated yet
+  const [mine, setMine] = useState<number | undefined>(undefined);
+  const [justRated, setJustRated] = useState(false);
+
+  useEffect(() => {
+    api.GET("/api/v1/reviews/mine").then(({ data }) => {
+      setMine((data?.reviews ?? []).find((r) => r.consultation_id === c.id)?.rating ?? 0);
+    });
+  }, [c.id]);
+
+  async function send(rating: number, comment: string | undefined): Promise<string> {
+    const { data, error } = await api.POST("/api/v1/consultations/{consultationID}/review", {
+      params: { path: { consultationID: c.id ?? "" } },
+      body: { rating, comment },
+    });
+    if (!data) return errorMessage(error);
+    setMine(rating);
+    setJustRated(true);
+    return "";
+  }
+
+  if (mine === undefined) return null;
+  if (mine > 0) {
+    return justRated ? (
+      <Alert kind="success">Thanks for rating the doctor.</Alert>
+    ) : (
+      <p className="flex items-center gap-2 text-sm text-slate-600">
+        <T>You rated this consultation</T> <StarRow rating={mine} />
+      </p>
+    );
+  }
+  return (
+    <Card>
+      <RatingForm
+        title="Rate the doctor"
+        hint={<T vars={{ name: c.doctor_name ?? "" }}>{"How was your consultation with {name}? Your name is not shown with the review."}</T>}
+        send={send}
+      />
+    </Card>
   );
 }

@@ -6,7 +6,7 @@ import { T } from "./t";
 import { useT } from "./use-lang";
 
 type Props = {
-  initial?: { name?: string; specialization?: string; location?: string; online?: boolean };
+  initial?: { name?: string; specialization?: string; location?: string; online?: boolean; sort?: string };
 };
 
 // Submits to /doctors with the filters in the URL, so results can be shared and
@@ -19,7 +19,7 @@ export function DoctorSearchForm({ initial = {} }: Props) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const params = new URLSearchParams();
-    for (const key of ["name", "specialization", "location"]) {
+    for (const key of ["name", "specialization", "location", "sort"]) {
       const value = String(form.get(key) ?? "").trim();
       if (value) params.set(key, value);
     }
@@ -53,10 +53,25 @@ export function DoctorSearchForm({ initial = {} }: Props) {
           <T>Search</T>
         </button>
       </div>
-      <label className="mt-2 flex items-center gap-2 px-1 text-sm text-slate-600">
-        <input type="checkbox" name="online" defaultChecked={initial.online} className="accent-teal-700" />
-        <T>Only doctors who consult online</T>
-      </label>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-slate-600">
+        <label className="flex items-center gap-2">
+          <input type="checkbox" name="online" defaultChecked={initial.online} className="accent-teal-700" />
+          <T>Only doctors who consult online</T>
+        </label>
+        <label className="flex items-center gap-2">
+          <T>Sort by</T>
+          <select
+            name="sort"
+            defaultValue={initial.sort ?? ""}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
+            className="rounded-lg border border-slate-300 bg-surface px-2 py-1 text-sm outline-none focus:border-teal-600"
+          >
+            <option value="">{t("Name")}</option>
+            <option value="rating">{t("Highest rated")}</option>
+            <option value="fee">{t("Lowest fee")}</option>
+          </select>
+        </label>
+      </div>
     </form>
   );
 }

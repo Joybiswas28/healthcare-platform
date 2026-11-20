@@ -67,6 +67,7 @@ function Dashboard({ user }: { user: User }) {
           <ConsultationSettings />
           <Tile title="Earnings" body="Online consultation earnings and withdrawals to bKash, Nagad or bank." href="/doctor/earnings" cta="Open" />
           <Tile title="Professional profile" body="BMDC number, specialty, degrees and the bio patients see." href="/doctor/profile" cta="Edit" />
+          <Tile title="Reviews" body="What patients say after a visit or consultation. Reply to thank them or explain." href="/doctor/reviews" cta="Open" />
           <Tile title="My patients" body="Today's chamber list in serial order. Look up a ticket, mark patients seen, prescribe." href="/patients" cta="Open" primary />
           <Tile title="Consultations" body="New requests, active chats and completed consultations." href="/consultations" cta="Open" primary />
           <Tile title="Prescriptions" body="Prescriptions you issued. Print or revoke them." href="/prescriptions" cta="Open" />

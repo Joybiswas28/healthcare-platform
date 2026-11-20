@@ -483,6 +483,8 @@ export interface paths {
                     location?: string;
                     /** @description Only doctors taking online consultations */
                     online?: boolean;
+                    /** @description Highest rated or lowest chamber fee first; by name when absent */
+                    sort?: "rating" | "fee";
                     limit?: components["parameters"]["limit"];
                     offset?: components["parameters"]["offset"];
                 };
@@ -1089,6 +1091,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/doctor/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reviews patients wrote about me, newest first */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: components["parameters"]["limit"];
+                    offset?: components["parameters"]["offset"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Reviews */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            rating?: number | null;
+                            review_count?: number;
+                            reviews?: components["schemas"]["DoctorReview"][];
+                            limit?: number;
+                            offset?: number;
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor/reviews/{reviewID}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Answer a review publicly; an empty reply removes the answer */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    reviewID: components["parameters"]["reviewID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        reply: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Review */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DoctorReview"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/doctor/offers": {
         parameters: {
             query?: never;
@@ -1372,6 +1465,88 @@ export interface paths {
                 default: components["responses"]["Error"];
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{appointmentID}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rate the doctor once, after a completed appointment */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    appointmentID: components["parameters"]["appointmentID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DoctorReviewInput"];
+                };
+            };
+            responses: {
+                /** @description Saved */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DoctorReview"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reviews/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Doctor reviews I have written, with the visit each belongs to */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Reviews */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            reviews?: components["schemas"]["MyDoctorReview"][];
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1994,6 +2169,49 @@ export interface paths {
             requestBody?: never;
             responses: {
                 200: components["responses"]["Consultation"];
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consultations/{consultationID}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rate the doctor once, after a completed consultation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    consultationID: components["parameters"]["consultationID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DoctorReviewInput"];
+                };
+            };
+            responses: {
+                /** @description Saved */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DoctorReview"];
+                    };
+                };
                 default: components["responses"]["Error"];
             };
         };
@@ -5602,6 +5820,9 @@ export interface components {
             consultation_fee_tokens?: number;
             /** @description Only shown to the doctor and admins */
             commission_bps?: number | null;
+            /** @description Average of patients' reviews; null before the first */
+            rating?: number | null;
+            review_count?: number;
         };
         ProfileInput: {
             /** @example A-12345 */
@@ -5677,9 +5898,41 @@ export interface components {
             min_fee_paisa?: number | null;
             consultation_enabled?: boolean;
             consultation_fee_tokens?: number;
+            /** @description Average of patients' reviews; null before the first */
+            rating?: number | null;
+            review_count?: number;
         };
         PublicDoctor: components["schemas"]["DoctorProfile"] & {
             chambers?: components["schemas"]["Chamber"][];
+            /** @description The latest 20 */
+            reviews?: components["schemas"]["DoctorReview"][];
+        };
+        /** @description A patient's rating of a doctor. The patient is never named. */
+        DoctorReview: {
+            /** Format: uuid */
+            id?: string;
+            rating?: number;
+            comment?: string | null;
+            /** @enum {string} */
+            source?: "chamber" | "online";
+            /** @description The doctor's public answer */
+            reply?: string | null;
+            /** Format: date-time */
+            replied_at?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        MyDoctorReview: components["schemas"]["DoctorReview"] & {
+            /** Format: uuid */
+            doctor_id?: string;
+            /** Format: uuid */
+            appointment_id?: string | null;
+            /** Format: uuid */
+            consultation_id?: string | null;
+        };
+        DoctorReviewInput: {
+            rating: number;
+            comment?: string;
         };
         AdminDoctor: components["schemas"]["DoctorProfile"] & {
             phone?: string;
@@ -6592,6 +6845,7 @@ export interface components {
         chamberID: string;
         scheduleID: string;
         appointmentID: string;
+        reviewID: string;
         paymentID: string;
         consultationID: string;
         concernID: string;

@@ -10,7 +10,7 @@ import { useT } from "@/components/use-lang";
 import { api, errorMessage, type MedicineRequest, type Quote } from "@/lib/api/client";
 import { dateTime, taka } from "@/lib/format";
 import { km } from "@/lib/geo";
-import { Stars } from "@/app/pharmacies/nearby-pharmacies";
+import { Stars } from "@/components/rating";
 import { T } from "@/components/t";
 
 const POLL_MS = 15000;

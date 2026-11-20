@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { RatingForm, StarRow } from "@/components/rating";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
@@ -25,6 +26,9 @@ export function AppointmentList() {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState<string | null>(null);
+  // appointment id -> the rating the patient gave; undefined until loaded
+  const [ratings, setRatings] = useState<Record<string, number> | undefined>(undefined);
+  const [rating, setRating] = useState<string | null>(null);
 
   async function load(offset: number) {
     setLoading(true);
@@ -44,7 +48,23 @@ export function AppointmentList() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load(0);
+    api.GET("/api/v1/reviews/mine").then(({ data }) => {
+      const out: Record<string, number> = {};
+      for (const r of data?.reviews ?? []) if (r.appointment_id) out[r.appointment_id] = r.rating ?? 0;
+      setRatings(out);
+    });
   }, []);
+
+  async function sendReview(a: Appointment, stars: number, comment: string | undefined): Promise<string> {
+    const { data, error } = await api.POST("/api/v1/appointments/{appointmentID}/review", {
+      params: { path: { appointmentID: a.id ?? "" } },
+      body: { rating: stars, comment },
+    });
+    if (!data) return errorMessage(error);
+    setRatings((prev) => ({ ...prev, [a.id ?? ""]: stars }));
+    setRating(null);
+    return "";
+  }
 
   async function cancel(a: Appointment) {
     if (!a.id || !confirm(t("Cancel your serial with {doctor} on {date}?", { doctor: a.doctor_name, date: prettyDate(a.date) }))) return;
@@ -120,7 +140,29 @@ export function AppointmentList() {
                   {cancelling === a.id ? "Cancelling…" : "Cancel"}
                 </Button>
               )}
+              {a.status === "completed" && ratings && a.id && (
+                ratings[a.id] ? (
+                  <span className="flex items-center gap-2 text-xs text-slate-500">
+                    <T>You rated</T> <StarRow rating={ratings[a.id]} />
+                  </span>
+                ) : (
+                  rating !== a.id && (
+                    <Button variant="secondary" onClick={() => setRating(a.id ?? null)}>
+                      Rate the doctor
+                    </Button>
+                  )
+                )
+              )}
             </div>
+            {rating === a.id && a.id && !ratings?.[a.id] && (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <RatingForm
+                  title="How was your visit?"
+                  hint={<T>Your name is not shown with the review.</T>}
+                  send={(stars, comment) => sendReview(a, stars, comment)}
+                />
+              </div>
+            )}
           </Card>
         );
       })}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DoctorSearchForm } from "@/components/doctor-search-form";
+import { Stars } from "@/components/rating";
 import { T } from "@/components/t";
 import { Alert, Badge, Button, Spinner } from "@/components/ui";
 import { api, errorMessage, type DoctorSummary } from "@/lib/api/client";
@@ -17,6 +18,8 @@ export function DoctorResults() {
   const specialization = params.get("specialization") ?? "";
   const location = params.get("location") ?? "";
   const online = params.get("online") === "true";
+  const sortParam = params.get("sort");
+  const sort = sortParam === "rating" || sortParam === "fee" ? sortParam : undefined;
 
   const [doctors, setDoctors] = useState<DoctorSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +36,7 @@ export function DoctorResults() {
           specialization: specialization || undefined,
           location: location || undefined,
           online: online || undefined,
+          sort,
           limit: PAGE_SIZE,
           offset,
         },
@@ -53,14 +57,14 @@ export function DoctorResults() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, specialization, location, online]);
+  }, [name, specialization, location, online, sort]);
 
   return (
     <>
       <div className="mb-6">
         <DoctorSearchForm
           key={params.toString()}
-          initial={{ name, specialization, location, online }}
+          initial={{ name, specialization, location, online, sort }}
         />
       </div>
 
@@ -82,6 +86,9 @@ export function DoctorResults() {
                   <h2 className="font-semibold text-slate-900">{d.name}</h2>
                   <p className="text-sm text-slate-600">
                     {[d.specialization, d.degrees].filter(Boolean).join(" · ") || <T>General practice</T>}
+                  </p>
+                  <p className="mt-1">
+                    <Stars rating={d.rating} count={d.review_count} />
                   </p>
                   {d.experience_years ? (
                     <p className="mt-1 text-xs text-slate-500"><T vars={{ n: d.experience_years }}>{"{n} years of experience"}</T></p>

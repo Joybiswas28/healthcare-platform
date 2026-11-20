@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { isActiveOrder, OrderBadge, OrderTimeline } from "@/components/order-status";
 import { RequireAuth } from "@/components/require-auth";
-import { TextArea } from "@/components/textarea";
+import { RatingForm } from "@/components/rating";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { useT } from "@/components/use-lang";
@@ -163,52 +163,19 @@ function Detail() {
 }
 
 function ReviewForm({ orderID, onDone }: { orderID: string; onDone: () => void }) {
-  const t = useT();
-  const [rating, setRating] = useState(0);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!rating) {
-      setError(t("Pick 1 to 5 stars."));
-      return;
-    }
-    setBusy(true);
+  async function send(rating: number, comment: string | undefined): Promise<string> {
     const { error } = await api.POST("/api/v1/medicine-orders/{orderID}/review", {
       params: { path: { orderID } },
-      body: { rating, comment: String(new FormData(e.currentTarget).get("comment")).trim() || undefined },
+      body: { rating, comment },
     });
-    setBusy(false);
-    if (error) setError(errorMessage(error));
-    else onDone();
+    if (error) return errorMessage(error);
+    onDone();
+    return "";
   }
 
   return (
     <Card>
-      <form onSubmit={submit} className="space-y-3">
-        <h2 className="font-semibold text-slate-900"><T>Rate the pharmacy</T></h2>
-        <div className="flex gap-1" role="radiogroup" aria-label={t("Rating")}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              type="button"
-              key={n}
-              role="radio"
-              aria-checked={rating === n}
-              aria-label={`${n} star${n > 1 ? "s" : ""}`}
-              onClick={() => setRating(n)}
-              className={`text-3xl ${n <= rating ? "text-amber-500" : "text-slate-300"}`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
-        <TextArea label="Comment (optional)" name="comment" rows={2} maxLength={1000} />
-        {error && <Alert>{error}</Alert>}
-        <Button type="submit" disabled={busy}>
-          {busy ? "Saving…" : "Submit rating"}
-        </Button>
-      </form>
+      <RatingForm title="Rate the pharmacy" send={send} />
     </Card>
   );
 }

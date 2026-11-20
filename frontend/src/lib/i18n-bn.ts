@@ -1026,4 +1026,36 @@ export const BN: Record<string, string> = {
   "From": "থেকে",
   "To": "পর্যন্ত",
   "tokens (1 token = {amount})": "টোকেন (১ টোকেন = {amount})",
+
+  // Doctor ratings and reviews
+  "{n} out of 5": "৫-এর মধ্যে {n}",
+  "Online consultation": "অনলাইন পরামর্শ",
+  "Chamber visit": "চেম্বারে দেখানো",
+  "Doctor's reply": "ডাক্তারের উত্তর",
+  "Patient reviews": "রোগীদের রিভিউ",
+  "Your reply": "আপনার উত্তর",
+  "Post reply": "উত্তর দিন",
+  "Edit reply": "উত্তর বদলান",
+  "Remove reply": "উত্তর মুছুন",
+  Reply: "উত্তর দিন",
+  "Patients see these on your profile, without their names. Your replies are public too.":
+    "রোগীরা আপনার প্রোফাইলে এগুলো দেখেন, তাঁদের নাম ছাড়া। আপনার উত্তরও সবাই দেখতে পান।",
+  "No reviews yet. Patients can rate you after a completed appointment or consultation.":
+    "এখনো কোনো রিভিউ নেই। অ্যাপয়েন্টমেন্ট বা পরামর্শ শেষ হলে রোগীরা রেটিং দিতে পারেন।",
+  "How was your visit?": "ডাক্তার দেখানো কেমন হলো?",
+  "You rated": "আপনার রেটিং",
+  "Your name is not shown with the review.": "রিভিউয়ের সাথে আপনার নাম দেখানো হয় না।",
+  "Rate the doctor": "ডাক্তারকে রেটিং দিন",
+  "How was your consultation with {name}? Your name is not shown with the review.":
+    "{name}-এর সাথে পরামর্শ কেমন হলো? রিভিউয়ের সাথে আপনার নাম দেখানো হয় না।",
+  "You rated this consultation": "এই পরামর্শে আপনার রেটিং",
+  "Thanks for rating the doctor.": "ডাক্তারকে রেটিং দেওয়ার জন্য ধন্যবাদ।",
+  "Only patients who visited or consulted this doctor can review. Their names are not shown.":
+    "শুধু যে রোগীরা এই ডাক্তারকে দেখিয়েছেন বা পরামর্শ নিয়েছেন, তাঁরাই রিভিউ দিতে পারেন। তাঁদের নাম দেখানো হয় না।",
+  "Sort by": "সাজান",
+  "Highest rated": "সর্বোচ্চ রেটিং",
+  "Lowest fee": "সবচেয়ে কম ফি",
+  "What patients say after a visit or consultation. Reply to thank them or explain.":
+    "ডাক্তার দেখানো বা পরামর্শের পর রোগীরা যা বলেন। ধন্যবাদ জানাতে বা ব্যাখ্যা দিতে উত্তর দিন।",
+  "New review": "নতুন রিভিউ",
 };

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChamberCard } from "@/components/chamber-card";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { DoctorReviewCard, Stars } from "@/components/rating";
 import { T } from "@/components/t";
 import { Badge, ButtonLink, Card, Spinner } from "@/components/ui";
 import { api, type PublicDoctor } from "@/lib/api/client";
@@ -46,6 +47,9 @@ export function DoctorProfile() {
             <p className="text-slate-600">
               {[doctor.specialization, doctor.degrees].filter(Boolean).join(" · ") || <T>General practice</T>}
             </p>
+            <p className="mt-1">
+              <Stars rating={doctor.rating} count={doctor.review_count} />
+            </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {doctor.verification_status === "approved" && <Badge tone="teal">BMDC verified</Badge>}
               {doctor.bmdc_reg_no && <Badge>
@@ -80,6 +84,27 @@ export function DoctorProfile() {
             <ChamberCard key={c.id} chamber={c} />
           ))}
         </div>
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">
+          <T>Patient reviews</T>
+        </h2>
+        <p className="mb-3 text-xs text-slate-500">
+          <T>Only patients who visited or consulted this doctor can review. Their names are not shown.</T>
+        </p>
+        {(doctor.reviews ?? []).length === 0 && (
+          <p className="text-sm text-slate-600">
+            <T>No reviews yet.</T>
+          </p>
+        )}
+        <ul className="space-y-2">
+          {(doctor.reviews ?? []).map((r) => (
+            <li key={r.id}>
+              <DoctorReviewCard review={r} />
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

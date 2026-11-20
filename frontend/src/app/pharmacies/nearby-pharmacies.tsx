@@ -7,6 +7,7 @@ import { Alert, Badge, Button, ButtonLink, Card, Select } from "@/components/ui"
 import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Pharmacy } from "@/lib/api/client";
 import { km, type Coords } from "@/lib/geo";
+import { Stars } from "@/components/rating";
 import { T } from "@/components/t";
 
 export function NearbyPharmacies() {
@@ -72,18 +73,6 @@ export function NearbyPharmacies() {
         ))}
       </ul>
     </div>
-  );
-}
-
-export function Stars({ rating, count }: { rating?: number | null; count?: number }) {
-  if (!count || rating == null) return <span className="text-xs text-slate-500"><T>No reviews yet</T></span>;
-  return (
-    <span className="text-sm text-slate-700">
-      <span className="text-amber-500" aria-hidden>
-        ★
-      </span>{" "}
-      {rating.toFixed(1)} <span className="text-xs text-slate-500">({count})</span>
-    </span>
   );
 }
 

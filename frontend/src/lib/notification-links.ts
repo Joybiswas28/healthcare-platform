@@ -26,6 +26,8 @@ export function notificationHref(kind: string | undefined, role: Role | undefine
       return "/doctor/earnings";
     case "doctor_verification":
       return "/doctor/profile";
+    case "doctor_review":
+      return "/doctor/reviews";
     case "hospital_invitation":
       return "/dashboard";
     case "hospital_verification":
