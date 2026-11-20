@@ -259,8 +259,88 @@ export interface paths {
                 default: components["responses"]["Error"];
             };
         };
-        put?: never;
+        /**
+         * Change my name and email
+         * @description The phone number is the login and is not changed here. An empty email removes it; 409 if another account uses it.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** @description Empty to remove */
+                        email?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description The updated user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change my password
+         * @description Needs the current password (422 if wrong; rate limited). Signs out every other session and returns a fresh
+         *     token for this one.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        current_password: string;
+                        new_password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Password changed; new token */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthResult"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

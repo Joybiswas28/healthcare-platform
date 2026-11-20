@@ -31,11 +31,16 @@ function Tile({ title, body, href, cta, primary }: { title: string; body: string
 function Dashboard({ user }: { user: User }) {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Hello, {user.name}</h1>
-        <p className="text-sm text-slate-600">
-          {ROLE_LABELS[user.role ?? ""] ?? user.role} · {user.phone}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Hello, {user.name}</h1>
+          <p className="text-sm text-slate-600">
+            {ROLE_LABELS[user.role ?? ""] ?? user.role} · {user.phone}
+          </p>
+        </div>
+        <ButtonLink href="/settings" variant="secondary">
+          ⚙️ Account settings
+        </ButtonLink>
       </div>
 
       {user.role === "patient" && (

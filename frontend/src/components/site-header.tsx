@@ -149,6 +149,9 @@ export function SiteHeader() {
                 <Link href="/notifications" onClick={close} className={menuLink}>
                   Notifications
                 </Link>
+                <Link href="/settings" onClick={close} className={menuLink}>
+                  Account settings
+                </Link>
                 <button onClick={onLogout} className={`${menuLink} w-full text-left text-white/70`}>
                   Log out
                 </button>

@@ -7,7 +7,8 @@ import { API_URL, SESSION_COOKIE, isSameOrigin, sessionCookieOptions } from "@/l
 
 // Responses that hand out a token. The proxy keeps the token in the cookie and
 // removes it from the JSON the browser receives.
-const TOKEN_ROUTES = new Set(["auth/login", "auth/register"]);
+// A password change returns a fresh token too (the old one stops working).
+const TOKEN_ROUTES = new Set(["auth/login", "auth/register", "me/password"]);
 
 // Request headers worth passing on. Everything else (cookies, the browser's own
 // Authorization header, hop-by-hop headers) is dropped.
