@@ -195,7 +195,7 @@ func TestResponsesMatchSpec(t *testing.T) {
 	ds, as, ws := doctor.NewStore(pool), appointment.NewStore(pool), wallet.NewStore(pool)
 	router := NewRouter(Deps{
 		Log: log, DB: pool, Tokens: tokens, Sessions: sessions,
-		Auth:          auth.NewHandler(auth.NewService(users, tokens, otp), otp, log),
+		Auth:          auth.NewHandler(auth.NewService(users, tokens, otp), otp, log).WithSessions(sessions),
 		AdminUsers:    auth.NewAdminHandler(users, sessions, log),
 		Doctors:       doctor.NewHandler(ds, log),
 		Appointments:  appointment.NewHandler(as, log),
@@ -233,6 +233,16 @@ func TestResponsesMatchSpec(t *testing.T) {
 	at := str(c.call("POST", api+"/auth/login", "", map[string]any{"phone": "01311111111", "password": "admin-pass-123"}, 200), "access_token")
 	c.call("GET", api+"/me", pt, nil, 200)
 	c.call("GET", api+"/doctors/not-a-uuid", "", nil, 422)
+
+	// Account settings: profile, then a password change that signs out the old
+	// token but keeps this client logged in with the new one.
+	c.call("PUT", api+"/me", pt, map[string]any{"name": "Karim Uddin", "email": "karim@example.com"}, 200)
+	c.call("PUT", api+"/me", pt, map[string]any{"name": "Karim Uddin", "email": "not-an-email"}, 422)
+	c.call("POST", api+"/me/password", pt, map[string]any{"current_password": "wrong-one", "new_password": "brand-new-pass"}, 422)
+	oldPT := pt
+	pt = str(c.call("POST", api+"/me/password", pt, map[string]any{"current_password": "secret123", "new_password": "brand-new-pass"}, 200), "access_token")
+	c.call("GET", api+"/me", oldPT, nil, 401)
+	c.call("GET", api+"/me", pt, nil, 200)
 
 	// Doctor onboarding and chamber booking.
 	c.call("PUT", api+"/doctor/profile", dt, map[string]any{"bmdc_reg_no": "A-54321", "specialization": "Medicine", "degrees": "MBBS, FCPS", "experience_years": 7}, 200)

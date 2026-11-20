@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"net/mail"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -23,6 +24,7 @@ type UserStore interface {
 	GetByPhone(ctx context.Context, phone string) (user.User, error)
 	GetByID(ctx context.Context, id string) (user.User, error)
 	UpdatePassword(ctx context.Context, id, passwordHash string) error
+	UpdateProfile(ctx context.Context, id, name string, email *string) (user.User, error)
 }
 
 // PhoneVerifier checks a one-time code sent to a phone (OTPStore in production).
@@ -177,6 +179,65 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 
 func (s *Service) Me(ctx context.Context, userID string) (user.User, error) {
 	return s.users.GetByID(ctx, userID)
+}
+
+type ProfileInput struct {
+	Name  string `json:"name"`
+	Email string `json:"email"` // empty removes it
+}
+
+// UpdateProfile changes the caller's own name and email. The phone number is
+// the login and is verified by SMS, so it is not changed here.
+func (s *Service) UpdateProfile(ctx context.Context, userID string, in ProfileInput) (user.User, error) {
+	name := strings.TrimSpace(in.Name)
+	if n := utf8.RuneCountInString(name); n < 2 || n > 100 {
+		return user.User{}, ValidationError{"name must be 2-100 characters"}
+	}
+	var email *string
+	if e := strings.ToLower(strings.TrimSpace(in.Email)); e != "" {
+		addr, err := mail.ParseAddress(e)
+		if err != nil || addr.Address != e || len(e) > 254 {
+			return user.User{}, ValidationError{"email is not a valid address"}
+		}
+		email = &e
+	}
+	return s.users.UpdateProfile(ctx, userID, name, email)
+}
+
+type ChangePasswordInput struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// ChangePassword sets a new password after checking the current one. Every
+// other session is signed out (the token version moves on); the caller gets a
+// fresh token so this device stays logged in.
+func (s *Service) ChangePassword(ctx context.Context, userID string, in ChangePasswordInput) (AuthResult, error) {
+	u, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return AuthResult{}, err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(in.CurrentPassword)) != nil {
+		return AuthResult{}, ValidationError{"the current password is not correct"}
+	}
+	if err := validPassword(in.NewPassword); err != nil {
+		return AuthResult{}, err
+	}
+	if in.NewPassword == in.CurrentPassword {
+		return AuthResult{}, ValidationError{"the new password must be different from the current one"}
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(in.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return AuthResult{}, err
+	}
+	if err := s.users.UpdatePassword(ctx, userID, string(hash)); err != nil {
+		return AuthResult{}, err
+	}
+	u, err = s.users.GetByID(ctx, userID) // picks up the new token version
+	if err != nil {
+		return AuthResult{}, err
+	}
+	return s.issue(u)
 }
 
 func (s *Service) issue(u user.User) (AuthResult, error) {

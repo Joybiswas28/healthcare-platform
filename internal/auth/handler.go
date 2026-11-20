@@ -10,13 +10,56 @@ import (
 )
 
 type Handler struct {
-	svc *Service
-	otp *OTPStore
-	log *slog.Logger
+	svc      *Service
+	otp      *OTPStore
+	log      *slog.Logger
+	sessions *SessionChecker
 }
 
 func NewHandler(svc *Service, otp *OTPStore, log *slog.Logger) *Handler {
 	return &Handler{svc: svc, otp: otp, log: log}
+}
+
+// WithSessions lets the handler drop a user's cached session state after a
+// password change, so other devices are signed out at once on this server.
+func (h *Handler) WithSessions(s *SessionChecker) *Handler {
+	h.sessions = s
+	return h
+}
+
+// PUT /me
+func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	var in ProfileInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	p, _ := FromContext(r.Context())
+	u, err := h.svc.UpdateProfile(r.Context(), p.UserID, in)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, u)
+}
+
+// POST /me/password
+func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	var in ChangePasswordInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	p, _ := FromContext(r.Context())
+	res, err := h.svc.ChangePassword(r.Context(), p.UserID, in)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	if h.sessions != nil {
+		h.sessions.Forget(p.UserID)
+	}
+	httpx.JSON(w, http.StatusOK, res)
 }
 
 type otpInput struct {
@@ -101,7 +144,7 @@ func (h *Handler) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		httpx.Error(w, http.StatusUnauthorized, err.Error())
 	case errors.Is(err, ErrAccountSuspended):
 		httpx.Error(w, http.StatusForbidden, err.Error())
-	case errors.Is(err, user.ErrPhoneTaken):
+	case errors.Is(err, user.ErrPhoneTaken), errors.Is(err, user.ErrEmailTaken):
 		httpx.Error(w, http.StatusConflict, err.Error())
 	case errors.Is(err, user.ErrNotFound):
 		httpx.Error(w, http.StatusNotFound, err.Error())

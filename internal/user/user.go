@@ -27,6 +27,7 @@ const (
 var (
 	ErrNotFound   = errors.New("user not found")
 	ErrPhoneTaken = errors.New("phone number already registered")
+	ErrEmailTaken = errors.New("this email is already used by another account")
 )
 
 type User struct {
@@ -109,6 +110,18 @@ func (r *Repository) UpdatePassword(ctx context.Context, id, passwordHash string
 		return ErrNotFound
 	}
 	return nil
+}
+
+// UpdateProfile changes the name and email (nil email clears it).
+func (r *Repository) UpdateProfile(ctx context.Context, id, name string, email *string) (User, error) {
+	u, err := scanUser(r.db.QueryRow(ctx, `
+		UPDATE users SET name = $2, email = $3, updated_at = now()
+		WHERE id = $1
+		RETURNING `+userColumns, id, name, email))
+	if database.UniqueViolationOn(err, "users_email_key") {
+		return User{}, ErrEmailTaken
+	}
+	return u, err
 }
 
 // AuthState returns what token checks need: whether the account is active and

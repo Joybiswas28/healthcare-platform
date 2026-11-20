@@ -126,6 +126,9 @@ func NewRouter(d Deps) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Authenticate(d.Tokens, d.Sessions))
 			r.Get("/me", d.Auth.Me)
+			r.Put("/me", d.Auth.UpdateProfile)
+			// Guessing the current password is the attack here, so it gets the tight limit.
+			r.With(strict).Post("/me/password", d.Auth.ChangePassword)
 
 			r.Get("/notifications", d.Notifications.List)
 			r.Post("/notifications/read-all", d.Notifications.MarkAllRead)

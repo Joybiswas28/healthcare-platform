@@ -86,11 +86,23 @@ func (m *memStore) UpdatePassword(_ context.Context, id, hash string) error {
 	for p, u := range m.byPhone {
 		if u.ID == id {
 			u.PasswordHash = hash
+			u.TokenVersion++ // like the database: a new password signs out old sessions
 			m.byPhone[p] = u
 			return nil
 		}
 	}
 	return user.ErrNotFound
+}
+
+func (m *memStore) UpdateProfile(_ context.Context, id, name string, email *string) (user.User, error) {
+	for p, u := range m.byPhone {
+		if u.ID == id {
+			u.Name, u.Email = name, email
+			m.byPhone[p] = u
+			return u, nil
+		}
+	}
+	return user.User{}, user.ErrNotFound
 }
 
 // fixedOTP accepts only the code "123456".

@@ -100,6 +100,8 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/me` | Current user |
+| PUT | `/me` | Change my name and email (empty email removes it; the phone number is not changed here) |
+| POST | `/me/password` | Change my password with the current one. Signs out other sessions and returns a fresh token for this one |
 | GET | `/notifications?unread=true` | My notifications and unread count |
 | POST | `/notifications/{id}/read`, `/notifications/read-all` | Mark as read |
 

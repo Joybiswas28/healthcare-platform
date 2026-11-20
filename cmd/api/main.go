@@ -116,7 +116,7 @@ func run() error {
 			Log:          log,
 			DB:           pool,
 			Tokens:       tokens,
-			Auth:         auth.NewHandler(authSvc, otp, log),
+			Auth:         auth.NewHandler(authSvc, otp, log).WithSessions(sessions),
 			Doctors:      doctor.NewHandler(doctorStore, log),
 			Appointments: appointment.NewHandler(appointmentStore, log),
 			Hospitals: hospital.NewHandler(hospital.NewStore(pool, doctorStore, files),
