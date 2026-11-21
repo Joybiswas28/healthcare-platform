@@ -1,5 +1,6 @@
 "use client";
 
+import { MedicinesFor } from "@/components/family";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -141,6 +142,7 @@ function Inner() {
           </h1>
           <Badge tone={req.status === "open" ? "amber" : "slate"}>{req.status}</Badge>
         </div>
+        <MedicinesFor age={req.patient_age} gender={req.patient_gender} />
         <p className="text-xs text-slate-500">
           {dateTime(req.created_at)} · <T vars={{ date: dateTime(req.expires_at) }}>{"open until {date}"}</T> ·{" "}
           <T vars={{ n: req.quote_count ?? 0 }}>{"{n} quotes. The patient's identity is shared only when they choose you."}</T>

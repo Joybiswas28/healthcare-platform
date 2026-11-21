@@ -1087,6 +1087,7 @@ export const BN: Record<string, string> = {
     "লিঙ্গ ও বয়স ডাক্তারের কাজে লাগে; এই ব্যক্তির বুকিংয়ে এগুলো দেখানো হয়।",
   "Booked for {name}! The serial number is {n}.": "{name}-এর জন্য বুক হয়েছে! সিরিয়াল নম্বর {n}।",
   "For {name}": "{name}-এর জন্য",
+  "For a family member": "পরিবারের একজন সদস্যের জন্য",
   "We'll remind you by SMS the evening before and about 2 hours before the session.":
     "আগের দিন সন্ধ্যায় এবং সেশন শুরুর প্রায় ২ ঘণ্টা আগে আমরা SMS-এ মনে করিয়ে দেব।",
   "Appointment reminder": "অ্যাপয়েন্টমেন্টের রিমাইন্ডার",

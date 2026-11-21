@@ -1,5 +1,6 @@
 "use client";
 
+import { MedicinesFor } from "@/components/family";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -158,6 +159,7 @@ function RequestsTab({ pharmacyID }: { pharmacyID: string }) {
                   <T>{r.fulfilment === "pickup" ? "Pickup" : "Delivery"}</T> ·{" "}
                   <T vars={{ distance: km(r.distance_km), n: r.quote_count ?? 0 }}>{"{distance} away · {n} quotes so far"}</T>
                 </p>
+                <MedicinesFor age={r.patient_age} gender={r.patient_gender} />
               </div>
               {r.my_quote ? <Badge tone="teal">
                   <T vars={{ amount: taka(r.my_quote.total_paisa) }}>{"Quoted {amount}"}</T>
@@ -237,6 +239,7 @@ function OrdersTab({ pharmacyID }: { pharmacyID: string }) {
                     <p className="text-sm text-slate-600">
                       <T>{o.fulfilment === "pickup" ? "Pickup" : "Delivery"}</T> · {taka(o.total_paisa)}
                     </p>
+                    <MedicinesFor name={o.for_name} age={o.patient_age} gender={o.patient_gender} />
                   </div>
                   <OrderBadge order={o} />
                 </div>

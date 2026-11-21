@@ -1,5 +1,6 @@
 "use client";
 
+import { MedicinesFor } from "@/components/family";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -79,6 +80,7 @@ function Detail() {
           <h1 className="text-xl font-semibold text-slate-900"><T>Medicine request</T></h1>
           <Badge tone={req.status === "open" ? "amber" : req.status === "ordered" ? "teal" : "slate"}>{req.status}</Badge>
         </div>
+        <MedicinesFor name={req.for_name} age={req.patient_age} gender={req.patient_gender} />
         {req.prescription && (
           <p className="text-sm text-slate-700">
             {t("Prescription by {doctor} ({date}):", { doctor: req.prescription.doctor_name, date: dateTime(req.prescription.issued_at) })}{" "}

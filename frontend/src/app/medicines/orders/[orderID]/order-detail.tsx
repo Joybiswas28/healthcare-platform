@@ -1,5 +1,6 @@
 "use client";
 
+import { MedicinesFor } from "@/components/family";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -78,6 +79,7 @@ function Detail() {
             <p className="text-sm text-slate-600">
               {order.pharmacy_address} · {order.pharmacy_phone}
             </p>
+            <MedicinesFor name={order.for_name} age={order.patient_age} gender={order.patient_gender} />
           </div>
           <OrderBadge order={order} />
         </div>

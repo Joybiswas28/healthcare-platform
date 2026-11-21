@@ -1,5 +1,6 @@
 "use client";
 
+import { MedicinesFor } from "@/components/family";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -127,6 +128,7 @@ function Inner() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">{order.patient_name}</h1>
+            <MedicinesFor name={order.for_name} age={order.patient_age} gender={order.patient_gender} />
             <p className="text-sm text-slate-600">
               <a href={`tel:${order.contact_phone}`} className="text-teal-800 underline">
                 {order.contact_phone}

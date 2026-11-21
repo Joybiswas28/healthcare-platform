@@ -7136,6 +7136,11 @@ export interface components {
             longitude: number;
             /** @description Defaults to the account's phone */
             contact_phone?: string;
+            /**
+             * Format: uuid
+             * @description The family member the medicines are for; myself when absent
+             */
+            family_member_id?: string;
         };
         Quote: {
             /** Format: uuid */
@@ -7211,6 +7216,20 @@ export interface components {
              * @description Patient view only
              */
             order_id?: string;
+            /**
+             * Format: uuid
+             * @description Patient view only
+             */
+            family_member_id?: string;
+            /** @description The family member it is for; patient view only */
+            for_name?: string;
+            /** @description A family member's age in years, when known */
+            patient_age?: number;
+            /**
+             * @description A family member's gender, when known
+             * @enum {string}
+             */
+            patient_gender?: "male" | "female" | "other";
             /** @description Pharmacy view only */
             distance_km?: number;
             my_quote?: components["schemas"]["Quote"];
@@ -7232,7 +7251,13 @@ export interface components {
             prescription_id?: string | null;
             /** Format: uuid */
             patient_id?: string;
+            /** @description The account holder, who receives the order */
             patient_name?: string;
+            /** @description The family member the medicines are for (not shown to riders) */
+            for_name?: string;
+            patient_age?: number;
+            /** @enum {string} */
+            patient_gender?: "male" | "female" | "other";
             contact_phone?: string;
             address?: string | null;
             latitude?: number;

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { PersonPicker, useFamily } from "@/components/family";
 import { LocationPicker, validCoords } from "@/components/location-picker";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
@@ -23,14 +24,16 @@ export function RequestForm() {
   return (
     <RequireAuth>
       {(user) =>
-        user.role === "patient" ? <Form /> : <p className="text-sm text-slate-600"><T>Only patient accounts can order medicine.</T></p>
+        user.role === "patient" ? <Form me={user.name ?? ""} /> : <p className="text-sm text-slate-600"><T>Only patient accounts can order medicine.</T></p>
       }
     </RequireAuth>
   );
 }
 
-function Form() {
+function Form({ me }: { me: string }) {
   const t = useT();
+  const family = useFamily();
+  const [forMember, setForMember] = useState("");
   const router = useRouter();
   const preset = useSearchParams().get("prescription_id");
   const [source, setSource] = useState<Source>("prescription");
@@ -69,6 +72,7 @@ function Form() {
       contact_phone: String(f.get("contact_phone") ?? "").trim() || undefined,
       note: String(f.get("note") ?? "").trim() || undefined,
       items: source === "paper" && cleanItems.length ? cleanItems : undefined,
+      family_member_id: forMember || undefined,
     };
 
     setBusy(true);
@@ -119,6 +123,7 @@ function Form() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Card className="space-y-4">
+        {family && <PersonPicker members={family} me={me} value={forMember} onChange={setForMember} />}
         <div className="flex flex-wrap gap-2" role="tablist">
           {tabs.map((tab) => (
             <button

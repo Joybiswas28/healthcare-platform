@@ -121,3 +121,19 @@ export function ForMember({
     </span>
   );
 }
+
+// Who medicines are for: "For Rahim · 7 years · Male" for the patient and,
+// after the order, the pharmacy; before the order the pharmacy sees only the
+// age and gender. Nothing when the request is for the account holder.
+export function MedicinesFor({ name, age, gender }: { name?: string | null; age?: number | null; gender?: string | null }) {
+  const t = useT();
+  if (!name && age == null && !gender) return null;
+  const parts = [
+    name ? t("For {name}", { name }) : t("For a family member"),
+    age != null ? t("{n} years", { n: age }) : null,
+    gender ? t(gender.charAt(0).toUpperCase() + gender.slice(1)) : null,
+  ].filter(Boolean);
+  return (
+    <span className="inline-block rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800">👪 {parts.join(" · ")}</span>
+  );
+}

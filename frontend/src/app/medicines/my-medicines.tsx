@@ -1,5 +1,6 @@
 "use client";
 
+import { MedicinesFor } from "@/components/family";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { OrderBadge } from "@/components/order-status";
@@ -107,6 +108,7 @@ function RequestRow({ request: r }: { request: MedicineRequest }) {
           <p className="text-sm text-slate-600">
             {t(r.fulfilment === "pickup" ? "Pickup" : "Delivery")} · {t(r.quote_count === 1 ? "{n} quote" : "{n} quotes", { n: r.quote_count ?? 0 })}
           </p>
+          <MedicinesFor name={r.for_name} age={r.patient_age} gender={r.patient_gender} />
         </div>
         <Badge tone={s.tone}>{s.label}</Badge>
       </div>
