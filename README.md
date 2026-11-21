@@ -203,6 +203,7 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 
 - Events such as bookings, consultation updates, offers, prescriptions, verification and withdrawals create in-app notifications. Important ones are also sent by SMS.
 - Notifications are written in the same transaction as the event. A background worker sends the SMS and retries up to 5 times.
+- Appointment reminders: another worker checks every minute and reminds the patient of a confirmed appointment twice, in the app and by SMS: the evening before (from 6 PM Dhaka time) and about 2 hours before the session starts. Each reminder is sent once; a booking made only shortly before skips the reminder that would follow its confirmation SMS.
 - No SMS provider is connected yet, so SMS (including OTP codes) are written to the server log. In development, copy the OTP from there.
 - OTP rules: codes expire after 5 minutes. A number can get one code per minute and five per hour. A code is burned after 5 wrong attempts.
 

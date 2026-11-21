@@ -24,6 +24,7 @@ const (
 	KindAppointmentBooked      = "appointment_booked"
 	KindAppointmentCancelled   = "appointment_cancelled"
 	KindAppointmentRescheduled = "appointment_rescheduled"
+	KindAppointmentReminder    = "appointment_reminder"
 	KindHospitalVerification   = "hospital_verification"
 	KindHospitalInvitation     = "hospital_invitation"
 	KindHospitalStaffChange    = "hospital_staff_change"

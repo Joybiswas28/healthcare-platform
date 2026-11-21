@@ -107,6 +107,7 @@ func run() error {
 
 	go expireTokensPeriodically(ctx, walletStore, log)
 	go notify.NewWorker(pool, sms, log).Run(ctx)
+	go appointmentStore.RunReminders(ctx, log)
 
 	hub := realtime.NewHub()
 	go realtime.Listen(ctx, pool, hub, log)
