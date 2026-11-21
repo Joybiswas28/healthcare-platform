@@ -1090,6 +1090,30 @@ export const BN: Record<string, string> = {
   "We'll remind you by SMS the evening before and about 2 hours before the session.":
     "আগের দিন সন্ধ্যায় এবং সেশন শুরুর প্রায় ২ ঘণ্টা আগে আমরা SMS-এ মনে করিয়ে দেব।",
   "Appointment reminder": "অ্যাপয়েন্টমেন্টের রিমাইন্ডার",
+  // Video calls
+  "Video call": "ভিডিও কল",
+  "Talk face to face. The call goes directly between your two devices.": "মুখোমুখি কথা বলুন। কলটি সরাসরি আপনাদের দুই ডিভাইসের মধ্যে হয়।",
+  "Start video call": "ভিডিও কল শুরু করুন",
+  "{name} is calling you…": "{name} আপনাকে কল করছেন…",
+  "Calling {name}…": "{name}-কে কল করা হচ্ছে…",
+  "In call with {name}": "{name}-এর সাথে কলে আছেন",
+  "Waiting for the other side…": "অপর পক্ষের জন্য অপেক্ষা…",
+  "🎙️ Mute": "🎙️ মিউট",
+  "🔇 Unmute": "🔇 আনমিউট",
+  "📷 Camera off": "📷 ক্যামেরা বন্ধ",
+  "📷 Camera on": "📷 ক্যামেরা চালু",
+  "Hang up": "কল কাটুন",
+  "Call ended.": "কল শেষ হয়েছে।",
+  "Missed call from {name}.": "{name}-এর মিসড কল।",
+  "{name} can't take the call now.": "{name} এখন কল ধরতে পারছেন না।",
+  "No answer. Try again later or send a message.": "কেউ ধরেননি। পরে আবার চেষ্টা করুন বা মেসেজ পাঠান।",
+  "The call could not connect. One of you may be on a network that blocks direct calls; try another network or Wi-Fi.":
+    "কলটি সংযুক্ত হয়নি। আপনাদের একজনের নেটওয়ার্ক হয়তো সরাসরি কল আটকায়; অন্য নেটওয়ার্ক বা Wi-Fi দিয়ে চেষ্টা করুন।",
+  "This browser can't make video calls. Open the site over https in Chrome, Edge, Firefox or Safari.":
+    "এই ব্রাউজারে ভিডিও কল করা যায় না। Chrome, Edge, Firefox বা Safari-তে https দিয়ে সাইটটি খুলুন।",
+  "Allow the microphone (and camera) for this site to make calls.": "কল করতে এই সাইটের জন্য মাইক্রোফোন (ও ক্যামেরা) চালুর অনুমতি দিন।",
+  "Incoming video call": "ভিডিও কল আসছে",
+
   // Health records
   "Health records": "স্বাস্থ্য রেকর্ড",
   "Lab report": "ল্যাব রিপোর্ট",

@@ -15,6 +15,7 @@ export function notificationHref(kind: string | undefined, role: Role | undefine
     case "consultation_rejected":
     case "consultation_completed":
     case "consultation_cancelled":
+    case "consultation_call":
     case "offer_accepted":
       return "/consultations";
     case "offer_received":

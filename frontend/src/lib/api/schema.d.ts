@@ -2916,6 +2916,149 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consultations/{consultationID}/call": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Video call settings (STUN/TURN servers for RTCPeerConnection) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    consultationID: components["parameters"]["consultationID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Call settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ice_servers?: {
+                                urls?: string[];
+                                username?: string;
+                                credential?: string;
+                            }[];
+                            /** @description Calls are possible only while the consultation is active */
+                            available?: boolean;
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consultations/{consultationID}/call/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a video call signal to the other participant
+         * @description The call itself runs browser to browser (WebRTC); the server only relays these. offer, answer and
+         *     candidate carry WebRTC data as an opaque string and need an active consultation; hangup and decline
+         *     are always accepted. An offer also notifies the other participant.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    consultationID: components["parameters"]["consultationID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        kind: "offer" | "answer" | "candidate" | "hangup" | "decline";
+                        payload?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sent */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consultations/{consultationID}/call/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The other participant's call signals as Server-Sent Events
+         * @description Starts with the signals of the last 90 seconds (so someone opening the page while being called sees the
+         *     offer), then sends each new one as `event: signal` whose `id` is the signal id and whose `data` is a
+         *     CallSignal as JSON. A reconnecting client sends `Last-Event-ID`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "Last-Event-ID"?: string;
+                };
+                path: {
+                    consultationID: components["parameters"]["consultationID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Event stream */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attachments/{attachmentID}": {
         parameters: {
             query?: never;
@@ -6657,6 +6800,17 @@ export interface components {
             patient_birth_date?: string | null;
             /** @description The account holder */
             account_name?: string;
+        };
+        CallSignal: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: uuid */
+            sender_id?: string;
+            /** @enum {string} */
+            kind?: "offer" | "answer" | "candidate" | "hangup" | "decline";
+            payload?: string | null;
+            /** Format: date-time */
+            created_at?: string;
         };
         ChatMessage: {
             /** Format: int64 */

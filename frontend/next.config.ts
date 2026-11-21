@@ -24,7 +24,15 @@ const nextConfig: NextConfig = {
     return [{ source: "/hospitals/sylhet", destination: "/hospitals#sylhet", permanent: true }];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Video calls happen in the consultation room, so only that page may use
+      // the camera and microphone. (For the same key, the later entry wins.)
+      {
+        source: "/consultations/:consultationID",
+        headers: [{ key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(self)" }],
+      },
+    ];
   },
 };
 

@@ -16,6 +16,7 @@ import { api, errorMessage, type Consultation, type User } from "@/lib/api/clien
 import { dateTime, tokens } from "@/lib/format";
 import { Actions } from "./actions";
 import { Chat } from "./chat";
+import { VideoCall } from "./video-call";
 import { T } from "@/components/t";
 
 // While someone else's move is pending, look for changes this often.
@@ -89,6 +90,10 @@ function Room({ user }: { user: User }) {
       </Card>
 
       {!asDoctor && c.status === "completed" && <RateConsultation consultation={c} />}
+
+      {c.status === "active" && c.id && (
+        <VideoCall consultationID={c.id} otherName={(asDoctor ? c.patient_name : c.doctor_name) ?? ""} />
+      )}
 
       {showChat && <Chat consultation={c} me={user} />}
 
