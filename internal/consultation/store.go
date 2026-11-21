@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
@@ -56,6 +57,14 @@ type Consultation struct {
 	RespondedAt   *time.Time `json:"responded_at"`
 	ConfirmedAt   *time.Time `json:"confirmed_at"`
 	ClosedAt      *time.Time `json:"closed_at"`
+
+	// Set when the consultation is for a family member of the account holder; the
+	// patient_* fields then describe that member.
+	FamilyMemberID   *string `json:"family_member_id"`
+	Relation         *string `json:"relation"`
+	PatientGender    *string `json:"patient_gender"`
+	PatientBirthDate *string `json:"patient_birth_date"`
+	AccountName      string  `json:"account_name"` // the account holder who asked
 }
 
 type Attachment struct {
@@ -75,9 +84,10 @@ type Message struct {
 }
 
 type RequestInput struct {
-	DoctorID    string `json:"doctor_id"`
-	Subject     string `json:"subject"`
-	Description string `json:"description"`
+	DoctorID       string `json:"doctor_id"`
+	Subject        string `json:"subject"`
+	Description    string `json:"description"`
+	FamilyMemberID string `json:"family_member_id"` // empty: for the account holder
 }
 
 type Store struct {
@@ -93,18 +103,21 @@ func NewStore(db *pgxpool.Pool, files storage.Storage) *Store {
 var errNotFound = apperr.NotFound("consultation not found")
 
 const consultationSelect = `
-SELECT c.id, c.patient_id, pu.name, c.doctor_id, du.name, c.subject, c.description,
+SELECT c.id, c.patient_id, COALESCE(fm.name, pu.name), c.doctor_id, du.name, c.subject, c.description,
        c.fee_tokens, c.commission_bps, c.status, c.reject_reason,
-       c.requested_at, c.responded_at, c.confirmed_at, c.closed_at
+       c.requested_at, c.responded_at, c.confirmed_at, c.closed_at,
+       c.family_member_id, fm.relation, fm.gender, to_char(fm.birth_date, 'YYYY-MM-DD'), pu.name
 FROM consultations c
 JOIN users pu ON pu.id = c.patient_id
-JOIN users du ON du.id = c.doctor_id`
+JOIN users du ON du.id = c.doctor_id
+LEFT JOIN family_members fm ON fm.id = c.family_member_id`
 
 func scan(row pgx.Row) (Consultation, error) {
 	var c Consultation
 	err := row.Scan(&c.ID, &c.PatientID, &c.PatientName, &c.DoctorID, &c.DoctorName, &c.Subject,
 		&c.Description, &c.FeeTokens, &c.CommissionBps, &c.Status, &c.RejectReason,
-		&c.RequestedAt, &c.RespondedAt, &c.ConfirmedAt, &c.ClosedAt)
+		&c.RequestedAt, &c.RespondedAt, &c.ConfirmedAt, &c.ClosedAt,
+		&c.FamilyMemberID, &c.Relation, &c.PatientGender, &c.PatientBirthDate, &c.AccountName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Consultation{}, errNotFound
 	}
@@ -175,12 +188,22 @@ func (s *Store) Request(ctx context.Context, patientID string, in RequestInput) 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := family.Check(ctx, tx, patientID, in.FamilyMemberID); err != nil {
+		return Consultation{}, err
+	}
+	var member *string
+	if in.FamilyMemberID != "" {
+		member = &in.FamilyMemberID
+	}
 	var id string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO consultations (patient_id, doctor_id, subject, description, fee_tokens, commission_bps)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		patientID, in.DoctorID, in.Subject, in.Description, fee, bps).Scan(&id)
+		INSERT INTO consultations (patient_id, family_member_id, doctor_id, subject, description, fee_tokens, commission_bps)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		patientID, member, in.DoctorID, in.Subject, in.Description, fee, bps).Scan(&id)
 	if database.UniqueViolationOn(err, "consultations_one_open_per_pair") {
+		if member != nil {
+			return Consultation{}, apperr.Conflict("this family member already has an open consultation with this doctor")
+		}
 		return Consultation{}, apperr.Conflict("you already have an open consultation with this doctor")
 	}
 	if err != nil {

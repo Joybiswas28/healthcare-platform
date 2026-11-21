@@ -59,6 +59,10 @@ func (h *Handler) Request(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, apperr.Validation("doctor_id is required"))
 		return
 	}
+	if in.FamilyMemberID != "" && !httpx.IsUUID(in.FamilyMemberID) {
+		h.fail(w, r, apperr.Validation("family_member_id must be a UUID"))
+		return
+	}
 	c, err := h.store.Request(r.Context(), caller(r).UserID, in)
 	if err != nil {
 		h.fail(w, r, err)

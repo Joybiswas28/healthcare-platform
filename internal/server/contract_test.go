@@ -23,6 +23,7 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/pharmacy"
@@ -198,6 +199,7 @@ func TestResponsesMatchSpec(t *testing.T) {
 		Auth:          auth.NewHandler(auth.NewService(users, tokens, otp), otp, log).WithSessions(sessions),
 		AdminUsers:    auth.NewAdminHandler(users, sessions, log),
 		Doctors:       doctor.NewHandler(ds, log),
+		Family:        family.NewHandler(family.NewStore(pool), log),
 		Appointments:  appointment.NewHandler(as, log),
 		Wallet:        wallet.NewHandler(ws, wallet.DevGateway{}, log),
 		Consultations: consultation.NewHandler(consultation.NewStore(pool, files), realtime.NewHub(), log),
@@ -264,6 +266,18 @@ func TestResponsesMatchSpec(t *testing.T) {
 	c.call("GET", api+"/doctor/appointments?date="+date, dt, nil, 200)
 	c.call("GET", api+"/doctor/tickets/"+str(appt, "ticket_code"), dt, nil, 200)
 	c.call("POST", api+"/appointments/"+str(appt, "id")+"/cancel", pt, nil, 200)
+
+	// Family: book for a child alongside the parent, then edit and remove the child.
+	kid := c.call("POST", api+"/family", pt, map[string]any{"name": "Rahim Uddin", "relation": "child", "gender": "male", "birth_date": "2019-05-01"}, 201)
+	c.call("GET", api+"/family", pt, nil, 200)
+	c.call("PUT", api+"/family/"+str(kid, "id"), pt, map[string]any{"name": "Rahim Uddin", "relation": "child", "gender": "", "birth_date": ""}, 200)
+	if got := c.call("POST", api+"/appointments", pt, map[string]any{"schedule_id": str(sc, "id"), "date": date, "family_member_id": str(kid, "id")}, 201); got["patient_name"] != "Rahim Uddin" || got["account_name"] != "Karim Uddin" {
+		t.Fatalf("child's booking is for %v on %v's account", got["patient_name"], got["account_name"])
+	}
+	c.call("POST", api+"/appointments", pt, map[string]any{"schedule_id": str(sc, "id"), "date": date, "family_member_id": str(kid, "id")}, 409)
+	c.call("POST", api+"/appointments", dt, map[string]any{"schedule_id": str(sc, "id"), "date": date, "family_member_id": str(kid, "id")}, 403)
+	c.call("DELETE", api+"/family/"+str(kid, "id"), pt, nil, 204)
+	c.call("DELETE", api+"/family/"+str(kid, "id"), pt, nil, 404)
 
 	// Tokens and a private consultation.
 	pkgs := c.call("GET", api+"/token-packages", "", nil, 200)

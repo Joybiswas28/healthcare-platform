@@ -18,6 +18,7 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
@@ -34,6 +35,7 @@ func fullRouter() http.Handler {
 		Log:           log,
 		Auth:          auth.NewHandler(nil, nil, log),
 		Doctors:       doctor.NewHandler(nil, log),
+		Family:        family.NewHandler(nil, log),
 		Appointments:  appointment.NewHandler(nil, log),
 		Wallet:        wallet.NewHandler(nil, nil, log),
 		Consultations: consultation.NewHandler(nil, nil, log),

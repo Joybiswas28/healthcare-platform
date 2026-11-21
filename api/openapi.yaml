@@ -23,6 +23,7 @@ tags:
   - name: Notifications
   - name: Doctors
   - name: Doctor (self)
+  - name: Family
   - name: Appointments
   - name: Wallet
   - name: Payments
@@ -175,6 +176,50 @@ paths:
                 new_password: { type: string, minLength: 8, maxLength: 72 }
       responses:
         "200": { description: Password changed; new token, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResult" } } } }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ family
+  /api/v1/family:
+    get:
+      tags: [Family]
+      summary: "Patient: my family members"
+      responses:
+        "200":
+          description: Family members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members: { type: array, items: { $ref: "#/components/schemas/FamilyMember" } }
+                  max: { type: integer, description: How many members an account can keep }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Family]
+      summary: "Patient: add a family member to book appointments and consultations for"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FamilyMemberInput" } } }
+      responses:
+        "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/FamilyMember" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/family/{memberID}:
+    put:
+      tags: [Family]
+      summary: "Patient: edit a family member"
+      parameters: [{ $ref: "#/components/parameters/memberID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FamilyMemberInput" } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/FamilyMember" } } } }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Family]
+      summary: "Patient: remove a family member; their past bookings are kept"
+      parameters: [{ $ref: "#/components/parameters/memberID" }]
+      responses:
+        "204": { description: Removed }
         default: { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------------ notifications
@@ -552,7 +597,7 @@ paths:
       tags: [Appointments]
       summary: Book the next serial in a session
       description: |
-        Up to 30 days ahead, one booking per session, at most 5 upcoming appointments per patient.
+        Up to 30 days ahead, one booking per person per session, at most 5 upcoming appointments per account.
         409 when the session is full.
       requestBody:
         required: true
@@ -564,6 +609,7 @@ paths:
               properties:
                 schedule_id: { type: string, format: uuid }
                 date: { type: string, format: date }
+                family_member_id: { type: string, format: uuid, description: Book for this family member instead of myself }
       responses:
         "201": { $ref: "#/components/responses/Appointment" }
         default: { $ref: "#/components/responses/Error" }
@@ -748,6 +794,7 @@ paths:
                 doctor_id: { type: string, format: uuid }
                 subject: { type: string, minLength: 5, maxLength: 150 }
                 description: { type: string, minLength: 20, maxLength: 5000 }
+                family_member_id: { type: string, format: uuid, description: Consult for this family member instead of myself }
       responses:
         "201": { $ref: "#/components/responses/Consultation" }
         default: { $ref: "#/components/responses/Error" }
@@ -2153,6 +2200,7 @@ components:
     scheduleID: { name: scheduleID, in: path, required: true, schema: { type: string, format: uuid } }
     appointmentID: { name: appointmentID, in: path, required: true, schema: { type: string, format: uuid } }
     reviewID: { name: reviewID, in: path, required: true, schema: { type: string, format: uuid } }
+    memberID: { name: memberID, in: path, required: true, schema: { type: string, format: uuid } }
     paymentID: { name: paymentID, in: path, required: true, schema: { type: string, format: uuid } }
     consultationID: { name: consultationID, in: path, required: true, schema: { type: string, format: uuid } }
     concernID: { name: concernID, in: path, required: true, schema: { type: string, format: uuid } }
@@ -2415,6 +2463,23 @@ components:
           properties:
             chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
             reviews: { type: array, items: { $ref: "#/components/schemas/DoctorReview" }, description: The latest 20 }
+    FamilyMember:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        relation: { type: string, enum: [spouse, child, parent, sibling, other] }
+        gender: { type: string, enum: [male, female, other], nullable: true }
+        birth_date: { type: string, format: date, nullable: true }
+        created_at: { type: string, format: date-time }
+    FamilyMemberInput:
+      type: object
+      required: [name, relation]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        relation: { type: string, enum: [spouse, child, parent, sibling, other] }
+        gender: { type: string, enum: [male, female, other, ""] }
+        birth_date: { type: string, description: "YYYY-MM-DD, or empty" }
     DoctorReview:
       type: object
       description: A patient's rating of a doctor. The patient is never named.
@@ -2477,6 +2542,11 @@ components:
         cancel_reason: { type: string, nullable: true }
         rescheduled_to: { type: string, format: uuid, nullable: true }
         created_at: { type: string, format: date-time }
+        family_member_id: { type: string, format: uuid, nullable: true, description: Set when it is for a family member; patient_name is then theirs }
+        relation: { type: string, enum: [spouse, child, parent, sibling, other], nullable: true }
+        patient_gender: { type: string, enum: [male, female, other], nullable: true }
+        patient_birth_date: { type: string, format: date, nullable: true }
+        account_name: { type: string, description: The account holder }
     Availability:
       type: object
       properties:
@@ -2570,6 +2640,11 @@ components:
         responded_at: { type: string, format: date-time, nullable: true }
         confirmed_at: { type: string, format: date-time, nullable: true }
         closed_at: { type: string, format: date-time, nullable: true }
+        family_member_id: { type: string, format: uuid, nullable: true, description: Set when it is for a family member; patient_name is then theirs }
+        relation: { type: string, enum: [spouse, child, parent, sibling, other], nullable: true }
+        patient_gender: { type: string, enum: [male, female, other], nullable: true }
+        patient_birth_date: { type: string, format: date, nullable: true }
+        account_name: { type: string, description: The account holder }
     ChatMessage:
       type: object
       properties:

@@ -198,10 +198,11 @@ func (s *Store) Issue(ctx context.Context, doctorID string, in IssueInput) (Pres
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var patientID string
+	var memberID *string
 	if in.ConsultationID != "" {
 		var status string
-		err = tx.QueryRow(ctx, `SELECT patient_id, status FROM consultations WHERE id = $1 AND doctor_id = $2`,
-			in.ConsultationID, doctorID).Scan(&patientID, &status)
+		err = tx.QueryRow(ctx, `SELECT patient_id, family_member_id, status FROM consultations WHERE id = $1 AND doctor_id = $2`,
+			in.ConsultationID, doctorID).Scan(&patientID, &memberID, &status)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Prescription{}, apperr.NotFound("consultation not found")
 		}
@@ -212,8 +213,8 @@ func (s *Store) Issue(ctx context.Context, doctorID string, in IssueInput) (Pres
 		var status string
 		var future bool
 		err = tx.QueryRow(ctx, `
-			SELECT patient_id, status, appointment_date > $3::date FROM appointments WHERE id = $1 AND doctor_id = $2`,
-			in.AppointmentID, doctorID, s.now().In(Dhaka).Format(time.DateOnly)).Scan(&patientID, &status, &future)
+			SELECT patient_id, family_member_id, status, appointment_date > $3::date FROM appointments WHERE id = $1 AND doctor_id = $2`,
+			in.AppointmentID, doctorID, s.now().In(Dhaka).Format(time.DateOnly)).Scan(&patientID, &memberID, &status, &future)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Prescription{}, apperr.NotFound("appointment not found")
 		}
@@ -229,11 +230,12 @@ func (s *Store) Issue(ctx context.Context, doctorID string, in IssueInput) (Pres
 	var degrees, specialization, bmdc *string
 	var patientName string
 	err = tx.QueryRow(ctx, `
-		SELECT du.name, d.degrees, d.specialization, d.bmdc_reg_no, d.verification_status, pu.name
+		SELECT du.name, d.degrees, d.specialization, d.bmdc_reg_no, d.verification_status,
+		       COALESCE((SELECT fm.name FROM family_members fm WHERE fm.id = $3), pu.name)
 		FROM doctor_profiles d
 		JOIN users du ON du.id = d.user_id
 		JOIN users pu ON pu.id = $2
-		WHERE d.user_id = $1`, doctorID, patientID).Scan(&doctorName, &degrees, &specialization, &bmdc, &verification, &patientName)
+		WHERE d.user_id = $1`, doctorID, patientID, memberID).Scan(&doctorName, &degrees, &specialization, &bmdc, &verification, &patientName)
 	if err != nil {
 		return Prescription{}, err
 	}
@@ -270,7 +272,7 @@ func (s *Store) Issue(ctx context.Context, doctorID string, in IssueInput) (Pres
 		UserID: patientID,
 		Kind:   notify.KindPrescriptionIssued,
 		Title:  "New prescription",
-		Body:   fmt.Sprintf("%s has issued you a prescription. Code: %s", doctorName, code),
+		Body:   prescriptionNote(doctorName, patientName, code, memberID != nil),
 		SMS:    true,
 	}); err != nil {
 		return Prescription{}, err
@@ -419,4 +421,13 @@ func nullIf(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+// prescriptionNote is the notification text; a family member's prescription
+// names them, since it goes to the account holder.
+func prescriptionNote(doctor, patient, code string, forMember bool) string {
+	if forMember {
+		return fmt.Sprintf("%s has issued a prescription for %s. Code: %s", doctor, patient, code)
+	}
+	return fmt.Sprintf("%s has issued you a prescription. Code: %s", doctor, code)
 }

@@ -16,6 +16,7 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
@@ -118,6 +119,7 @@ func run() error {
 			Tokens:       tokens,
 			Auth:         auth.NewHandler(authSvc, otp, log).WithSessions(sessions),
 			Doctors:      doctor.NewHandler(doctorStore, log),
+			Family:       family.NewHandler(family.NewStore(pool), log),
 			Appointments: appointment.NewHandler(appointmentStore, log),
 			Hospitals: hospital.NewHandler(hospital.NewStore(pool, doctorStore, files),
 				doctorStore, appointmentStore, log),

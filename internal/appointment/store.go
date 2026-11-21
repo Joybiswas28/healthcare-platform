@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
@@ -39,31 +40,38 @@ const (
 )
 
 type Appointment struct {
-	ID              string    `json:"id"`
-	TicketCode      string    `json:"ticket_code"`
-	Status          string    `json:"status"`
-	Date            string    `json:"date"` // YYYY-MM-DD
-	SerialNo        int       `json:"serial_no"`
-	FeePaisa        int64     `json:"fee_paisa"`
-	StartTime       string    `json:"start_time"`
-	EndTime         string    `json:"end_time"`
-	ScheduleID      string    `json:"schedule_id"`
-	DoctorID        string    `json:"doctor_id"`
-	DoctorName      string    `json:"doctor_name"`
-	ChamberID       string    `json:"chamber_id"`
-	ChamberName     string    `json:"chamber_name"`
-	ChamberAddress  string    `json:"chamber_address"`
-	ChamberDistrict string    `json:"chamber_district"`
-	PatientID       string    `json:"patient_id"`
-	PatientName     string    `json:"patient_name"`
-	PatientPhone    string    `json:"patient_phone"`
-	HospitalID      *string   `json:"hospital_id"`
-	HospitalName    *string   `json:"hospital_name"`
-	Room            *string   `json:"room"`
-	CancelledBy     *string   `json:"cancelled_by"`
-	CancelReason    *string   `json:"cancel_reason"`
-	RescheduledTo   *string   `json:"rescheduled_to"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID              string `json:"id"`
+	TicketCode      string `json:"ticket_code"`
+	Status          string `json:"status"`
+	Date            string `json:"date"` // YYYY-MM-DD
+	SerialNo        int    `json:"serial_no"`
+	FeePaisa        int64  `json:"fee_paisa"`
+	StartTime       string `json:"start_time"`
+	EndTime         string `json:"end_time"`
+	ScheduleID      string `json:"schedule_id"`
+	DoctorID        string `json:"doctor_id"`
+	DoctorName      string `json:"doctor_name"`
+	ChamberID       string `json:"chamber_id"`
+	ChamberName     string `json:"chamber_name"`
+	ChamberAddress  string `json:"chamber_address"`
+	ChamberDistrict string `json:"chamber_district"`
+	PatientID       string `json:"patient_id"`
+	PatientName     string `json:"patient_name"`
+	PatientPhone    string `json:"patient_phone"`
+	// Set when the booking is for a family member of the account holder; the
+	// patient_* fields then describe that member.
+	FamilyMemberID   *string   `json:"family_member_id"`
+	Relation         *string   `json:"relation"`
+	PatientGender    *string   `json:"patient_gender"`
+	PatientBirthDate *string   `json:"patient_birth_date"`
+	AccountName      string    `json:"account_name"` // the account holder who booked
+	HospitalID       *string   `json:"hospital_id"`
+	HospitalName     *string   `json:"hospital_name"`
+	Room             *string   `json:"room"`
+	CancelledBy      *string   `json:"cancelled_by"`
+	CancelReason     *string   `json:"cancel_reason"`
+	RescheduledTo    *string   `json:"rescheduled_to"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type Availability struct {
@@ -167,14 +175,16 @@ const appointmentSelect = `
 SELECT a.id, a.ticket_code, a.status, to_char(a.appointment_date, 'YYYY-MM-DD'), a.serial_no, a.fee_paisa,
        to_char(s.start_time, 'HH24:MI'), to_char(s.end_time, 'HH24:MI'), a.schedule_id,
        a.doctor_id, du.name, c.id, c.name, c.address, c.district,
-       a.patient_id, pu.name, pu.phone, c.hospital_id, h.name, c.room,
-       a.cancelled_by, a.cancel_reason, a.rescheduled_to, a.created_at
+       a.patient_id, COALESCE(fm.name, pu.name), pu.phone, c.hospital_id, h.name, c.room,
+       a.cancelled_by, a.cancel_reason, a.rescheduled_to, a.created_at,
+       a.family_member_id, fm.relation, fm.gender, to_char(fm.birth_date, 'YYYY-MM-DD'), pu.name
 FROM appointments a
 JOIN chamber_schedules s ON s.id = a.schedule_id
 JOIN chambers c          ON c.id = a.chamber_id
 JOIN users du            ON du.id = a.doctor_id
 JOIN users pu            ON pu.id = a.patient_id
-LEFT JOIN hospitals h    ON h.id = c.hospital_id`
+LEFT JOIN hospitals h    ON h.id = c.hospital_id
+LEFT JOIN family_members fm ON fm.id = a.family_member_id`
 
 func scanAppointment(row pgx.Row) (Appointment, error) {
 	var a Appointment
@@ -182,7 +192,8 @@ func scanAppointment(row pgx.Row) (Appointment, error) {
 		&a.StartTime, &a.EndTime, &a.ScheduleID,
 		&a.DoctorID, &a.DoctorName, &a.ChamberID, &a.ChamberName, &a.ChamberAddress, &a.ChamberDistrict,
 		&a.PatientID, &a.PatientName, &a.PatientPhone, &a.HospitalID, &a.HospitalName, &a.Room,
-		&a.CancelledBy, &a.CancelReason, &a.RescheduledTo, &a.CreatedAt)
+		&a.CancelledBy, &a.CancelReason, &a.RescheduledTo, &a.CreatedAt,
+		&a.FamilyMemberID, &a.Relation, &a.PatientGender, &a.PatientBirthDate, &a.AccountName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Appointment{}, errAppointmentNotFound
 	}
@@ -237,6 +248,12 @@ func (s *Store) Availability(ctx context.Context, scheduleID, rawDate string) (A
 // duration of the transaction, so concurrent bookings for the same session queue up
 // and can never exceed max_patients or receive the same serial.
 func (s *Store) Book(ctx context.Context, patientID, scheduleID, rawDate string) (Appointment, error) {
+	return s.BookFor(ctx, patientID, "", scheduleID, rawDate)
+}
+
+// BookFor books for a family member of the patient (memberID), or for the
+// patient themself when memberID is empty.
+func (s *Store) BookFor(ctx context.Context, patientID, memberID, scheduleID, rawDate string) (Appointment, error) {
 	date, err := s.parseBookableDate(rawDate)
 	if err != nil {
 		return Appointment{}, err
@@ -260,6 +277,9 @@ func (s *Store) Book(ctx context.Context, patientID, scheduleID, rawDate string)
 		return Appointment{}, apperr.Validation("you cannot book an appointment with yourself")
 	}
 	if err := s.checkDate(ss, date); err != nil {
+		return Appointment{}, err
+	}
+	if err := family.Check(ctx, tx, patientID, memberID); err != nil {
 		return Appointment{}, err
 	}
 
@@ -291,12 +311,15 @@ func (s *Store) Book(ctx context.Context, patientID, scheduleID, rawDate string)
 	var id string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO appointments
-		    (ticket_code, schedule_id, chamber_id, doctor_id, patient_id, appointment_date, serial_no, fee_paisa)
-		VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8)
+		    (ticket_code, schedule_id, chamber_id, doctor_id, patient_id, family_member_id, appointment_date, serial_no, fee_paisa)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8, $9)
 		RETURNING id`,
-		code, scheduleID, ss.ChamberID, ss.DoctorID, patientID, dateStr, maxSerial+1, ss.FeePaisa,
+		code, scheduleID, ss.ChamberID, ss.DoctorID, patientID, nullIfEmpty(memberID), dateStr, maxSerial+1, ss.FeePaisa,
 	).Scan(&id)
 	if database.UniqueViolationOn(err, "appointments_one_active_per_patient") {
+		if memberID != "" {
+			return Appointment{}, apperr.Conflict("this family member already has a booking for this session")
+		}
 		return Appointment{}, apperr.Conflict("you already have a booking for this session")
 	}
 	if err != nil {
@@ -310,8 +333,8 @@ func (s *Store) Book(ctx context.Context, patientID, scheduleID, rawDate string)
 		UserID: patientID,
 		Kind:   notify.KindAppointmentBooked,
 		Title:  "Appointment confirmed",
-		Body: fmt.Sprintf("Serial %d with %s at %s on %s, %s-%s. Ticket: %s",
-			a.SerialNo, a.DoctorName, a.ChamberName, a.Date, a.StartTime, a.EndTime, a.TicketCode),
+		Body: fmt.Sprintf("%sSerial %d with %s at %s on %s, %s-%s. Ticket: %s",
+			forWhom(a), a.SerialNo, a.DoctorName, a.ChamberName, a.Date, a.StartTime, a.EndTime, a.TicketCode),
 		SMS: true,
 	}); err != nil {
 		return Appointment{}, err
@@ -393,4 +416,19 @@ func newTicketCode() (string, error) {
 		return "", err
 	}
 	return base32.StdEncoding.EncodeToString(b), nil
+}
+
+// forWhom starts a notification about a family member's booking: "For Rahim: ".
+func forWhom(a Appointment) string {
+	if a.FamilyMemberID == nil {
+		return ""
+	}
+	return "For " + a.PatientName + ": "
+}
+
+func nullIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

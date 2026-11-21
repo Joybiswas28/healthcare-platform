@@ -139,10 +139,10 @@ func (s *Store) Reschedule(ctx context.Context, hospitalID, id, newScheduleID, r
 	var newID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO appointments
-		    (ticket_code, schedule_id, chamber_id, doctor_id, patient_id, appointment_date, serial_no, fee_paisa)
-		VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8)
+		    (ticket_code, schedule_id, chamber_id, doctor_id, patient_id, family_member_id, appointment_date, serial_no, fee_paisa)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8, $9)
 		RETURNING id`,
-		code, newScheduleID, ss.ChamberID, ss.DoctorID, old.PatientID, dateStr, maxSerial+1, ss.FeePaisa,
+		code, newScheduleID, ss.ChamberID, ss.DoctorID, old.PatientID, old.FamilyMemberID, dateStr, maxSerial+1, ss.FeePaisa,
 	).Scan(&newID)
 	if database.UniqueViolationOn(err, "appointments_one_active_per_patient") {
 		return Appointment{}, apperr.Conflict("the patient already has a booking in that session")

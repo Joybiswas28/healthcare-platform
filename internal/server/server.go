@@ -20,6 +20,7 @@ import (
 	"healthcare-platform/internal/auth"
 	"healthcare-platform/internal/consultation"
 	"healthcare-platform/internal/doctor"
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/hospital"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/payment/sslcommerz"
@@ -36,6 +37,7 @@ type Deps struct {
 	Tokens        *auth.TokenManager
 	Auth          *auth.Handler
 	Doctors       *doctor.Handler
+	Family        *family.Handler
 	Appointments  *appointment.Handler
 	Wallet        *wallet.Handler
 	Consultations *consultation.Handler
@@ -154,6 +156,11 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/appointments/{appointmentID}/review", d.Doctors.ReviewAppointment)
 				r.Post("/consultations/{consultationID}/review", d.Doctors.ReviewConsultation)
 				r.Get("/reviews/mine", d.Doctors.MyReviews)
+
+				r.Get("/family", d.Family.List)
+				r.Post("/family", d.Family.Add)
+				r.Put("/family/{memberID}", d.Family.Update)
+				r.Delete("/family/{memberID}", d.Family.Remove)
 
 				r.Get("/wallet", d.Wallet.Wallet)
 				r.Get("/wallet/history", d.Wallet.History)

@@ -45,8 +45,9 @@ func (h *Handler) Availability(w http.ResponseWriter, r *http.Request) {
 }
 
 type bookInput struct {
-	ScheduleID string `json:"schedule_id"`
-	Date       string `json:"date"`
+	ScheduleID     string `json:"schedule_id"`
+	Date           string `json:"date"`
+	FamilyMemberID string `json:"family_member_id"` // empty: for the account holder
 }
 
 // POST /appointments
@@ -60,7 +61,11 @@ func (h *Handler) Book(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, apperr.Validation("schedule_id is required"))
 		return
 	}
-	a, err := h.store.Book(r.Context(), callerID(r), in.ScheduleID, in.Date)
+	if in.FamilyMemberID != "" && !httpx.IsUUID(in.FamilyMemberID) {
+		h.fail(w, r, apperr.Validation("family_member_id must be a UUID"))
+		return
+	}
+	a, err := h.store.BookFor(r.Context(), callerID(r), in.FamilyMemberID, in.ScheduleID, in.Date)
 	if err != nil {
 		h.fail(w, r, err)
 		return
