@@ -477,6 +477,343 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patient: my health records, newest first */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description self, or a family member's id; everyone when absent */
+                    person?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Records */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            records?: components["schemas"]["HealthRecord"][];
+                            /** @description How many records an account can keep */
+                            max?: number;
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        /**
+         * Patient: upload a report, scan or old prescription (PDF, JPEG or PNG, at most 10 MB)
+         * @description Send the text fields before the file.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        title: string;
+                        kind?: components["schemas"]["RecordKind"];
+                        /** Format: date */
+                        record_date?: string;
+                        note?: string;
+                        /**
+                         * Format: uuid
+                         * @description Whose record; myself when absent
+                         */
+                        family_member_id?: string;
+                        /** Format: binary */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Record */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HealthRecord"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{recordID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Patient: edit a record's details */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    recordID: components["parameters"]["recordID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title: string;
+                        kind?: components["schemas"]["RecordKind"];
+                        /** @description YYYY-MM-DD, or empty */
+                        record_date?: string;
+                        note?: string;
+                        /** @description A family member's id, or empty for myself */
+                        family_member_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Record */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HealthRecord"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        /** Patient: delete a record and its file; copies sent into chats stay */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    recordID: components["parameters"]["recordID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{recordID}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The record's file, for its owner or a doctor it was shared with */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Show in the browser instead of downloading */
+                    inline?: "1";
+                };
+                header?: never;
+                path: {
+                    recordID: components["parameters"]["recordID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description File */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/pdf": string;
+                        "image/jpeg": string;
+                        "image/png": string;
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{recordID}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Patient: show a record to the doctor of an appointment, or send a copy into an active consultation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    recordID: components["parameters"]["recordID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        appointment_id?: string;
+                        /** Format: uuid */
+                        consultation_id?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Shared */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            record?: components["schemas"]["HealthRecord"];
+                            /**
+                             * Format: int64
+                             * @description The chat message, when sent to a consultation
+                             */
+                            message_id?: number;
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/records/{recordID}/shares/{appointmentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Patient: stop showing a record to an appointment's doctor */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    recordID: components["parameters"]["recordID"];
+                    appointmentID: components["parameters"]["appointmentID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Record */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HealthRecord"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor/appointments/{appointmentID}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Doctor: records the patient shared with this appointment */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    appointmentID: components["parameters"]["appointmentID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Records */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            records?: components["schemas"]["HealthRecord"][];
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -6047,6 +6384,37 @@ export interface components {
             /** @description The latest 20 */
             reviews?: components["schemas"]["DoctorReview"][];
         };
+        /** @enum {string} */
+        RecordKind: "lab_report" | "imaging" | "prescription" | "discharge" | "vaccination" | "other";
+        HealthRecord: {
+            /** Format: uuid */
+            id?: string;
+            /**
+             * Format: uuid
+             * @description Null for the account holder
+             */
+            family_member_id?: string | null;
+            person_name?: string;
+            title?: string;
+            kind?: components["schemas"]["RecordKind"];
+            /** Format: date */
+            record_date?: string | null;
+            note?: string | null;
+            file_name?: string;
+            content_type?: string;
+            /** Format: int64 */
+            size_bytes?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** @description Appointments whose doctor can see the record (empty in the doctor's view) */
+            shared_with?: {
+                /** Format: uuid */
+                appointment_id?: string;
+                doctor_name?: string;
+                /** Format: date */
+                date?: string;
+            }[] | null;
+        };
         FamilyMember: {
             /** Format: uuid */
             id?: string;
@@ -6140,6 +6508,8 @@ export interface components {
             rescheduled_to?: string | null;
             /** Format: date-time */
             created_at?: string;
+            /** @description Health records the patient shared with the doctor */
+            shared_record_count?: number;
             /**
              * Format: uuid
              * @description Set when it is for a family member; patient_name is then theirs
@@ -7035,6 +7405,7 @@ export interface components {
         appointmentID: string;
         reviewID: string;
         memberID: string;
+        recordID: string;
         paymentID: string;
         consultationID: string;
         concernID: string;

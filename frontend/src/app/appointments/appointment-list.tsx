@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ForMember } from "@/components/family";
 import { RatingForm, StarRow } from "@/components/rating";
+import { ShareWithAppointment } from "@/components/records";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
@@ -30,6 +31,7 @@ export function AppointmentList() {
   // appointment id -> the rating the patient gave; undefined until loaded
   const [ratings, setRatings] = useState<Record<string, number> | undefined>(undefined);
   const [rating, setRating] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<string | null>(null);
 
   async function load(offset: number) {
     setLoading(true);
@@ -147,6 +149,11 @@ export function AppointmentList() {
                   {cancelling === a.id ? "Cancelling…" : "Cancel"}
                 </Button>
               )}
+              {(upcoming || a.status === "completed") && a.id && (
+                <Button variant="secondary" onClick={() => setSharing(sharing === a.id ? null : (a.id ?? null))}>
+                  📎 Share reports
+                </Button>
+              )}
               {a.status === "completed" && ratings && a.id && (
                 ratings[a.id] ? (
                   <span className="flex items-center gap-2 text-xs text-slate-500">
@@ -161,6 +168,11 @@ export function AppointmentList() {
                 )
               )}
             </div>
+            {sharing === a.id && a.id && (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <ShareWithAppointment appointmentID={a.id} />
+              </div>
+            )}
             {rating === a.id && a.id && !ratings?.[a.id] && (
               <div className="mt-3 border-t border-slate-100 pt-3">
                 <RatingForm

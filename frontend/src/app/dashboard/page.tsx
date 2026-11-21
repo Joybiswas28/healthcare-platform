@@ -56,6 +56,7 @@ function Dashboard({ user }: { user: User }) {
           <Tile title="Medicines" body="Send a prescription to nearby pharmacies, compare prices, get it delivered." href="/medicines" cta="Open" primary />
           <Tile title="Ask doctors" body="Post a concern anonymously and choose from doctors' offers." href="/concerns" cta="My concerns" />
           <Tile title="Tokens" body="Online consultations are paid with tokens. See your balance or buy more." href="/wallet" cta="Wallet" />
+          <Tile title="Health records" body="Your reports, X-rays and old prescriptions in one place. Share them with your doctor." href="/records" cta="Open" />
           <Tile title="Family members" body="Book serials and consultations for your children, parents or spouse." href="/family" cta="Manage" />
           <Tile title="Book a doctor" body="Search by name, specialty or district." href="/doctors" cta="Find a doctor" />
         </div>

@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
 import { ForMember } from "@/components/family";
 import { RatingForm, StarRow } from "@/components/rating";
+import { SendToConsultation } from "@/components/records";
 import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
 import { PrescriptionList } from "@/app/prescriptions/prescription-list";
 import { useT } from "@/components/use-lang";
@@ -90,6 +91,17 @@ function Room({ user }: { user: User }) {
       {!asDoctor && c.status === "completed" && <RateConsultation consultation={c} />}
 
       {showChat && <Chat consultation={c} me={user} />}
+
+      {!asDoctor && c.status === "active" && c.id && (
+        <details className="rounded-xl border border-slate-200 bg-surface p-4 shadow-sm">
+          <summary className="cursor-pointer text-sm font-medium text-slate-800">
+            📁 <T>Send reports from my health records</T>
+          </summary>
+          <div className="mt-3">
+            <SendToConsultation consultationID={c.id} />
+          </div>
+        </details>
+      )}
 
       {(c.status === "active" || c.status === "completed") && (
         <section className="space-y-3">

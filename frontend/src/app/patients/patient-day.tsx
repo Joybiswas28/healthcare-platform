@@ -5,6 +5,7 @@ import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka } from "@/lib/format";
 import { ForMember } from "@/components/family";
+import { SharedRecords } from "@/components/records";
 import { T } from "@/components/t";
 import { useT } from "@/components/use-lang";
 
@@ -119,6 +120,9 @@ export function PatientDay() {
             </ButtonLink>
           )}
         </div>
+        {a.id && (a.status === "confirmed" || a.status === "completed") && (
+          <SharedRecords appointmentID={a.id} count={a.shared_record_count ?? 0} />
+        )}
       </Card>
     );
   }

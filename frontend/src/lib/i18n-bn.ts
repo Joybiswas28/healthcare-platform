@@ -1090,5 +1090,46 @@ export const BN: Record<string, string> = {
   "We'll remind you by SMS the evening before and about 2 hours before the session.":
     "আগের দিন সন্ধ্যায় এবং সেশন শুরুর প্রায় ২ ঘণ্টা আগে আমরা SMS-এ মনে করিয়ে দেব।",
   "Appointment reminder": "অ্যাপয়েন্টমেন্টের রিমাইন্ডার",
+  // Health records
+  "Health records": "স্বাস্থ্য রেকর্ড",
+  "Lab report": "ল্যাব রিপোর্ট",
+  "X-ray or scan": "এক্স-রে বা স্ক্যান",
+  "Discharge summary": "ডিসচার্জ সামারি",
+  Vaccination: "টিকা",
+  "Send to chat": "চ্যাটে পাঠান",
+  Sent: "পাঠানো হয়েছে",
+  "Shared health records: {n}": "শেয়ার করা স্বাস্থ্য রেকর্ড: {n}",
+  "You have no health records yet.": "আপনার এখনো কোনো স্বাস্থ্য রেকর্ড নেই।",
+  "Upload reports": "রিপোর্ট আপলোড করুন",
+  "Ticked records can be opened by this doctor until the appointment is cancelled or you untick them.":
+    "টিক দেওয়া রেকর্ডগুলো এই ডাক্তার খুলতে পারবেন, যতক্ষণ না অ্যাপয়েন্টমেন্ট বাতিল হয় বা আপনি টিক তুলে দেন।",
+  "Keep your reports, X-rays and old prescriptions in one place. Only you can see them until you share one with a doctor.":
+    "আপনার রিপোর্ট, এক্স-রে ও পুরোনো প্রেসক্রিপশন এক জায়গায় রাখুন। ডাক্তারের সাথে শেয়ার না করা পর্যন্ত শুধু আপনিই এগুলো দেখতে পান।",
+  "Only patient accounts keep health records.": "শুধু রোগীর অ্যাকাউন্টে স্বাস্থ্য রেকর্ড রাখা যায়।",
+  "Delete “{title}”? Doctors you shared it with will no longer see it.":
+    "“{title}” মুছবেন? যে ডাক্তারদের সাথে শেয়ার করেছেন, তাঁরা আর এটি দেখতে পাবেন না।",
+  Everyone: "সবাই",
+  "Whose records": "কার রেকর্ড",
+  "Shared with {doctor} ({date})": "{doctor}-এর সাথে শেয়ার করা ({date})",
+  "Choose a file to upload.": "আপলোড করার জন্য একটি ফাইল বেছে নিন।",
+  "Could not upload the file.": "ফাইলটি আপলোড করা যায়নি।",
+  "Edit record": "রেকর্ড সম্পাদনা",
+  "Upload a record": "রেকর্ড আপলোড করুন",
+  "+ Upload a record": "+ রেকর্ড আপলোড করুন",
+  "e.g. CBC report": "যেমন CBC রিপোর্ট",
+  Type: "ধরন",
+  "Date of the report": "রিপোর্টের তারিখ",
+  "Whose record": "কার রেকর্ড",
+  Upload: "আপলোড",
+  Download: "ডাউনলোড",
+  "No records here yet. Upload a report, an X-ray or an old prescription (PDF, JPEG or PNG, up to 10 MB).":
+    "এখানে এখনো কোনো রেকর্ড নেই। একটি রিপোর্ট, এক্স-রে বা পুরোনো প্রেসক্রিপশন আপলোড করুন (PDF, JPEG বা PNG, সর্বোচ্চ ১০ MB)।",
+  "To show a record to a doctor, open": "ডাক্তারকে রেকর্ড দেখাতে খুলুন",
+  "or an active online consultation.": "অথবা চলমান অনলাইন পরামর্শ।",
+  "File (PDF, JPEG or PNG, up to 10 MB)": "ফাইল (PDF, JPEG বা PNG, সর্বোচ্চ ১০ MB)",
+  "Send reports from my health records": "আমার স্বাস্থ্য রেকর্ড থেকে রিপোর্ট পাঠান",
+  "📎 Share reports": "📎 রিপোর্ট শেয়ার করুন",
+  "Your reports, X-rays and old prescriptions in one place. Share them with your doctor.":
+    "আপনার রিপোর্ট, এক্স-রে ও পুরোনো প্রেসক্রিপশন এক জায়গায়। ডাক্তারের সাথে শেয়ার করুন।",
   "Book serials and consultations for your children, parents or spouse.": "সন্তান, বাবা-মা বা স্বামী/স্ত্রীর জন্য সিরিয়াল ও পরামর্শ বুক করুন।",
 };
