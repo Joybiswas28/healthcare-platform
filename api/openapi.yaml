@@ -24,6 +24,7 @@ tags:
   - name: Doctors
   - name: Doctor (self)
   - name: Family
+  - name: Health records
   - name: Appointments
   - name: Wallet
   - name: Payments
@@ -220,6 +221,140 @@ paths:
       parameters: [{ $ref: "#/components/parameters/memberID" }]
       responses:
         "204": { description: Removed }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ health records
+  /api/v1/records:
+    get:
+      tags: [Health records]
+      summary: "Patient: my health records, newest first"
+      parameters:
+        - { name: person, in: query, schema: { type: string }, description: "self, or a family member's id; everyone when absent" }
+      responses:
+        "200":
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records: { type: array, items: { $ref: "#/components/schemas/HealthRecord" } }
+                  max: { type: integer, description: How many records an account can keep }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Health records]
+      summary: "Patient: upload a report, scan or old prescription (PDF, JPEG or PNG, at most 10 MB)"
+      description: Send the text fields before the file.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, file]
+              properties:
+                title: { type: string, minLength: 2, maxLength: 150 }
+                kind: { $ref: "#/components/schemas/RecordKind" }
+                record_date: { type: string, format: date }
+                note: { type: string, maxLength: 2000 }
+                family_member_id: { type: string, format: uuid, description: Whose record; myself when absent }
+                file: { type: string, format: binary }
+      responses:
+        "201": { description: Record, content: { application/json: { schema: { $ref: "#/components/schemas/HealthRecord" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/records/{recordID}:
+    put:
+      tags: [Health records]
+      summary: "Patient: edit a record's details"
+      parameters: [{ $ref: "#/components/parameters/recordID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 2, maxLength: 150 }
+                kind: { $ref: "#/components/schemas/RecordKind" }
+                record_date: { type: string, description: "YYYY-MM-DD, or empty" }
+                note: { type: string, maxLength: 2000 }
+                family_member_id: { type: string, description: "A family member's id, or empty for myself" }
+      responses:
+        "200": { description: Record, content: { application/json: { schema: { $ref: "#/components/schemas/HealthRecord" } } } }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [Health records]
+      summary: "Patient: delete a record and its file; copies sent into chats stay"
+      parameters: [{ $ref: "#/components/parameters/recordID" }]
+      responses:
+        "204": { description: Deleted }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/records/{recordID}/file:
+    get:
+      tags: [Health records]
+      summary: The record's file, for its owner or a doctor it was shared with
+      parameters:
+        - $ref: "#/components/parameters/recordID"
+        - { name: inline, in: query, schema: { type: string, enum: ["1"] }, description: Show in the browser instead of downloading }
+      responses:
+        "200":
+          description: File
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/records/{recordID}/share:
+    post:
+      tags: [Health records]
+      summary: "Patient: show a record to the doctor of an appointment, or send a copy into an active consultation"
+      parameters: [{ $ref: "#/components/parameters/recordID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Exactly one of the two.
+              properties:
+                appointment_id: { type: string, format: uuid }
+                consultation_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Shared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  record: { $ref: "#/components/schemas/HealthRecord" }
+                  message_id: { type: integer, format: int64, description: "The chat message, when sent to a consultation" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/records/{recordID}/shares/{appointmentID}:
+    delete:
+      tags: [Health records]
+      summary: "Patient: stop showing a record to an appointment's doctor"
+      parameters:
+        - $ref: "#/components/parameters/recordID"
+        - $ref: "#/components/parameters/appointmentID"
+      responses:
+        "200": { description: Record, content: { application/json: { schema: { $ref: "#/components/schemas/HealthRecord" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/appointments/{appointmentID}/records:
+    get:
+      tags: [Health records]
+      summary: "Doctor: records the patient shared with this appointment"
+      parameters: [{ $ref: "#/components/parameters/appointmentID" }]
+      responses:
+        "200":
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records: { type: array, items: { $ref: "#/components/schemas/HealthRecord" } }
         default: { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------------ notifications
@@ -2201,6 +2336,7 @@ components:
     appointmentID: { name: appointmentID, in: path, required: true, schema: { type: string, format: uuid } }
     reviewID: { name: reviewID, in: path, required: true, schema: { type: string, format: uuid } }
     memberID: { name: memberID, in: path, required: true, schema: { type: string, format: uuid } }
+    recordID: { name: recordID, in: path, required: true, schema: { type: string, format: uuid } }
     paymentID: { name: paymentID, in: path, required: true, schema: { type: string, format: uuid } }
     consultationID: { name: consultationID, in: path, required: true, schema: { type: string, format: uuid } }
     concernID: { name: concernID, in: path, required: true, schema: { type: string, format: uuid } }
@@ -2463,6 +2599,33 @@ components:
           properties:
             chambers: { type: array, items: { $ref: "#/components/schemas/Chamber" } }
             reviews: { type: array, items: { $ref: "#/components/schemas/DoctorReview" }, description: The latest 20 }
+    RecordKind:
+      type: string
+      enum: [lab_report, imaging, prescription, discharge, vaccination, other]
+    HealthRecord:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        family_member_id: { type: string, format: uuid, nullable: true, description: Null for the account holder }
+        person_name: { type: string }
+        title: { type: string }
+        kind: { $ref: "#/components/schemas/RecordKind" }
+        record_date: { type: string, format: date, nullable: true }
+        note: { type: string, nullable: true }
+        file_name: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+        shared_with:
+          type: array
+          description: Appointments whose doctor can see the record (empty in the doctor's view)
+          nullable: true
+          items:
+            type: object
+            properties:
+              appointment_id: { type: string, format: uuid }
+              doctor_name: { type: string }
+              date: { type: string, format: date }
     FamilyMember:
       type: object
       properties:
@@ -2542,6 +2705,7 @@ components:
         cancel_reason: { type: string, nullable: true }
         rescheduled_to: { type: string, format: uuid, nullable: true }
         created_at: { type: string, format: date-time }
+        shared_record_count: { type: integer, description: Health records the patient shared with the doctor }
         family_member_id: { type: string, format: uuid, nullable: true, description: Set when it is for a family member; patient_name is then theirs }
         relation: { type: string, enum: [spouse, child, parent, sibling, other], nullable: true }
         patient_gender: { type: string, enum: [male, female, other], nullable: true }

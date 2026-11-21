@@ -31,6 +31,7 @@ import (
 	"healthcare-platform/internal/platform/storage"
 	"healthcare-platform/internal/prescription"
 	"healthcare-platform/internal/realtime"
+	"healthcare-platform/internal/records"
 	"healthcare-platform/internal/user"
 	"healthcare-platform/internal/wallet"
 )
@@ -200,6 +201,7 @@ func TestResponsesMatchSpec(t *testing.T) {
 		AdminUsers:    auth.NewAdminHandler(users, sessions, log),
 		Doctors:       doctor.NewHandler(ds, log),
 		Family:        family.NewHandler(family.NewStore(pool), log),
+		Records:       records.NewHandler(records.NewStore(pool, files), log),
 		Appointments:  appointment.NewHandler(as, log),
 		Wallet:        wallet.NewHandler(ws, wallet.DevGateway{}, log),
 		Consultations: consultation.NewHandler(consultation.NewStore(pool, files), realtime.NewHub(), log),
@@ -278,6 +280,13 @@ func TestResponsesMatchSpec(t *testing.T) {
 	c.call("POST", api+"/appointments", dt, map[string]any{"schedule_id": str(sc, "id"), "date": date, "family_member_id": str(kid, "id")}, 403)
 	c.call("DELETE", api+"/family/"+str(kid, "id"), pt, nil, 204)
 	c.call("DELETE", api+"/family/"+str(kid, "id"), pt, nil, 404)
+
+	// Health records (uploads are multipart and covered by the records package tests).
+	c.call("GET", api+"/records", pt, nil, 200)
+	c.call("GET", api+"/records?person=self", pt, nil, 200)
+	c.call("GET", api+"/records?person=nobody", pt, nil, 422)
+	c.call("GET", api+"/doctor/appointments/"+str(appt, "id")+"/records", dt, nil, 200)
+	c.call("GET", api+"/records/"+str(appt, "id")+"/file", dt, nil, 404)
 
 	// Tokens and a private consultation.
 	pkgs := c.call("GET", api+"/token-packages", "", nil, 200)

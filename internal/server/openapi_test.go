@@ -24,6 +24,7 @@ import (
 	"healthcare-platform/internal/payment/sslcommerz"
 	"healthcare-platform/internal/pharmacy"
 	"healthcare-platform/internal/prescription"
+	"healthcare-platform/internal/records"
 	"healthcare-platform/internal/wallet"
 )
 
@@ -36,6 +37,7 @@ func fullRouter() http.Handler {
 		Auth:          auth.NewHandler(nil, nil, log),
 		Doctors:       doctor.NewHandler(nil, log),
 		Family:        family.NewHandler(nil, log),
+		Records:       records.NewHandler(nil, log),
 		Appointments:  appointment.NewHandler(nil, log),
 		Wallet:        wallet.NewHandler(nil, nil, log),
 		Consultations: consultation.NewHandler(nil, nil, log),

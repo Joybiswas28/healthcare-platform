@@ -27,6 +27,7 @@ import (
 	"healthcare-platform/internal/pharmacy"
 	"healthcare-platform/internal/platform/httpx"
 	"healthcare-platform/internal/prescription"
+	"healthcare-platform/internal/records"
 	"healthcare-platform/internal/user"
 	"healthcare-platform/internal/wallet"
 )
@@ -38,6 +39,7 @@ type Deps struct {
 	Auth          *auth.Handler
 	Doctors       *doctor.Handler
 	Family        *family.Handler
+	Records       *records.Handler
 	Appointments  *appointment.Handler
 	Wallet        *wallet.Handler
 	Consultations *consultation.Handler
@@ -162,6 +164,13 @@ func NewRouter(d Deps) http.Handler {
 				r.Put("/family/{memberID}", d.Family.Update)
 				r.Delete("/family/{memberID}", d.Family.Remove)
 
+				r.Get("/records", d.Records.List)
+				r.Post("/records", d.Records.Add)
+				r.Put("/records/{recordID}", d.Records.Update)
+				r.Delete("/records/{recordID}", d.Records.Delete)
+				r.Post("/records/{recordID}/share", d.Records.Share)
+				r.Delete("/records/{recordID}/shares/{appointmentID}", d.Records.Unshare)
+
 				r.Get("/wallet", d.Wallet.Wallet)
 				r.Get("/wallet/history", d.Wallet.History)
 				r.Post("/wallet/purchases", d.Wallet.StartPurchase)
@@ -245,6 +254,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/consultations/{consultationID}/ws", c.Stream)
 				r.Get("/consultations/{consultationID}/events", c.Events)
 				r.Get("/attachments/{attachmentID}", c.Download)
+				r.Get("/records/{recordID}/file", d.Records.File)
 
 				// Public medical concerns
 				r.Get("/concerns", c.Concerns)
@@ -281,6 +291,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/appointments/{appointmentID}/complete", d.Appointments.Complete)
 				r.Post("/appointments/{appointmentID}/no-show", d.Appointments.NoShow)
 				r.Get("/tickets/{code}", d.Appointments.Ticket)
+				r.Get("/appointments/{appointmentID}/records", d.Records.ForAppointment)
 			})
 
 			// Hospital management (hospital_admin accounts; membership checked per hospital)

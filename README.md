@@ -207,6 +207,12 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 - No SMS provider is connected yet, so SMS (including OTP codes) are written to the server log. In development, copy the OTP from there.
 - OTP rules: codes expire after 5 minutes. A number can get one code per minute and five per hour. A code is burned after 5 wrong attempts.
 
+### Family members and health records
+
+- A patient can add up to 10 family members (`/family`) and book appointments or consultations for them; the doctor sees the member's name, relation and age, and prescriptions are issued in the member's name.
+- Health records (`/records`): a patient uploads lab reports, scans, old prescriptions and similar (PDF, JPEG or PNG, up to 10 MB, 300 per account) for themself or a family member. Records are private.
+- Sharing: `POST /records/{id}/share` with `appointment_id` lets the doctor of that confirmed or completed appointment open the file (`GET /doctor/appointments/{id}/records`); access ends when the appointment is cancelled or the patient unshares. With `consultation_id` it sends a copy into the active consultation chat; that copy stays even if the record is deleted later.
+
 ### Live chat (WebSocket)
 
 Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message id you have>`. Browsers cannot set headers on WebSockets, so the token goes in the query string on this route only.

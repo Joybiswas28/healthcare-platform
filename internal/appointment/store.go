@@ -60,18 +60,20 @@ type Appointment struct {
 	PatientPhone    string `json:"patient_phone"`
 	// Set when the booking is for a family member of the account holder; the
 	// patient_* fields then describe that member.
-	FamilyMemberID   *string   `json:"family_member_id"`
-	Relation         *string   `json:"relation"`
-	PatientGender    *string   `json:"patient_gender"`
-	PatientBirthDate *string   `json:"patient_birth_date"`
-	AccountName      string    `json:"account_name"` // the account holder who booked
-	HospitalID       *string   `json:"hospital_id"`
-	HospitalName     *string   `json:"hospital_name"`
-	Room             *string   `json:"room"`
-	CancelledBy      *string   `json:"cancelled_by"`
-	CancelReason     *string   `json:"cancel_reason"`
-	RescheduledTo    *string   `json:"rescheduled_to"`
-	CreatedAt        time.Time `json:"created_at"`
+	FamilyMemberID   *string `json:"family_member_id"`
+	Relation         *string `json:"relation"`
+	PatientGender    *string `json:"patient_gender"`
+	PatientBirthDate *string `json:"patient_birth_date"`
+	AccountName      string  `json:"account_name"` // the account holder who booked
+
+	SharedRecordCount int       `json:"shared_record_count"` // health records the patient shared with the doctor
+	HospitalID        *string   `json:"hospital_id"`
+	HospitalName      *string   `json:"hospital_name"`
+	Room              *string   `json:"room"`
+	CancelledBy       *string   `json:"cancelled_by"`
+	CancelReason      *string   `json:"cancel_reason"`
+	RescheduledTo     *string   `json:"rescheduled_to"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type Availability struct {
@@ -177,7 +179,8 @@ SELECT a.id, a.ticket_code, a.status, to_char(a.appointment_date, 'YYYY-MM-DD'),
        a.doctor_id, du.name, c.id, c.name, c.address, c.district,
        a.patient_id, COALESCE(fm.name, pu.name), pu.phone, c.hospital_id, h.name, c.room,
        a.cancelled_by, a.cancel_reason, a.rescheduled_to, a.created_at,
-       a.family_member_id, fm.relation, fm.gender, to_char(fm.birth_date, 'YYYY-MM-DD'), pu.name
+       a.family_member_id, fm.relation, fm.gender, to_char(fm.birth_date, 'YYYY-MM-DD'), pu.name,
+       (SELECT count(*) FROM record_shares rs WHERE rs.appointment_id = a.id)
 FROM appointments a
 JOIN chamber_schedules s ON s.id = a.schedule_id
 JOIN chambers c          ON c.id = a.chamber_id
@@ -193,7 +196,8 @@ func scanAppointment(row pgx.Row) (Appointment, error) {
 		&a.DoctorID, &a.DoctorName, &a.ChamberID, &a.ChamberName, &a.ChamberAddress, &a.ChamberDistrict,
 		&a.PatientID, &a.PatientName, &a.PatientPhone, &a.HospitalID, &a.HospitalName, &a.Room,
 		&a.CancelledBy, &a.CancelReason, &a.RescheduledTo, &a.CreatedAt,
-		&a.FamilyMemberID, &a.Relation, &a.PatientGender, &a.PatientBirthDate, &a.AccountName)
+		&a.FamilyMemberID, &a.Relation, &a.PatientGender, &a.PatientBirthDate, &a.AccountName,
+		&a.SharedRecordCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Appointment{}, errAppointmentNotFound
 	}

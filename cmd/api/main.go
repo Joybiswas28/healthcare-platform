@@ -26,6 +26,7 @@ import (
 	"healthcare-platform/internal/platform/storage"
 	"healthcare-platform/internal/prescription"
 	"healthcare-platform/internal/realtime"
+	"healthcare-platform/internal/records"
 	"healthcare-platform/internal/server"
 	"healthcare-platform/internal/user"
 	"healthcare-platform/internal/wallet"
@@ -121,6 +122,7 @@ func run() error {
 			Auth:         auth.NewHandler(authSvc, otp, log).WithSessions(sessions),
 			Doctors:      doctor.NewHandler(doctorStore, log),
 			Family:       family.NewHandler(family.NewStore(pool), log),
+			Records:      records.NewHandler(records.NewStore(pool, files), log),
 			Appointments: appointment.NewHandler(appointmentStore, log),
 			Hospitals: hospital.NewHandler(hospital.NewStore(pool, doctorStore, files),
 				doctorStore, appointmentStore, log),
