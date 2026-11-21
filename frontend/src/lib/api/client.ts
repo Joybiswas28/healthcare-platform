@@ -38,6 +38,7 @@ export type Pharmacy = Schemas["Pharmacy"];
 export type PharmacyInput = Schemas["PharmacyInput"];
 export type Review = Schemas["Review"];
 export type DoctorReview = Schemas["DoctorReview"];
+export type FamilyMember = Schemas["FamilyMember"];
 export type MyDoctorReview = Schemas["MyDoctorReview"];
 export type MedicineRequest = Schemas["MedicineRequest"];
 export type MedicineRequestInput = Schemas["MedicineRequestInput"];

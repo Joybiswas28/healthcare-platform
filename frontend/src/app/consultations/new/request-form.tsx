@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { PersonPicker, useFamily } from "@/components/family";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
@@ -18,7 +19,7 @@ export function RequestForm() {
     <RequireAuth>
       {(user) =>
         user.role === "patient" ? (
-          <Form doctorID={doctorID} />
+          <Form doctorID={doctorID} me={user.name ?? ""} />
         ) : (
           <p className="text-sm text-slate-600"><T>Only patient accounts can request a consultation.</T></p>
         )
@@ -27,8 +28,10 @@ export function RequestForm() {
   );
 }
 
-function Form({ doctorID }: { doctorID: string }) {
+function Form({ doctorID, me }: { doctorID: string; me: string }) {
   const t = useT();
+  const family = useFamily();
+  const [forMember, setForMember] = useState("");
   const router = useRouter();
   const [doctor, setDoctor] = useState<PublicDoctor | null>(null);
   const [error, setError] = useState("");
@@ -52,6 +55,7 @@ function Form({ doctorID }: { doctorID: string }) {
         doctor_id: doctorID,
         subject: String(form.get("subject")).trim(),
         description: String(form.get("description")).trim(),
+        family_member_id: forMember || undefined,
       },
     });
     setBusy(false);
@@ -87,6 +91,7 @@ function Form({ doctorID }: { doctorID: string }) {
             {t("Fee: {fee}. Nothing is charged until the doctor accepts and you confirm.", { fee: tokens(doctor.consultation_fee_tokens) })}
           </p>
         </div>
+        {family && <PersonPicker members={family} me={me} value={forMember} onChange={setForMember} />}
         <Field label="Subject" name="subject" minLength={5} maxLength={150} required placeholder={t("e.g. Fever for three days")} />
         <TextArea
           label="Describe the problem"

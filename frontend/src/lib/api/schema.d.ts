@@ -347,6 +347,136 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/family": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patient: my family members */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Family members */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            members?: components["schemas"]["FamilyMember"][];
+                            /** @description How many members an account can keep */
+                            max?: number;
+                        };
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        /** Patient: add a family member to book appointments and consultations for */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FamilyMemberInput"];
+                };
+            };
+            responses: {
+                /** @description Added */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FamilyMember"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/{memberID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Patient: edit a family member */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    memberID: components["parameters"]["memberID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FamilyMemberInput"];
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FamilyMember"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        /** Patient: remove a family member; their past bookings are kept */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    memberID: components["parameters"]["memberID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications": {
         parameters: {
             query?: never;
@@ -1409,7 +1539,7 @@ export interface paths {
         put?: never;
         /**
          * Book the next serial in a session
-         * @description Up to 30 days ahead, one booking per session, at most 5 upcoming appointments per patient.
+         * @description Up to 30 days ahead, one booking per person per session, at most 5 upcoming appointments per account.
          *     409 when the session is full.
          */
         post: {
@@ -1426,6 +1556,11 @@ export interface paths {
                         schedule_id: string;
                         /** Format: date */
                         date: string;
+                        /**
+                         * Format: uuid
+                         * @description Book for this family member instead of myself
+                         */
+                        family_member_id?: string;
                     };
                 };
             };
@@ -1975,6 +2110,11 @@ export interface paths {
                         doctor_id: string;
                         subject: string;
                         description: string;
+                        /**
+                         * Format: uuid
+                         * @description Consult for this family member instead of myself
+                         */
+                        family_member_id?: string;
                     };
                 };
             };
@@ -5907,6 +6047,28 @@ export interface components {
             /** @description The latest 20 */
             reviews?: components["schemas"]["DoctorReview"][];
         };
+        FamilyMember: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** @enum {string} */
+            relation?: "spouse" | "child" | "parent" | "sibling" | "other";
+            /** @enum {string|null} */
+            gender?: "male" | "female" | "other" | null;
+            /** Format: date */
+            birth_date?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        FamilyMemberInput: {
+            name: string;
+            /** @enum {string} */
+            relation: "spouse" | "child" | "parent" | "sibling" | "other";
+            /** @enum {string} */
+            gender?: "male" | "female" | "other" | "";
+            /** @description YYYY-MM-DD, or empty */
+            birth_date?: string;
+        };
         /** @description A patient's rating of a doctor. The patient is never named. */
         DoctorReview: {
             /** Format: uuid */
@@ -5978,6 +6140,19 @@ export interface components {
             rescheduled_to?: string | null;
             /** Format: date-time */
             created_at?: string;
+            /**
+             * Format: uuid
+             * @description Set when it is for a family member; patient_name is then theirs
+             */
+            family_member_id?: string | null;
+            /** @enum {string|null} */
+            relation?: "spouse" | "child" | "parent" | "sibling" | "other" | null;
+            /** @enum {string|null} */
+            patient_gender?: "male" | "female" | "other" | null;
+            /** Format: date */
+            patient_birth_date?: string | null;
+            /** @description The account holder */
+            account_name?: string;
         };
         Availability: {
             /** Format: uuid */
@@ -6099,6 +6274,19 @@ export interface components {
             confirmed_at?: string | null;
             /** Format: date-time */
             closed_at?: string | null;
+            /**
+             * Format: uuid
+             * @description Set when it is for a family member; patient_name is then theirs
+             */
+            family_member_id?: string | null;
+            /** @enum {string|null} */
+            relation?: "spouse" | "child" | "parent" | "sibling" | "other" | null;
+            /** @enum {string|null} */
+            patient_gender?: "male" | "female" | "other" | null;
+            /** Format: date */
+            patient_birth_date?: string | null;
+            /** @description The account holder */
+            account_name?: string;
         };
         ChatMessage: {
             /** Format: int64 */
@@ -6846,6 +7034,7 @@ export interface components {
         scheduleID: string;
         appointmentID: string;
         reviewID: string;
+        memberID: string;
         paymentID: string;
         consultationID: string;
         concernID: string;

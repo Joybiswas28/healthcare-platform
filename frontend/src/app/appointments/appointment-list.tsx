@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ForMember } from "@/components/family";
 import { RatingForm, StarRow } from "@/components/rating";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { useT } from "@/components/use-lang";
@@ -110,6 +111,12 @@ export function AppointmentList() {
                   </Link>
                   <Badge tone={status.tone}>{status.label}</Badge>
                 </div>
+                {a.family_member_id && (
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <T vars={{ name: a.patient_name ?? "" }}>{"For {name}"}</T>
+                    <ForMember relation={a.relation} birthDate={a.patient_birth_date} />
+                  </p>
+                )}
                 <p className="mt-1 text-sm text-slate-700">
                   {prettyDate(a.date)} · {clock(a.start_time)} – {clock(a.end_time)}
                 </p>

@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka } from "@/lib/format";
+import { ForMember } from "@/components/family";
 import { T } from "@/components/t";
 import { useT } from "@/components/use-lang";
 
@@ -90,6 +91,7 @@ export function PatientDay() {
             </div>
             <div>
               <p className="font-semibold text-slate-900">{a.patient_name}</p>
+              <ForMember relation={a.relation} birthDate={a.patient_birth_date} accountName={a.account_name} showAccount />
               <p className="text-sm text-slate-600">
                 {a.patient_phone} · <span className="font-mono">{a.ticket_code}</span>
               </p>

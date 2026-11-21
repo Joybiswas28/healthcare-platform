@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ConsultationBadge } from "@/components/consultation-status";
 import { RequireAuth } from "@/components/require-auth";
 import { LoadFailure, loadFailure } from "@/components/load-failure";
+import { ForMember } from "@/components/family";
 import { RatingForm, StarRow } from "@/components/rating";
 import { Alert, ButtonLink, Card, Spinner } from "@/components/ui";
 import { PrescriptionList } from "@/app/prescriptions/prescription-list";
@@ -69,6 +70,12 @@ function Room({ user }: { user: User }) {
             <p className="text-sm text-slate-600">
               {asDoctor ? t("Patient: {name}", { name: c.patient_name }) : t("Doctor: {name}", { name: c.doctor_name })} · {tokens(c.fee_tokens)}
             </p>
+            {c.family_member_id && (
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                {!asDoctor && <T vars={{ name: c.patient_name ?? "" }}>{"For {name}"}</T>}
+                <ForMember relation={c.relation} birthDate={c.patient_birth_date} accountName={c.account_name} showAccount={asDoctor} />
+              </p>
+            )}
             <p className="text-xs text-slate-500">{t("Requested {date}", { date: dateTime(c.requested_at) })}</p>
           </div>
           <ConsultationBadge status={c.status} asDoctor={asDoctor} />

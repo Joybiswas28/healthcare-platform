@@ -7,6 +7,7 @@ import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Consultation, type ConsultationStatus } from "@/lib/api/client";
 import { dateTime, tokens } from "@/lib/format";
+import { ForMember } from "@/components/family";
 import { T } from "@/components/t";
 
 const PAGE_SIZE = 20;
@@ -90,6 +91,12 @@ export function ConsultationList({ asDoctor }: { asDoctor: boolean }) {
                   <p className="text-sm text-slate-600">
                     {asDoctor ? t("Patient: {name}", { name: c.patient_name }) : c.doctor_name} · {tokens(c.fee_tokens)}
                   </p>
+                  {c.family_member_id && (
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                      {!asDoctor && <T vars={{ name: c.patient_name ?? "" }}>{"For {name}"}</T>}
+                      <ForMember relation={c.relation} birthDate={c.patient_birth_date} accountName={c.account_name} showAccount={asDoctor} />
+                    </p>
+                  )}
                 </div>
                 <ConsultationBadge status={c.status} asDoctor={asDoctor} />
               </div>

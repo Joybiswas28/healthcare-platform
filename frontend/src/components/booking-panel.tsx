@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { PersonPicker, useFamily } from "@/components/family";
 import { T } from "@/components/t";
 import { Alert, Button, ButtonLink } from "@/components/ui";
 import { useT } from "@/components/use-lang";
@@ -21,6 +22,8 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState("");
   const [booked, setBooked] = useState<Appointment | null>(null);
+  const [forMember, setForMember] = useState("");
+  const family = useFamily(user?.role === "patient");
 
   useEffect(() => {
     if (!date || !schedule.id) return;
@@ -42,7 +45,7 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
     setBooking(true);
     setError("");
     const { data, error } = await api.POST("/api/v1/appointments", {
-      body: { schedule_id: schedule.id, date },
+      body: { schedule_id: schedule.id, date, family_member_id: forMember || undefined },
     });
     setBooking(false);
     if (data) setBooked(data);
@@ -53,7 +56,11 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
     return (
       <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
         <p className="font-semibold">
-          <T vars={{ n: booked.serial_no }}>{"Booked! Your serial number is {n}."}</T>
+          {booked.family_member_id ? (
+            <T vars={{ name: booked.patient_name ?? "", n: booked.serial_no ?? 0 }}>{"Booked for {name}! The serial number is {n}."}</T>
+          ) : (
+            <T vars={{ n: booked.serial_no }}>{"Booked! Your serial number is {n}."}</T>
+          )}
         </p>
         <p className="mt-1">
           {prettyDate(booked.date)} · {clock(booked.start_time)} · {booked.chamber_name}
@@ -113,9 +120,12 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
 
           {authLoading ? null : user ? (
             user.role === "patient" ? (
-              <Button onClick={book} disabled={booking || full || !availability}>
-                {booking ? "Booking…" : "Book serial"}
-              </Button>
+              <div className="space-y-3">
+                {family && <PersonPicker members={family} me={user.name ?? ""} value={forMember} onChange={setForMember} />}
+                <Button onClick={book} disabled={booking || full || !availability}>
+                  {booking ? "Booking…" : "Book serial"}
+                </Button>
+              </div>
             ) : (
               <p className="text-sm text-slate-600">
                 <T>Only patient accounts can book serials.</T>

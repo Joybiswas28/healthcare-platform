@@ -5,6 +5,7 @@ import { TextArea } from "@/components/textarea";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Appointment, type Hospital, type StaffDoctor } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka, upcomingDates, WEEKDAYS } from "@/lib/format";
+import { ForMember } from "@/components/family";
 import { T } from "@/components/t";
 import { useT } from "@/components/use-lang";
 
@@ -127,6 +128,7 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900">{a.patient_name}</p>
+                      <ForMember relation={a.relation} birthDate={a.patient_birth_date} accountName={a.account_name} showAccount />
                       <p className="text-sm text-slate-600">
                         {a.patient_phone} · <span className="font-mono">{a.ticket_code}</span>
                       </p>

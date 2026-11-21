@@ -1058,4 +1058,34 @@ export const BN: Record<string, string> = {
   "What patients say after a visit or consultation. Reply to thank them or explain.":
     "ডাক্তার দেখানো বা পরামর্শের পর রোগীরা যা বলেন। ধন্যবাদ জানাতে বা ব্যাখ্যা দিতে উত্তর দিন।",
   "New review": "নতুন রিভিউ",
+
+  // Family members
+  Spouse: "স্বামী/স্ত্রী",
+  Child: "সন্তান",
+  Parent: "বাবা/মা",
+  "Brother or sister": "ভাই/বোন",
+  "Other relative": "অন্য আত্মীয়",
+  "Myself ({name})": "আমি নিজে ({name})",
+  "booked by {name}": "বুক করেছেন {name}",
+  "Who is this for?": "কার জন্য?",
+  "Booking for a child or parent?": "সন্তান বা বাবা-মায়ের জন্য বুক করবেন?",
+  "Add family members": "পরিবারের সদস্য যোগ করুন",
+  "Family members": "পরিবারের সদস্য",
+  "Book serials and online consultations for your children, parents or spouse from your own account. Prescriptions are written in their name.":
+    "নিজের অ্যাকাউন্ট থেকেই সন্তান, বাবা-মা বা স্বামী/স্ত্রীর জন্য সিরিয়াল ও অনলাইন পরামর্শ বুক করুন। প্রেসক্রিপশন তাঁদের নামেই লেখা হবে।",
+  "Only patient accounts can add family members.": "শুধু রোগীর অ্যাকাউন্টে পরিবারের সদস্য যোগ করা যায়।",
+  "Remove {name}? Their past appointments and prescriptions stay.": "{name}-কে সরাবেন? আগের অ্যাপয়েন্টমেন্ট ও প্রেসক্রিপশন থেকে যাবে।",
+  "You can keep up to {n} family members.": "সর্বোচ্চ {n} জন পরিবারের সদস্য রাখা যায়।",
+  "Edit family member": "সদস্যের তথ্য বদলান",
+  "Add family member": "পরিবারের সদস্য যোগ করুন",
+  "+ Add family member": "+ পরিবারের সদস্য যোগ করুন",
+  Relation: "সম্পর্ক",
+  "Not given": "উল্লেখ নেই",
+  "Date of birth": "জন্ম তারিখ",
+  "No family members yet.": "এখনো কোনো সদস্য যোগ করা হয়নি।",
+  "Gender and age help the doctor; they are shown on bookings for this person.":
+    "লিঙ্গ ও বয়স ডাক্তারের কাজে লাগে; এই ব্যক্তির বুকিংয়ে এগুলো দেখানো হয়।",
+  "Booked for {name}! The serial number is {n}.": "{name}-এর জন্য বুক হয়েছে! সিরিয়াল নম্বর {n}।",
+  "For {name}": "{name}-এর জন্য",
+  "Book serials and consultations for your children, parents or spouse.": "সন্তান, বাবা-মা বা স্বামী/স্ত্রীর জন্য সিরিয়াল ও পরামর্শ বুক করুন।",
 };

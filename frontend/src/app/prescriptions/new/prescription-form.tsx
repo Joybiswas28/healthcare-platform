@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { ageYears } from "@/components/family";
 import { RequireAuth } from "@/components/require-auth";
 import { TextArea } from "@/components/textarea";
 import { Alert, Button, Card, Field, Select, Spinner } from "@/components/ui";
@@ -50,6 +51,8 @@ function Form({ source }: { source: Source }) {
   const router = useRouter();
   const t = useT();
   const [context, setContext] = useState<string | null>(null);
+  // A family member's age and gender are known from their profile.
+  const [known, setKnown] = useState<{ age?: string; gender?: string }>({});
   const [medicines, setMedicines] = useState<Medicine[]>([{ ...EMPTY_MEDICINE }]);
   const [investigations, setInvestigations] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -61,7 +64,11 @@ function Form({ source }: { source: Source }) {
       api
         .GET("/api/v1/consultations/{consultationID}", { params: { path: { consultationID: source.id } } })
         .then(({ data, error }) =>
-          data ? setContext(`${data.patient_name} · ${t("Consultation")}: ${data.subject}`) : setError(errorMessage(error)),
+          {
+            if (!data) return setError(errorMessage(error));
+            setKnown(knownPerson(data.patient_birth_date, data.patient_gender, t));
+            setContext(`${data.patient_name} · ${t("Consultation")}: ${data.subject}`);
+          },
         );
     } else {
       // The doctor's day list is the only appointment lookup the API offers.
@@ -69,6 +76,7 @@ function Form({ source }: { source: Source }) {
         .GET("/api/v1/doctor/appointments", { params: { query: { date: source.date || undefined } } })
         .then(({ data, error }) => {
           const a = data?.appointments?.find((x) => x.id === source.id);
+          if (a) setKnown(knownPerson(a.patient_birth_date, a.patient_gender, t));
           if (a) setContext(
               `${a.patient_name} · ${t("Serial {serial} on {date} at {place}", { serial: a.serial_no ?? 0, date: prettyDate(a.date), place: a.chamber_name })}`,
             );
@@ -139,8 +147,8 @@ function Form({ source }: { source: Source }) {
 
       <Card className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Patient's age" name="patient_age" placeholder={t("e.g. 34 years")} maxLength={30} />
-          <Select label="Gender" name="patient_gender" defaultValue="">
+          <Field label="Patient's age" name="patient_age" placeholder={t("e.g. 34 years")} maxLength={30} defaultValue={known.age} />
+          <Select label="Gender" name="patient_gender" defaultValue={known.gender ?? ""}>
             <option value="">—</option>
             <option value="male">{t("Male")}</option>
             <option value="female">{t("Female")}</option>
@@ -240,4 +248,13 @@ function Form({ source }: { source: Source }) {
       </Button>
     </form>
   );
+}
+
+function knownPerson(
+  birth: string | null | undefined,
+  gender: string | null | undefined,
+  t: (text: string, vars?: Record<string, string | number>) => string,
+): { age?: string; gender?: string } {
+  const age = ageYears(birth);
+  return { age: age == null ? undefined : t("{n} years", { n: age }), gender: gender ?? undefined };
 }
