@@ -68,6 +68,9 @@ export function BookingPanel({ schedule, chamber }: { schedule: Schedule; chambe
         <p className="mt-1">
           <T>Ticket code:</T> <span className="font-mono font-semibold tracking-wider">{booked.ticket_code}</span> — <T>show this at the chamber.</T>
         </p>
+        <p className="mt-1 text-xs">
+          <T>We&apos;ll remind you by SMS the evening before and about 2 hours before the session.</T>
+        </p>
         <ButtonLink href="/appointments" variant="secondary" className="mt-3">
           <T>View my appointments</T>
         </ButtonLink>
