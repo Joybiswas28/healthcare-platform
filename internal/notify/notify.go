@@ -38,6 +38,7 @@ const (
 	KindConsultationRejected   = "consultation_rejected"
 	KindConsultationCompleted  = "consultation_completed"
 	KindConsultationCancelled  = "consultation_cancelled"
+	KindConsultationCall       = "consultation_call"
 	KindOfferReceived          = "offer_received"
 	KindOfferAccepted          = "offer_accepted"
 	KindPrescriptionIssued     = "prescription_issued"

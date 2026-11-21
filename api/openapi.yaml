@@ -1078,6 +1078,65 @@ paths:
       responses:
         "200": { description: Event stream, content: { text/event-stream: { schema: { type: string } } } }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/call:
+    get:
+      tags: [Consultations]
+      summary: Video call settings (STUN/TURN servers for RTCPeerConnection)
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      responses:
+        "200":
+          description: Call settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ice_servers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        urls: { type: array, items: { type: string } }
+                        username: { type: string }
+                        credential: { type: string }
+                  available: { type: boolean, description: Calls are possible only while the consultation is active }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/call/signals:
+    post:
+      tags: [Consultations]
+      summary: Send a video call signal to the other participant
+      description: |
+        The call itself runs browser to browser (WebRTC); the server only relays these. offer, answer and
+        candidate carry WebRTC data as an opaque string and need an active consultation; hangup and decline
+        are always accepted. An offer also notifies the other participant.
+      parameters: [{ $ref: "#/components/parameters/consultationID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind: { type: string, enum: [offer, answer, candidate, hangup, decline] }
+                payload: { type: string, maxLength: 65536 }
+      responses:
+        "204": { description: Sent }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/consultations/{consultationID}/call/events:
+    get:
+      tags: [Consultations]
+      summary: The other participant's call signals as Server-Sent Events
+      description: |
+        Starts with the signals of the last 90 seconds (so someone opening the page while being called sees the
+        offer), then sends each new one as `event: signal` whose `id` is the signal id and whose `data` is a
+        CallSignal as JSON. A reconnecting client sends `Last-Event-ID`.
+      parameters:
+        - $ref: "#/components/parameters/consultationID"
+        - { name: Last-Event-ID, in: header, schema: { type: string } }
+      responses:
+        "200": { description: Event stream, content: { text/event-stream: { schema: { type: string } } } }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/attachments/{attachmentID}:
     get:
       tags: [Consultations]
@@ -2809,6 +2868,14 @@ components:
         patient_gender: { type: string, enum: [male, female, other], nullable: true }
         patient_birth_date: { type: string, format: date, nullable: true }
         account_name: { type: string, description: The account holder }
+    CallSignal:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sender_id: { type: string, format: uuid }
+        kind: { type: string, enum: [offer, answer, candidate, hangup, decline] }
+        payload: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
     ChatMessage:
       type: object
       properties:

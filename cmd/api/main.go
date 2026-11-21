@@ -128,7 +128,7 @@ func run() error {
 				doctorStore, appointmentStore, log),
 			Pharmacies:    pharmacy.NewHandler(pharmacy.NewStore(pool, files, cfg.PharmacyCommissionBps), log),
 			Wallet:        wallet.NewHandler(walletStore, gateway, log),
-			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log),
+			Consultations: consultation.NewHandler(consultation.NewStore(pool, files), hub, log).WithICEServers(iceServers(cfg)),
 			Prescriptions: prescription.NewHandler(prescription.NewStore(pool), cfg.FrontendURL, log),
 			Notifications: notify.NewHandler(notify.NewStore(pool), log),
 			SSLCommerz:    sslCallbacks,
@@ -186,4 +186,14 @@ func expireTokensPeriodically(ctx context.Context, ws *wallet.Store, log *slog.L
 		case <-ticker.C:
 		}
 	}
+}
+
+// iceServers are the STUN/TURN servers browsers use for video calls: the
+// public STUN server, plus the TURN server when one is configured.
+func iceServers(cfg config.Config) []consultation.ICEServer {
+	servers := append([]consultation.ICEServer{}, consultation.DefaultICEServers...)
+	if len(cfg.TURNURLs) > 0 {
+		servers = append(servers, consultation.ICEServer{URLs: cfg.TURNURLs, Username: cfg.TURNUsername, Credential: cfg.TURNCredential})
+	}
+	return servers
 }

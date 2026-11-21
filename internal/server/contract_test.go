@@ -308,6 +308,9 @@ func TestResponsesMatchSpec(t *testing.T) {
 		"investigations": []string{"CBC"}, "advice": "প্রচুর পানি পান করুন",
 	}, 201)
 	c.call("POST", api+"/consultations/"+cid+"/complete", dt, nil, 200)
+	c.call("GET", api+"/consultations/"+cid+"/call", pt, nil, 200)
+	c.call("POST", api+"/consultations/"+cid+"/call/signals", dt, map[string]any{"kind": "offer", "payload": "{}"}, 409)
+	c.call("POST", api+"/consultations/"+cid+"/call/signals", dt, map[string]any{"kind": "hangup"}, 204)
 	c.call("GET", api+"/consultations/"+cid, pt, nil, 200)
 	c.call("GET", api+"/prescriptions", pt, nil, 200)
 	c.call("GET", api+"/prescriptions/"+str(rx, "id"), pt, nil, 200)

@@ -29,6 +29,13 @@ type Config struct {
 	SSLCommerzStorePassword string
 	SSLCommerzSandbox       bool
 
+	// TURN server for video calls (comma-separated turn:/turns: URLs and one
+	// static username/credential). Without it calls use a public STUN server,
+	// which works on most but not all networks.
+	TURNURLs       []string
+	TURNUsername   string
+	TURNCredential string
+
 	// PharmacyCommissionBps is the platform's share of the medicine total on each
 	// delivered pharmacy order, in basis points (300 = 3%).
 	PharmacyCommissionBps int
@@ -59,6 +66,21 @@ func Load() (Config, error) {
 	cfg.PharmacyCommissionBps = bps
 
 	cfg.TrustProxy = getEnv("TRUST_PROXY", "false") == "true"
+	for _, u := range strings.Split(os.Getenv("TURN_URLS"), ",") {
+		u = strings.TrimSpace(u)
+		if u == "" {
+			continue
+		}
+		if !strings.HasPrefix(u, "turn:") && !strings.HasPrefix(u, "turns:") {
+			return Config{}, fmt.Errorf("TURN_URLS: %q must start with turn: or turns:", u)
+		}
+		cfg.TURNURLs = append(cfg.TURNURLs, u)
+	}
+	cfg.TURNUsername = os.Getenv("TURN_USERNAME")
+	cfg.TURNCredential = os.Getenv("TURN_CREDENTIAL")
+	if len(cfg.TURNURLs) > 0 && (cfg.TURNUsername == "" || cfg.TURNCredential == "") {
+		return Config{}, errors.New("TURN_URLS needs TURN_USERNAME and TURN_CREDENTIAL")
+	}
 	for _, o := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
 		o = strings.TrimRight(strings.TrimSpace(o), "/")
 		if o == "" {

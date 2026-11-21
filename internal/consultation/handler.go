@@ -33,6 +33,7 @@ type Handler struct {
 	store *Store
 	hub   *realtime.Hub
 	log   *slog.Logger
+	ice   []ICEServer // STUN/TURN servers for video calls; DefaultICEServers when empty
 }
 
 func NewHandler(store *Store, hub *realtime.Hub, log *slog.Logger) *Handler {

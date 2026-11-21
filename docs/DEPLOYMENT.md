@@ -72,6 +72,7 @@ Database migrations run automatically when the API starts. There is a few second
 |---|---|---|
 | SSLCommerz | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD`, `SSLCOMMERZ_SANDBOX` (`true` for testing, `false` for live) | Restart the API. Test a purchase in sandbox first |
 | SMS | Needs a small integration for the chosen provider | Not yet built: each provider has its own API |
+| Video calls (TURN) | `TURN_URLS` (e.g. `turn:turn.example.com:3478,turns:turn.example.com:5349`), `TURN_USERNAME`, `TURN_CREDENTIAL` | Run a TURN server such as coturn. Without it, calls between some mobile networks fail to connect. Restart the API |
 
 ## Checklist before real patients
 

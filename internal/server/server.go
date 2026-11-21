@@ -253,6 +253,9 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/consultations/{consultationID}/attachments", c.Upload)
 				r.Get("/consultations/{consultationID}/ws", c.Stream)
 				r.Get("/consultations/{consultationID}/events", c.Events)
+				r.Get("/consultations/{consultationID}/call", c.CallConfig)
+				r.Post("/consultations/{consultationID}/call/signals", c.PostSignal)
+				r.Get("/consultations/{consultationID}/call/events", c.CallEvents)
 				r.Get("/attachments/{attachmentID}", c.Download)
 				r.Get("/records/{recordID}/file", d.Records.File)
 

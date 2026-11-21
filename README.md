@@ -231,6 +231,14 @@ Connect to `/api/v1/consultations/{id}/ws?access_token=<jwt>&after=<last message
 - `: ping` comments every 25 seconds keep proxies from closing the connection.
 - Post messages with `POST /consultations/{id}/messages`; they arrive on every open stream and WebSocket.
 
+### Video calls
+
+During an active consultation the patient and the doctor can video call. The call runs browser to browser (WebRTC); audio and video never pass through this server.
+
+- `GET /consultations/{id}/call` gives the STUN/TURN servers for `RTCPeerConnection`. A public STUN server is always included; set `TURN_URLS`, `TURN_USERNAME` and `TURN_CREDENTIAL` to add your own TURN server, which some mobile networks need.
+- The browsers exchange the WebRTC setup through the server: `POST /consultations/{id}/call/signals` with `kind` `offer`, `answer`, `candidate`, `hangup` or `decline`, and `GET /consultations/{id}/call/events`, a Server-Sent Events stream of the other side's signals (it starts with those of the last 90 seconds, so someone who opens the page while being called still gets the offer).
+- An offer also sends the other person an in-app notification. Signals are kept for 10 minutes.
+
 **Hospitals: public**
 
 | Method | Path | Description |
