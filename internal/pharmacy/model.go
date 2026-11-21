@@ -126,11 +126,17 @@ type Request struct {
 	ExpiresAt      time.Time  `json:"expires_at"`
 	CreatedAt      time.Time  `json:"created_at"`
 
+	// For a family member: their age and gender help the pharmacy check doses.
+	PatientAge    *int    `json:"patient_age,omitempty"`
+	PatientGender *string `json:"patient_gender,omitempty"`
+
 	// Patient view only.
-	Address      *string `json:"address,omitempty"`
-	ContactPhone string  `json:"contact_phone,omitempty"`
-	Quotes       []Quote `json:"quotes,omitempty"`
-	OrderID      *string `json:"order_id,omitempty"`
+	FamilyMemberID *string `json:"family_member_id,omitempty"`
+	ForName        *string `json:"for_name,omitempty"` // the family member it is for
+	Address        *string `json:"address,omitempty"`
+	ContactPhone   string  `json:"contact_phone,omitempty"`
+	Quotes         []Quote `json:"quotes,omitempty"`
+	OrderID        *string `json:"order_id,omitempty"`
 	// Pharmacy view only: how far the patient is, never where exactly.
 	DistanceKm *float64 `json:"distance_km,omitempty"`
 	MyQuote    *Quote   `json:"my_quote,omitempty"`
@@ -173,7 +179,10 @@ type Order struct {
 	RequestID           string       `json:"request_id"`
 	PrescriptionID      *string      `json:"prescription_id"`
 	PatientID           string       `json:"patient_id"`
-	PatientName         string       `json:"patient_name"`
+	PatientName         string       `json:"patient_name"`       // the account holder, who receives the order
+	ForName             *string      `json:"for_name,omitempty"` // the family member the medicines are for
+	PatientAge          *int         `json:"patient_age,omitempty"`
+	PatientGender       *string      `json:"patient_gender,omitempty"`
 	ContactPhone        string       `json:"contact_phone"`
 	Address             *string      `json:"address"`
 	Latitude            float64      `json:"latitude"`
@@ -313,7 +322,8 @@ type RequestInput struct {
 	Address        string   `json:"address"`    // required for delivery
 	Latitude       *float64 `json:"latitude"`
 	Longitude      *float64 `json:"longitude"`
-	ContactPhone   string   `json:"contact_phone"` // defaults to the account's phone
+	ContactPhone   string   `json:"contact_phone"`    // defaults to the account's phone
+	FamilyMemberID string   `json:"family_member_id"` // empty: for the account holder
 }
 
 func cleanItems(items []Item) ([]Item, error) {

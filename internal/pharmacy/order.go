@@ -25,7 +25,10 @@ SELECT o.id, o.request_id, r.prescription_id, o.patient_id, pu.name, r.contact_p
        rd.latitude::float8, rd.longitude::float8, rd.location_at,
        o.status, o.cancelled_by, o.cancel_reason, o.commission_paisa, o.delivery_code,
        o.delivery_code_attempts, o.commission_bps,
-       EXISTS (SELECT 1 FROM pharmacy_reviews rv WHERE rv.order_id = o.id), o.created_at, o.delivered_at
+       EXISTS (SELECT 1 FROM pharmacy_reviews rv WHERE rv.order_id = o.id), o.created_at, o.delivered_at,
+       (SELECT fm.name FROM family_members fm WHERE fm.id = r.family_member_id),
+       (SELECT fm.gender FROM family_members fm WHERE fm.id = r.family_member_id),
+       (SELECT date_part('year', age(fm.birth_date))::int FROM family_members fm WHERE fm.id = r.family_member_id)
 FROM medicine_orders o
 JOIN medicine_requests r ON r.id = o.request_id
 JOIN users pu            ON pu.id = o.patient_id
@@ -42,7 +45,8 @@ func scanOrder(row pgx.Row) (Order, error) {
 		&o.Fulfilment, &o.DeliveryMode, &o.RiderID, &o.RiderName, &o.RiderPhone,
 		&o.riderLat, &o.riderLng, &o.riderAt,
 		&o.Status, &o.CancelledBy, &o.CancelReason, &o.CommissionPaisa, &o.DeliveryCode,
-		&o.codeAttempts, &o.commissionBps, &o.Reviewed, &o.CreatedAt, &o.DeliveredAt)
+		&o.codeAttempts, &o.commissionBps, &o.Reviewed, &o.CreatedAt, &o.DeliveredAt,
+		&o.ForName, &o.PatientGender, &o.PatientAge)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Order{}, apperr.NotFound("order not found")
 	}
@@ -67,6 +71,10 @@ func (s *Store) shape(o Order, v viewer) Order {
 	}
 	if v != asPharmacy {
 		o.CommissionPaisa = nil
+	}
+	if v == asRider {
+		// The rider hands the order to the account holder; who it is for is not theirs to know.
+		o.ForName, o.PatientAge, o.PatientGender = nil, nil, nil
 	}
 	if (o.Status == OrderRiderAssigned || o.Status == OrderOutForDelivery) && o.riderAt != nil &&
 		s.now().Sub(*o.riderAt) < RiderLocationFresh {

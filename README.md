@@ -209,7 +209,7 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 
 ### Family members and health records
 
-- A patient can add up to 10 family members (`/family`) and book appointments or consultations for them; the doctor sees the member's name, relation and age, and prescriptions are issued in the member's name.
+- A patient can add up to 10 family members (`/family`) and book appointments or consultations for them; the doctor sees the member's name, relation and age, and prescriptions are issued in the member's name. Medicine requests can be for a family member too: pharmacies see only the member's age and gender until the order, then the name; delivery still goes to the account holder, and riders don't see who the medicines are for.
 - Health records (`/records`): a patient uploads lab reports, scans, old prescriptions and similar (PDF, JPEG or PNG, up to 10 MB, 300 per account) for themself or a family member. Records are private.
 - Sharing: `POST /records/{id}/share` with `appointment_id` lets the doctor of that confirmed or completed appointment open the file (`GET /doctor/appointments/{id}/records`); access ends when the appointment is cancelled or the patient unshares. With `consultation_id` it sends a copy into the active consultation chat; that copy stays even if the record is deleted later.
 

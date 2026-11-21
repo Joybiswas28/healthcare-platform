@@ -3154,6 +3154,7 @@ components:
         latitude: { type: number }
         longitude: { type: number }
         contact_phone: { type: string, description: Defaults to the account's phone }
+        family_member_id: { type: string, format: uuid, description: The family member the medicines are for; myself when absent }
     Quote:
       type: object
       properties:
@@ -3208,6 +3209,10 @@ components:
         contact_phone: { type: string, description: Patient view only }
         quotes: { type: array, items: { $ref: "#/components/schemas/Quote" }, description: Patient view only }
         order_id: { type: string, format: uuid, description: Patient view only }
+        family_member_id: { type: string, format: uuid, description: Patient view only }
+        for_name: { type: string, description: "The family member it is for; patient view only" }
+        patient_age: { type: integer, description: "A family member's age in years, when known" }
+        patient_gender: { type: string, enum: [male, female, other], description: "A family member's gender, when known" }
         distance_km: { type: number, description: Pharmacy view only }
         my_quote: { $ref: "#/components/schemas/Quote" }
     Location:
@@ -3224,7 +3229,10 @@ components:
         request_id: { type: string, format: uuid }
         prescription_id: { type: string, format: uuid, nullable: true }
         patient_id: { type: string, format: uuid }
-        patient_name: { type: string }
+        patient_name: { type: string, description: "The account holder, who receives the order" }
+        for_name: { type: string, description: "The family member the medicines are for (not shown to riders)" }
+        patient_age: { type: integer }
+        patient_gender: { type: string, enum: [male, female, other] }
         contact_phone: { type: string }
         address: { type: string, nullable: true }
         latitude: { type: number }

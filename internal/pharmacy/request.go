@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"healthcare-platform/internal/family"
 	"healthcare-platform/internal/notify"
 	"healthcare-platform/internal/platform/apperr"
 	"healthcare-platform/internal/platform/database"
@@ -37,7 +39,10 @@ const requestColumns = `
 r.id, r.prescription_id, r.attachment_key IS NOT NULL, r.items, r.note, r.fulfilment,
 CASE WHEN r.status = 'open' AND r.expires_at <= now() THEN 'expired' ELSE r.status END,
 (SELECT count(*) FROM pharmacy_quotes q WHERE q.request_id = r.id AND q.status IN ('pending', 'accepted')),
-r.expires_at, r.created_at, r.address, r.contact_phone, (SELECT o.id FROM medicine_orders o WHERE o.request_id = r.id)`
+r.expires_at, r.created_at, r.address, r.contact_phone, (SELECT o.id FROM medicine_orders o WHERE o.request_id = r.id),
+r.family_member_id, (SELECT fm.name FROM family_members fm WHERE fm.id = r.family_member_id),
+(SELECT fm.gender FROM family_members fm WHERE fm.id = r.family_member_id),
+(SELECT date_part('year', age(fm.birth_date))::int FROM family_members fm WHERE fm.id = r.family_member_id)`
 
 func scanRequest(row pgx.Row, extra ...any) (Request, error) {
 	var rq Request
@@ -45,7 +50,8 @@ func scanRequest(row pgx.Row, extra ...any) (Request, error) {
 	var address *string
 	var phone string
 	dest := []any{&rq.ID, &rq.PrescriptionID, &rq.HasAttachment, &items, &rq.Note, &rq.Fulfilment, &rq.Status,
-		&rq.QuoteCount, &rq.ExpiresAt, &rq.CreatedAt, &address, &phone, &rq.OrderID}
+		&rq.QuoteCount, &rq.ExpiresAt, &rq.CreatedAt, &address, &phone, &rq.OrderID,
+		&rq.FamilyMemberID, &rq.ForName, &rq.PatientGender, &rq.PatientAge}
 	err := row.Scan(append(dest, extra...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Request{}, apperr.NotFound("request not found")
@@ -59,6 +65,7 @@ func scanRequest(row pgx.Row, extra ...any) (Request, error) {
 
 func forPharmacy(rq Request) Request {
 	rq.Address, rq.ContactPhone, rq.OrderID = nil, "", nil
+	rq.FamilyMemberID, rq.ForName = nil, nil
 	return rq
 }
 
@@ -145,6 +152,15 @@ func (s *Store) CreateRequest(ctx context.Context, patientID string, in RequestI
 		}
 		rxID = &in.PrescriptionID
 	}
+	in.FamilyMemberID = strings.TrimSpace(in.FamilyMemberID)
+	if in.FamilyMemberID != "" {
+		if _, err := uuid.Parse(in.FamilyMemberID); err != nil {
+			return Request{}, apperr.Validation("invalid family_member_id")
+		}
+	}
+	if err := family.Check(ctx, s.db, patientID, in.FamilyMemberID); err != nil {
+		return Request{}, err
+	}
 	if upload != nil && !UploadTypes[upload.ContentType] {
 		return Request{}, apperr.Validation("the prescription must be a PDF, JPEG or PNG file")
 	}
@@ -216,10 +232,10 @@ func (s *Store) insertRequest(ctx context.Context, patientID string, in RequestI
 	var id string
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO medicine_requests (patient_id, prescription_id, attachment_key, attachment_type, items, note,
-		                               fulfilment, address, latitude, longitude, contact_phone, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+		                               fulfilment, address, latitude, longitude, contact_phone, expires_at, family_member_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
 		patientID, rxID, key, ctype, items, nullIfEmpty(in.Note), in.Fulfilment, nullIfEmpty(in.Address),
-		*in.Latitude, *in.Longitude, in.ContactPhone, s.now().Add(RequestTTL)).Scan(&id); err != nil {
+		*in.Latitude, *in.Longitude, in.ContactPhone, s.now().Add(RequestTTL), nullIfEmpty(in.FamilyMemberID)).Scan(&id); err != nil {
 		return "", err
 	}
 	what := "pickup"
