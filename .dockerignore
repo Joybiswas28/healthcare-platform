@@ -9,3 +9,5 @@ deploy/.env
 *.exe
 *.test
 *.out
+# The API image doesn't need the website (it has its own image).
+frontend/

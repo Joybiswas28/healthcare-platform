@@ -1,11 +1,12 @@
 # Deployment
 
-One Linux server runs everything with Docker: the API, PostgreSQL, and Caddy, which serves HTTPS with free Let's Encrypt certificates.
+One Linux server runs everything with Docker: the website, the API, PostgreSQL, and Caddy, which serves HTTPS with free Let's Encrypt certificates.
 
 ## 1. What you need
 
 - **A server:** Ubuntu 24.04, 2 vCPU, 4 GB RAM and 40 GB disk is enough for a pilot. For low latency in Bangladesh, choose a data centre in Singapore or Mumbai (for example DigitalOcean, Vultr, AWS Lightsail) or a local Bangladeshi provider.
-- **A domain:** for example `api.yourdomain.com`. Its DNS **A record** must point to the server's IP.
+- **Two domain names:** one for the website (for example `www.yourdomain.com`) and one for the API (for example `api.yourdomain.com`). Both DNS **A records** must point to the server's IP. People open the website; the API's name appears in payment callbacks and on prescription QR codes.
+- **RAM:** building the website needs about 2 GB of free memory. On a 2 GB server, add a swap file first.
 - **Accounts:** an SMS provider (required for registration) and SSLCommerz (required for payments).
 
 ## 2. Prepare the server (once)
@@ -36,7 +37,8 @@ Check that it works:
 
 ```sh
 curl https://api.yourdomain.com/readyz        # {"status":"ready"}
-docker compose -f docker-compose.prod.yml logs -f api
+curl -I https://www.yourdomain.com/            # HTTP/2 200
+docker compose -f docker-compose.prod.yml logs -f api web
 ```
 
 ## 4. Create the first admin
@@ -61,10 +63,10 @@ Copy `/var/backups/healthcare` to another place every day, such as another serve
 
 ```sh
 cd /opt/healthcare && git pull
-cd deploy && docker compose -f docker-compose.prod.yml up -d --build api
+cd deploy && docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Database migrations run automatically when the API starts. There is a few seconds of downtime while the container restarts.
+This rebuilds the website and the API; Docker skips any part whose code didn't change. Database migrations run automatically when the API starts. There is a few seconds of downtime while the containers restart.
 
 ## 7. Turning on the external services
 
@@ -76,7 +78,8 @@ Database migrations run automatically when the API starts. There is a few second
 
 ## Checklist before real patients
 
-- [ ] HTTPS works and `http://` redirects (Caddy does this automatically)
+- [ ] The website and the API both open over HTTPS, and `http://` redirects (Caddy does this automatically)
+- [ ] The login page shows no demo accounts (they appear only in development)
 - [ ] `deploy/.env` has random secrets and `chmod 600`
 - [ ] SMS provider connected: register a test account with a real OTP
 - [ ] SSLCommerz sandbox purchase works end to end, then switch to live
