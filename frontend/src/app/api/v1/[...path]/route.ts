@@ -12,7 +12,10 @@ const TOKEN_ROUTES = new Set(["auth/login", "auth/register", "me/password"]);
 
 // Request headers worth passing on. Everything else (cookies, the browser's own
 // Authorization header, hop-by-hop headers) is dropped.
-const FORWARD_REQUEST = ["accept", "content-type", "accept-language", "if-none-match", "last-event-id"];
+// x-real-ip: in production Caddy sets it to the visitor's address (overwriting
+// any copy the browser sent), so the API rate-limits each visitor separately
+// instead of seeing every request come from this server.
+const FORWARD_REQUEST = ["accept", "content-type", "accept-language", "if-none-match", "last-event-id", "x-real-ip"];
 // content-security-policy and x-content-type-options matter for shared files:
 // the backend serves them sandboxed so an uploaded HTML/SVG can't run script.
 const FORWARD_RESPONSE = [
