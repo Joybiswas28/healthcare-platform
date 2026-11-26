@@ -63,7 +63,7 @@ Step by step:
 4. Run the tests. The integration tests need a database, and each test uses its own temporary schema, so the dev database is safe to use:
    ```
    # PowerShell
-   $env:TEST_DATABASE_URL = "postgres://healthcare:healthcare@127.0.0.1:55432/healthcare?sslmode=disable"
+   $env:TEST_DATABASE_URL = "postgres://healthcare:healthcare@127.0.0.1:45432/healthcare?sslmode=disable"
    go test ./...
    ```
    Without `TEST_DATABASE_URL`, the integration tests are skipped.

@@ -29,12 +29,14 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Push-Location $root
-cmd /c "docker compose up -d postgres >nul 2>&1"
+# Keep Docker's message: it says why the database could not start (e.g. a port in use).
+$dbOutput = cmd /c "docker compose up -d postgres 2>&1"
 Pop-Location
-if (Wait-Port 55432 60) {
-    Write-Host "[ok] Database        127.0.0.1:55432" -ForegroundColor Green
+if (Wait-Port 45432 60) {
+    Write-Host "[ok] Database        127.0.0.1:45432" -ForegroundColor Green
 } else {
-    Write-Host "The database did not start. Check Docker Desktop." -ForegroundColor Red
+    Write-Host "The database did not start. Docker said:" -ForegroundColor Red
+    $dbOutput | Select-Object -Last 3 | ForEach-Object { Write-Host "  $_" }
     exit 1
 }
 

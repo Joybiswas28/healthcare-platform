@@ -6,8 +6,9 @@ services:
       POSTGRES_PASSWORD: healthcare
       POSTGRES_DB: healthcare
     ports:
-      # Host port 55432 avoids clashing with locally installed PostgreSQL servers (5432, 5433).
-      - "127.0.0.1:55432:5432"
+      # Host port 45432 avoids clashing with locally installed PostgreSQL servers (5432, 5433),
+      # and sits below 49152 so Windows (Hyper-V) never reserves it after a restart.
+      - "127.0.0.1:45432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
