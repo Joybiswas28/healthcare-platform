@@ -45,6 +45,8 @@ migrations/           SQL migration files
 
 **Quick start on Windows:** with Docker Desktop open, double-click `start-dev.cmd`. It starts the database, then opens the API (port 8080) and the website (port 3000) in their own windows, skipping anything already running, and opens the browser. Close a window to stop that server. In development the login page lists demo accounts for the local test data.
 
+**Show it to someone else:** with `start-dev.cmd` running, double-click `start-public.cmd`. It runs a production build of the website on port 3200 (no demo-account list on the login page) and opens a temporary `https://….trycloudflare.com` link through a Cloudflare quick tunnel; the link is copied to the clipboard. It works while this computer and its windows stay open, and changes on every start. Needs `cloudflared` once: `winget install --id Cloudflare.cloudflared -e`.
+
 Step by step:
 
 1. Start PostgreSQL. With Docker:
