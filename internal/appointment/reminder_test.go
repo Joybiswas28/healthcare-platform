@@ -30,10 +30,17 @@ func TestReminders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.pool.Exec(ctx, `UPDATE appointments SET created_at = $2 WHERE id = $1`,
-		late.ID, time.Date(2026, 11, 23, 10, 0, 0, 0, Dhaka)); err != nil {
-		t.Fatal(err)
+	// The database stamps created_at with the real clock; pin it to the test's
+	// clock (bookings made on fixedNow) so the test doesn't depend on today's date.
+	bookedAt := func(id string, at time.Time) {
+		t.Helper()
+		if _, err := f.pool.Exec(ctx, `UPDATE appointments SET created_at = $2 WHERE id = $1`, id, at); err != nil {
+			t.Fatal(err)
+		}
 	}
+	bookedAt(booked.ID, fixedNow)
+	bookedAt(cancelled.ID, fixedNow)
+	bookedAt(late.ID, time.Date(2026, 11, 23, 10, 0, 0, 0, Dhaka))
 
 	at := func(day, hour, minute int) {
 		f.store.now = func() time.Time { return time.Date(2026, 11, day, hour, minute, 0, 0, Dhaka) }
