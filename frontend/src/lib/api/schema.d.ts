@@ -1422,6 +1422,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/doctor/schedules/{scheduleID}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Today's live serial status for a session */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    scheduleID: components["parameters"]["scheduleID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: components["responses"]["Queue"];
+                default: components["responses"]["Error"];
+            };
+        };
+        /** Set the serial being seen now (any booked serial today, e.g. to go back or skip ahead) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    scheduleID: components["parameters"]["scheduleID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        now_serving: number;
+                    };
+                };
+            };
+            responses: {
+                200: components["responses"]["Queue"];
+                default: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor/schedules/{scheduleID}/queue/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Call the next waiting patient (the first confirmed serial after the current one; starts the session) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    scheduleID: components["parameters"]["scheduleID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: components["responses"]["Queue"];
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/doctor/tickets/{code}": {
         parameters: {
             query?: never;
@@ -1937,6 +2020,48 @@ export interface paths {
                 default: components["responses"]["Error"];
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{appointmentID}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live serial status: where this booking is in today's queue
+         * @description For a confirmed booking today, the serial being seen now, how many confirmed patients are still before this one, and an estimated wait once the session has started. Any other booking answers status closed. The patient is also notified (and texted) once when at most two patients are before them.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    appointmentID: components["parameters"]["appointmentID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Place in the queue */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Turn"];
+                    };
+                };
+                default: components["responses"]["Error"];
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4338,6 +4463,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Today's live serial status for a session at this hospital */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    hospitalID: components["parameters"]["hospitalID"];
+                    scheduleID: components["parameters"]["scheduleID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: components["responses"]["Queue"];
+                default: components["responses"]["Error"];
+            };
+        };
+        /** Set the serial being seen now (any booked serial today, e.g. to go back or skip ahead) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    hospitalID: components["parameters"]["hospitalID"];
+                    scheduleID: components["parameters"]["scheduleID"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        now_serving: number;
+                    };
+                };
+            };
+            responses: {
+                200: components["responses"]["Queue"];
+                default: components["responses"]["Error"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Call the next waiting patient (the first confirmed serial after the current one; starts the session) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    hospitalID: components["parameters"]["hospitalID"];
+                    scheduleID: components["parameters"]["scheduleID"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: components["responses"]["Queue"];
+                default: components["responses"]["Error"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/manage/hospitals/{hospitalID}/members": {
         parameters: {
             query?: never;
@@ -6612,6 +6823,43 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
         };
+        Queue: {
+            /** Format: uuid */
+            schedule_id: string;
+            /** Format: date */
+            date: string;
+            /** @example 17:00 */
+            start_time: string;
+            /** @example 21:00 */
+            end_time: string;
+            started: boolean;
+            /** @description 0 until the session starts */
+            now_serving: number;
+            /** @description Confirmed bookings after now_serving */
+            waiting: number;
+            /** @description Bookings not cancelled or moved */
+            booked: number;
+            /** @description The session's pace so far, or its length shared by its places before that */
+            minutes_per_patient: number;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
+        Turn: {
+            /** Format: uuid */
+            appointment_id: string;
+            serial_no: number;
+            /**
+             * @description passed means the doctor moved past this serial while it was waiting; closed means not today or not a confirmed booking
+             * @enum {string}
+             */
+            status: "waiting" | "your_turn" | "passed" | "closed";
+            /** @description Confirmed patients still before this one, not counting the one being seen */
+            ahead: number;
+            /** @description Set once the session has started */
+            estimated_minutes: number | null;
+            /** @description Null when closed */
+            queue: components["schemas"]["Queue"] | null;
+        };
         Appointment: {
             /** Format: uuid */
             id?: string;
@@ -7430,6 +7678,15 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["Appointment"];
+            };
+        };
+        /** @description Today's queue */
+        Queue: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Queue"];
             };
         };
         /** @description Payment */

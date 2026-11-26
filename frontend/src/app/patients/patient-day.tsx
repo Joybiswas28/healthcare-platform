@@ -6,6 +6,7 @@ import { api, errorMessage, type Appointment } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka } from "@/lib/format";
 import { ForMember } from "@/components/family";
 import { SharedRecords } from "@/components/records";
+import { TodaysQueues } from "@/components/live-queue";
 import { T } from "@/components/t";
 import { useT } from "@/components/use-lang";
 
@@ -177,7 +178,10 @@ export function PatientDay() {
           <T>{past ? "No bookings on this day." : "No bookings yet for this day."}</T>
         </p>
       ) : (
-        <div className="space-y-3">{items.map(row)}</div>
+        <>
+          {date === today && <TodaysQueues owner={{ kind: "doctor" }} appointments={items} />}
+          <div className="space-y-3">{items.map(row)}</div>
+        </>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ForMember } from "@/components/family";
 import { RatingForm, StarRow } from "@/components/rating";
 import { ShareWithAppointment } from "@/components/records";
+import { LiveTurn } from "@/components/live-queue";
 import { Alert, Badge, Button, ButtonLink, Card, Spinner } from "@/components/ui";
 import { useT } from "@/components/use-lang";
 import { api, errorMessage, type Appointment } from "@/lib/api/client";
@@ -139,6 +140,7 @@ export function AppointmentList() {
                 <p className="text-2xl font-semibold text-slate-900">{a.serial_no}</p>
               </div>
             </div>
+            {a.status === "confirmed" && a.date === today && a.id && <LiveTurn appointmentID={a.id} />}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm">
               <span className="text-slate-600">
                 {t("Ticket")} <span className="font-mono font-semibold tracking-wider text-slate-900">{a.ticket_code}</span> ·{" "}

@@ -9,6 +9,7 @@ export function notificationHref(kind: string | undefined, role: Role | undefine
     case "appointment_cancelled":
     case "appointment_rescheduled":
     case "appointment_reminder":
+    case "queue_turn":
       return role === "doctor" ? "/patients" : role === "hospital_admin" ? "/manage/hospitals" : "/appointments";
     case "consultation_requested":
     case "consultation_accepted":

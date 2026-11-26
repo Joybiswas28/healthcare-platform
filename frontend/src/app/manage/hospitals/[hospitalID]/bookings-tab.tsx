@@ -6,6 +6,7 @@ import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage, type Appointment, type Hospital, type StaffDoctor } from "@/lib/api/client";
 import { clock, prettyDate, todayInDhaka, upcomingDates, WEEKDAYS } from "@/lib/format";
 import { ForMember } from "@/components/family";
+import { TodaysQueues } from "@/components/live-queue";
 import { T } from "@/components/t";
 import { useT } from "@/components/use-lang";
 
@@ -116,6 +117,7 @@ export function BookingsTab({ hospital }: { hospital: Hospital }) {
         <p className="text-sm text-slate-600"><T>No bookings on this day.</T></p>
       ) : (
         <div className="space-y-3">
+          {date === today && <TodaysQueues owner={{ kind: "hospital", hospitalID }} appointments={items} />}
           {items.map((a) => {
             const s = STATUS[a.status ?? ""] ?? { label: a.status ?? "", tone: "slate" as const };
             const open = a.status === "confirmed" && (a.date ?? "") >= today;
