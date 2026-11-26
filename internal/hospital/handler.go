@@ -649,3 +649,58 @@ func (h *Handler) AdminVerify(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.JSON(w, http.StatusOK, hosp)
 }
+
+// ---------------------------------------------------------------- live serial status
+
+func hospitalActor(r *http.Request) appointment.QueueActor {
+	return appointment.QueueActor{HospitalID: hid(r)}
+}
+
+// GET /manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue
+func (h *Handler) Queue(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "scheduleID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	q, err := h.appointments.QueueToday(r.Context(), hospitalActor(r), id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, q)
+}
+
+// POST /manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue/next
+func (h *Handler) QueueNext(w http.ResponseWriter, r *http.Request) { h.setServing(w, r, 0) }
+
+type servingInput struct {
+	NowServing int `json:"now_serving"`
+}
+
+// PUT /manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue
+func (h *Handler) QueueSet(w http.ResponseWriter, r *http.Request) {
+	var in servingInput
+	if !decode(w, r, &in) {
+		return
+	}
+	if in.NowServing < 1 {
+		h.fail(w, r, apperr.Validation("now_serving must be a serial number"))
+		return
+	}
+	h.setServing(w, r, in.NowServing)
+}
+
+func (h *Handler) setServing(w http.ResponseWriter, r *http.Request, serial int) {
+	id, err := httpx.PathUUID(r, "scheduleID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	q, err := h.appointments.SetServing(r.Context(), hospitalActor(r), id, serial)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, q)
+}

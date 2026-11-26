@@ -142,3 +142,88 @@ func (h *Handler) Ticket(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.JSON(w, http.StatusOK, a)
 }
+
+// ---------------------------------------------------------------- live serial status
+
+type servingInput struct {
+	NowServing int `json:"now_serving"`
+}
+
+// QueueGet, QueueNext and QueueSet serve the doctor's and the hospital's
+// routes; actor says who is asking.
+func (h *Handler) QueueGet(w http.ResponseWriter, r *http.Request, actor QueueActor) {
+	id, err := httpx.PathUUID(r, "scheduleID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	q, err := h.store.QueueToday(r.Context(), actor, id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, q)
+}
+
+func (h *Handler) QueueNext(w http.ResponseWriter, r *http.Request, actor QueueActor) {
+	h.setServing(w, r, actor, 0)
+}
+
+func (h *Handler) QueueSet(w http.ResponseWriter, r *http.Request, actor QueueActor) {
+	var in servingInput
+	if err := httpx.Decode(w, r, &in); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if in.NowServing < 1 {
+		h.fail(w, r, apperr.Validation("now_serving must be a serial number"))
+		return
+	}
+	h.setServing(w, r, actor, in.NowServing)
+}
+
+func (h *Handler) setServing(w http.ResponseWriter, r *http.Request, actor QueueActor, serial int) {
+	id, err := httpx.PathUUID(r, "scheduleID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	q, err := h.store.SetServing(r.Context(), actor, id, serial)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, q)
+}
+
+func doctorActor(r *http.Request) QueueActor { return QueueActor{DoctorID: callerID(r)} }
+
+// GET /doctor/schedules/{scheduleID}/queue
+func (h *Handler) DoctorQueue(w http.ResponseWriter, r *http.Request) {
+	h.QueueGet(w, r, doctorActor(r))
+}
+
+// POST /doctor/schedules/{scheduleID}/queue/next
+func (h *Handler) DoctorQueueNext(w http.ResponseWriter, r *http.Request) {
+	h.QueueNext(w, r, doctorActor(r))
+}
+
+// PUT /doctor/schedules/{scheduleID}/queue
+func (h *Handler) DoctorQueueSet(w http.ResponseWriter, r *http.Request) {
+	h.QueueSet(w, r, doctorActor(r))
+}
+
+// GET /appointments/{appointmentID}/queue
+func (h *Handler) MyTurn(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "appointmentID")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	t, err := h.store.TurnFor(r.Context(), callerID(r), id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, t)
+}

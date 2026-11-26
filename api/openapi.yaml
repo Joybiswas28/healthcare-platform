@@ -565,6 +565,38 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Appointment" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/schedules/{scheduleID}/queue:
+    get:
+      tags: [Doctor (self)]
+      summary: "Today's live serial status for a session"
+      parameters: [{ $ref: "#/components/parameters/scheduleID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Queue" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Doctor (self)]
+      summary: Set the serial being seen now (any booked serial today, e.g. to go back or skip ahead)
+      parameters: [{ $ref: "#/components/parameters/scheduleID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [now_serving]
+              properties:
+                now_serving: { type: integer, minimum: 1 }
+      responses:
+        "200": { $ref: "#/components/responses/Queue" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/doctor/schedules/{scheduleID}/queue/next:
+    post:
+      tags: [Doctor (self)]
+      summary: Call the next waiting patient (the first confirmed serial after the current one; starts the session)
+      parameters: [{ $ref: "#/components/parameters/scheduleID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Queue" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/doctor/tickets/{code}:
     get:
       tags: [Doctor (self)]
@@ -755,6 +787,20 @@ paths:
       parameters: [{ $ref: "#/components/parameters/appointmentID" }]
       responses:
         "200": { $ref: "#/components/responses/Appointment" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/appointments/{appointmentID}/queue:
+    get:
+      tags: [Appointments]
+      summary: "Live serial status: where this booking is in today's queue"
+      description: >-
+        For a confirmed booking today, the serial being seen now, how many confirmed patients are still before
+        this one, and an estimated wait once the session has started. Any other booking answers status closed.
+        The patient is also notified (and texted) once when at most two patients are before them.
+      parameters: [{ $ref: "#/components/parameters/appointmentID" }]
+      responses:
+        "200":
+          description: Place in the queue
+          content: { application/json: { schema: { $ref: "#/components/schemas/Turn" } } }
         default: { $ref: "#/components/responses/Error" }
   /api/v1/appointments/{appointmentID}/review:
     post:
@@ -1620,6 +1666,38 @@ paths:
       responses:
         "201": { $ref: "#/components/responses/Appointment" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue:
+    get:
+      tags: [Hospital management]
+      summary: "Today's live serial status for a session at this hospital"
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }, { $ref: "#/components/parameters/scheduleID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Queue" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      tags: [Hospital management]
+      summary: Set the serial being seen now (any booked serial today, e.g. to go back or skip ahead)
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }, { $ref: "#/components/parameters/scheduleID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [now_serving]
+              properties:
+                now_serving: { type: integer, minimum: 1 }
+      responses:
+        "200": { $ref: "#/components/responses/Queue" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/manage/hospitals/{hospitalID}/schedules/{scheduleID}/queue/next:
+    post:
+      tags: [Hospital management]
+      summary: Call the next waiting patient (the first confirmed serial after the current one; starts the session)
+      parameters: [{ $ref: "#/components/parameters/hospitalID" }, { $ref: "#/components/parameters/scheduleID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Queue" }
+        default: { $ref: "#/components/responses/Error" }
   /api/v1/manage/hospitals/{hospitalID}/members:
     get:
       tags: [Hospital management]
@@ -2479,6 +2557,7 @@ components:
     Chamber: { description: Chamber, content: { application/json: { schema: { $ref: "#/components/schemas/Chamber" } } } }
     Schedule: { description: Schedule, content: { application/json: { schema: { $ref: "#/components/schemas/Schedule" } } } }
     Appointment: { description: Appointment, content: { application/json: { schema: { $ref: "#/components/schemas/Appointment" } } } }
+    Queue: { description: "Today's queue", content: { application/json: { schema: { $ref: "#/components/schemas/Queue" } } } }
     Payment: { description: Payment, content: { application/json: { schema: { $ref: "#/components/schemas/Payment" } } } }
     Consultation: { description: Consultation, content: { application/json: { schema: { $ref: "#/components/schemas/Consultation" } } } }
     Concern: { description: Concern, content: { application/json: { schema: { $ref: "#/components/schemas/Concern" } } } }
@@ -2736,6 +2815,36 @@ components:
             created_at: { type: string, format: date-time }
 
     # ---- appointments
+    Queue:
+      type: object
+      required: [schedule_id, date, start_time, end_time, started, now_serving, waiting, booked, minutes_per_patient, updated_at]
+      properties:
+        schedule_id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        start_time: { type: string, example: "17:00" }
+        end_time: { type: string, example: "21:00" }
+        started: { type: boolean }
+        now_serving: { type: integer, description: 0 until the session starts }
+        waiting: { type: integer, description: Confirmed bookings after now_serving }
+        booked: { type: integer, description: Bookings not cancelled or moved }
+        minutes_per_patient: { type: integer, description: "The session's pace so far, or its length shared by its places before that" }
+        updated_at: { type: string, format: date-time, nullable: true }
+    Turn:
+      type: object
+      required: [appointment_id, serial_no, status, ahead, estimated_minutes, queue]
+      properties:
+        appointment_id: { type: string, format: uuid }
+        serial_no: { type: integer }
+        status:
+          type: string
+          enum: [waiting, your_turn, passed, closed]
+          description: passed means the doctor moved past this serial while it was waiting; closed means not today or not a confirmed booking
+        ahead: { type: integer, description: "Confirmed patients still before this one, not counting the one being seen" }
+        estimated_minutes: { type: integer, nullable: true, description: Set once the session has started }
+        queue:
+          nullable: true
+          description: Null when closed
+          allOf: [{ $ref: "#/components/schemas/Queue" }]
     Appointment:
       type: object
       properties:

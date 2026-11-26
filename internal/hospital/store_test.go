@@ -251,6 +251,16 @@ func TestDoctorsChambersAndBookings(t *testing.T) {
 		t.Fatal("other hospital sees the booking")
 	}
 
+	// The hospital and the chamber's doctor can both run the live serial status;
+	// another hospital can't.
+	for _, who := range []appointment.QueueActor{{HospitalID: hid}, {DoctorID: doc}} {
+		if q, err := f.appointments.QueueToday(ctx, who, evening.ID); err != nil || q.Started || q.MinutesPerPatient != 9 {
+			t.Fatalf("queue for %+v: %+v, %v", who, q, err)
+		}
+	}
+	_, err = f.appointments.QueueToday(ctx, appointment.QueueActor{HospitalID: otherHospital}, evening.ID)
+	wantKind(t, err, apperr.KindNotFound, "other hospital's queue")
+
 	// Reschedule to the morning session.
 	_, err = f.appointments.Reschedule(ctx, otherHospital, a.ID, morning.ID, date)
 	wantKind(t, err, apperr.KindNotFound, "other hospital reschedules")

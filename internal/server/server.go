@@ -155,6 +155,7 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/appointments", d.Appointments.Book)
 				r.Get("/appointments", d.Appointments.Mine)
 				r.Post("/appointments/{appointmentID}/cancel", d.Appointments.Cancel)
+				r.Get("/appointments/{appointmentID}/queue", d.Appointments.MyTurn)
 				r.Post("/appointments/{appointmentID}/review", d.Doctors.ReviewAppointment)
 				r.Post("/consultations/{consultationID}/review", d.Doctors.ReviewConsultation)
 				r.Get("/reviews/mine", d.Doctors.MyReviews)
@@ -294,6 +295,9 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/appointments/{appointmentID}/complete", d.Appointments.Complete)
 				r.Post("/appointments/{appointmentID}/no-show", d.Appointments.NoShow)
 				r.Get("/tickets/{code}", d.Appointments.Ticket)
+				r.Get("/schedules/{scheduleID}/queue", d.Appointments.DoctorQueue)
+				r.Put("/schedules/{scheduleID}/queue", d.Appointments.DoctorQueueSet)
+				r.Post("/schedules/{scheduleID}/queue/next", d.Appointments.DoctorQueueNext)
 				r.Get("/appointments/{appointmentID}/records", d.Records.ForAppointment)
 			})
 
@@ -326,6 +330,9 @@ func NewRouter(d Deps) http.Handler {
 					r.Get("/appointments", hs.Appointments)
 					r.Post("/appointments/{appointmentID}/cancel", hs.CancelAppointment)
 					r.Post("/appointments/{appointmentID}/reschedule", hs.RescheduleAppointment)
+					r.Get("/schedules/{scheduleID}/queue", hs.Queue)
+					r.Put("/schedules/{scheduleID}/queue", hs.QueueSet)
+					r.Post("/schedules/{scheduleID}/queue/next", hs.QueueNext)
 
 					r.Get("/members", hs.Members)
 					r.With(hs.OwnerOnly).Post("/members", hs.AddMember)

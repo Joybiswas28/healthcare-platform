@@ -267,6 +267,11 @@ func TestResponsesMatchSpec(t *testing.T) {
 	c.call("GET", api+"/appointments", pt, nil, 200)
 	c.call("GET", api+"/doctor/appointments?date="+date, dt, nil, 200)
 	c.call("GET", api+"/doctor/tickets/"+str(appt, "ticket_code"), dt, nil, 200)
+	// The session runs on today's weekday, but nobody is booked for today.
+	c.call("GET", api+"/doctor/schedules/"+str(sc, "id")+"/queue", dt, nil, 200)
+	c.call("POST", api+"/doctor/schedules/"+str(sc, "id")+"/queue/next", dt, nil, 409)
+	c.call("PUT", api+"/doctor/schedules/"+str(sc, "id")+"/queue", dt, map[string]any{"now_serving": 1}, 422)
+	c.call("GET", api+"/appointments/"+str(appt, "id")+"/queue", pt, nil, 200)
 	c.call("POST", api+"/appointments/"+str(appt, "id")+"/cancel", pt, nil, 200)
 
 	// Family: book for a child alongside the parent, then edit and remove the child.

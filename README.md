@@ -124,6 +124,7 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | POST | `/appointments` | Book: `{"schedule_id": "...", "date": "2026-11-24"}` returns a serial and ticket code |
 | GET | `/appointments` | My appointments |
 | POST | `/appointments/{id}/cancel` | Cancel an upcoming appointment |
+| GET | `/appointments/{id}/queue` | Live serial status for today: serial being seen, patients before mine, estimated wait |
 
 **Doctor**
 
@@ -137,6 +138,9 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 | GET | `/doctor/appointments?date=` | Patient list for a day (defaults to today) |
 | POST | `/doctor/appointments/{id}/complete` | Mark as seen |
 | POST | `/doctor/appointments/{id}/no-show` | Mark as no-show |
+| GET | `/doctor/schedules/{id}/queue` | Today's live serial status for a session |
+| POST | `/doctor/schedules/{id}/queue/next` | Call the next waiting patient (starts the session) |
+| PUT | `/doctor/schedules/{id}/queue` | `{"now_serving": 12}`: set the serial being seen (go back or skip ahead) |
 | GET | `/doctor/tickets/{code}` | Look up a ticket shown at the chamber |
 
 | PUT | `/doctor/consultation-settings` | `{"enabled": true, "fee_tokens": 2}` (verified doctors only) |
@@ -200,6 +204,12 @@ All paths below start with `/api/v1` unless noted. Money is always in **paisa** 
 - With `SSLCOMMERZ_STORE_ID` and `SSLCOMMERZ_STORE_PASSWORD` set, `checkout_url` is the SSLCommerz payment page (cards, bKash, Nagad and others). SSLCommerz must be able to reach `PUBLIC_BASE_URL` for callbacks. In local development, expose the server with a tunnel such as ngrok or cloudflared.
 - Tokens are credited only after the SSLCommerz validation API confirms the payment and its amount. The posted callback form is never trusted.
 - After paying, the patient is sent to `FRONTEND_URL/payments/result?status=success|pending|failed|cancelled&payment_id=...`.
+
+### Live serial status
+
+- On the day, the doctor or the hospital's staff press **Next patient** (or set a serial by hand); cancelled serials are skipped. Patients follow their booking from their phone: the serial being seen, how many confirmed patients are before them, and an estimated wait.
+- The estimate uses the session's real pace once the serial has moved twice (time since the start divided by the moves), and before that the session's length divided by its places, kept between 3 and 60 minutes per patient.
+- When at most 2 patients are before them, or their serial is called, a patient gets one notification and SMS (`queue_turn`), once per booking.
 
 ### Notifications and SMS
 
@@ -266,6 +276,8 @@ During an active consultation the patient and the doctor can video call. The cal
 | POST / DELETE | `/manage/hospitals/{id}/chambers/{chamberID}/schedules`, `/schedules/{scheduleID}` | Weekly sessions |
 | GET | `/manage/hospitals/{id}/appointments?date=&doctor_id=` | Bookings for a day |
 | POST | `/manage/hospitals/{id}/appointments/{aid}/cancel` | `{"reason"}`. The patient gets an SMS |
+| GET, PUT | `/manage/hospitals/{id}/schedules/{sid}/queue` | Live serial status of a session here, as for doctors |
+| POST | `/manage/hospitals/{id}/schedules/{sid}/queue/next` | Call the next waiting patient |
 | POST | `/manage/hospitals/{id}/appointments/{aid}/reschedule` | `{"schedule_id", "date"}`: same doctor, this hospital. The patient gets a new serial and ticket by SMS |
 | GET / POST / DELETE | `/manage/hospitals/{id}/members[/{userID}]` | Staff accounts (owner only adds or removes). Add by `{"phone"}` of a `hospital_admin` account |
 

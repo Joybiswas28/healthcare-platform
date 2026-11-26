@@ -125,6 +125,7 @@ type session struct {
 	HospitalID  *string
 	DoctorID    string
 	Weekday     int
+	StartTime   string // "HH:MM"
 	EndTime     string // "HH:MM"
 	MaxPatients int
 	FeePaisa    int64
@@ -133,7 +134,7 @@ type session struct {
 
 func loadSession(ctx context.Context, q database.Querier, scheduleID string, lock bool) (session, error) {
 	sql := `
-		SELECT c.id, c.hospital_id, c.doctor_id, s.weekday, to_char(s.end_time, 'HH24:MI'), s.max_patients, c.fee_paisa,
+		SELECT c.id, c.hospital_id, c.doctor_id, s.weekday, to_char(s.start_time, 'HH24:MI'), to_char(s.end_time, 'HH24:MI'), s.max_patients, c.fee_paisa,
 		       (s.active AND d.verification_status = 'approved' AND u.status = 'active' AND ` + doctor.LiveChamberSQL("c") + `)
 		FROM chamber_schedules s
 		JOIN chambers c        ON c.id = s.chamber_id
@@ -144,7 +145,7 @@ func loadSession(ctx context.Context, q database.Querier, scheduleID string, loc
 		sql += ` FOR UPDATE OF s`
 	}
 	var ss session
-	err := q.QueryRow(ctx, sql, scheduleID).Scan(&ss.ChamberID, &ss.HospitalID, &ss.DoctorID, &ss.Weekday, &ss.EndTime,
+	err := q.QueryRow(ctx, sql, scheduleID).Scan(&ss.ChamberID, &ss.HospitalID, &ss.DoctorID, &ss.Weekday, &ss.StartTime, &ss.EndTime,
 		&ss.MaxPatients, &ss.FeePaisa, &ss.Bookable)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return session{}, apperr.NotFound("schedule not found")
